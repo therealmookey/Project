@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Test</title>
+</head>
+<body>
+    <h1>Supabase Test</h1>
+    <button onclick="testSignUp()">Test Account Aanmaken</button>
+    <div id="result"></div>
+    <div id="error"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // KOPIEER DIT PRECIES UIT JE SUPABASE DASHBOARD!
+        // Project Settings → API → Configuratie
+        const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';     // VUL HIER JE URL IN
+        const SUPABASE_ANON_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';                  // VUL HIER JE KEY IN
+        
+        console.log('URL:', SUPABASE_URL);
+        console.log('Key begint met:', SUPABASE_ANON_KEY.substring(0, 20) + '...');
+        
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        async function testSignUp() {
+            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('error');
+            
+            resultDiv.innerHTML = 'Bezig met verbinden...';
+            errorDiv.innerHTML = '';
+            
+            try {
+                // Probeer eerst de gezondheid van de verbinding te checken
+                console.log('Proberen te verbinden met:', SUPABASE_URL);
+                
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email: 'test-' + Date.now() + '@gmail.com',
+                    password: 'Test123456'
+                });
+                
+                if (error) {
+                    errorDiv.innerHTML = '<strong>FOUT:</strong> ' + JSON.stringify(error, null, 2);
+                    console.error('Fout:', error);
+                } else {
+                    resultDiv.innerHTML = '<strong>SUCCES!</strong> Account aangemaakt! Check je e-mail voor bevestiging.';
+                    console.log('Succes:', data);
+                }
+            } catch (err) {
+                errorDiv.innerHTML = '<strong>EXCEPTIE:</strong> ' + err.message;
+                console.error('Exception:', err);
+            }
+        }
+    </script>
+</body>
+</html>

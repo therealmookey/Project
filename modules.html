@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modulebeheer</title>
+    <link rel="stylesheet" href="css/style.css?v=16">
+</head>
+<body>
+    <div id="navigatie-placeholder"></div>
+    
+    <main class="container">
+        <div class="page-header">
+            <h1>⚙️ Modulebeheer</h1>
+            <p>Beheer welke modules gebruikers kunnen zien en gebruiken</p>
+        </div>
+        
+        <div class="module-tabs">
+            <button class="tab-btn active" data-tab="gebruikers">👥 Per gebruiker</button>
+            <button class="tab-btn" data-tab="modules">📦 Alle modules</button>
+        </div>
+        
+        <!-- Tab 1: Per gebruiker -->
+        <div id="tabGebruikers" class="module-tab active">
+            <div class="filter-section">
+                <div class="search-bar">
+                    <input type="text" id="searchModuleUserInput" placeholder="🔍 Zoek gebruiker..." class="search-input">
+                    <button id="clearModuleUserSearchBtn" class="btn btn-secondary">✖ Wissen</button>
+                </div>
+            </div>
+            <div id="gebruikersModuleLijst" class="module-tabel">
+                <p>Laden...</p>
+            </div>
+        </div>
+        
+        <!-- Tab 2: Alle modules -->
+        <div id="tabModules" class="module-tab">
+            <div id="modulesLijst" class="module-tabel">
+                <p>Laden...</p>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Popup voor module rechten bewerken -->
+    <div id="modulePopup" class="popup">
+        <div class="popup-content">
+            <h3 id="modulePopupTitle">Module rechten bewerken</h3>
+            <p><strong>Gebruiker:</strong> <span id="modulePopupUser"></span></p>
+            <div id="moduleCheckboxes" class="module-checkboxes">
+                <!-- Wordt dynamisch gevuld -->
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="saveModuleRightsBtn" class="btn btn-primary">Opslaan</button>
+                <button id="closeModulePopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/modules.js"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Project</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="navigatie-placeholder"></div>
+    
+    <main class="container">
+        <div class="dashboard-header">
+            <h1>Welkom, <span id="userEmail"></span>!</h1>
+            <p>Beheer hier de adressen en ophalingen/afhalingen</p>
+        </div>
+        
+        <!-- Agenda & Voorspellingen naast elkaar -->
+        <div class="dashboard-two-column">
+            <!-- Agenda -->
+            <div class="agenda-section">
+                <div class="agenda-header">
+                    <button id="prevMonthBtn" class="btn btn-secondary btn-small">◀</button>
+                    <h3 id="agendaTitel">Maand - Jaar</h3>
+                    <button id="nextMonthBtn" class="btn btn-secondary btn-small">▶</button>
+                    <button id="todayBtn" class="btn btn-primary btn-small">📅 Vandaag</button>
+                </div>
+                <div class="agenda-grid">
+                    <div class="agenda-weekdays">
+                        <div>Ma</div>
+                        <div>Di</div>
+                        <div>Wo</div>
+                        <div>Do</div>
+                        <div>Vr</div>
+                        <div>Za</div>
+                        <div>Zo</div>
+                    </div>
+                    <div id="agendaDagen" class="agenda-dagen"></div>
+                </div>
+                <!-- Tooltip element -->
+                <div id="agendaTooltip" class="agenda-tooltip"></div>
+                <!-- Overzicht van geselecteerde dag -->
+                <div id="agendaRitten" class="agenda-ritten">
+                    <div class="agenda-geen-ritten">
+                        <span>📅</span>
+                        <p>Selecteer een dag om ritten te bekijken.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Voorspellingen -->
+            <div class="analyse-section">
+                <h3>📊 Ophaling Voorspelling</h3>
+                <p>Ziekenhuizen die binnen 5 dagen een ophaling nodig hebben:</p>
+                <div id="analyseLijst" class="analyse-lijst">
+                    <p>Laden...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <h2>📍 Adressen</h2>
+                <p>Bekijk en beheer alle adressen</p>
+                <button class="btn btn-primary" onclick="window.location.href='adressen.html'">Adressen beheren</button>
+            </div>
+            
+            <div class="dashboard-card">
+                <h2>📅 Ophalingen & Afhalingen</h2>
+                <p>Plan nieuwe ophalingen of bekijk bestaande</p>
+                <button class="btn btn-primary" onclick="window.location.href='planning.html'">Planning beheren</button>
+            </div>
+            
+            <div class="dashboard-card">
+                <h2>📊 Statistieken</h2>
+                <p>Overzicht van alle geplande ophalingen</p>
+                <button class="btn btn-secondary" id="statsBtn">Bekijk statistieken</button>
+            </div>
+        </div>
+    </main>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+</html>

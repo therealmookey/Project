@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ophaalregistraties</title>
+    <link rel="stylesheet" href="css/style.css?v=29">
+    <!-- SheetJS voor Excel export/import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2pdf voor PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <div id="navigatie-placeholder"></div>
+    
+    <main class="container">
+        <div class="page-header">
+            <div class="page-header-left">
+                <h1>📋 Ophaalregistraties</h1>
+                <button id="addRegistratieBtn" class="btn btn-primary">+ Nieuwe registratie</button>
+                <button id="importExcelBtn" class="btn btn-success">📥 Import Excel</button>
+            </div>
+            <div class="page-header-right">
+                <button id="exportExcelBtn" class="btn btn-success">📊 Export Excel</button>
+                <button id="exportPdfBtn" class="btn btn-danger">📄 Export PDF</button>
+            </div>
+        </div>
+        
+        <!-- Filters -->
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-item">
+                    <label>🔍 Ziekenhuis</label>
+                    <input type="text" id="searchZiekenhuis" placeholder="Zoeken op naam..." class="search-input">
+                </div>
+                <div class="filter-item">
+                    <label>📅 Vanaf</label>
+                    <input type="date" id="filterDatumVanaf" class="form-input">
+                </div>
+                <div class="filter-item">
+                    <label>📅 Tot</label>
+                    <input type="date" id="filterDatumTot" class="form-input">
+                </div>
+                <div class="filter-item">
+                    <label>📊 Type</label>
+                    <select id="typeFilter" class="form-input">
+                        <option value="alles">Alle types</option>
+                        <option value="ophaling">Ophaling</option>
+                        <option value="opstart">Opstart</option>
+                    </select>
+                </div>
+                <div class="filter-item filter-buttons">
+                    <button id="filterBtn" class="btn btn-primary">Filter</button>
+                    <button id="resetFilterBtn" class="btn btn-secondary">Reset</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Registraties lijst -->
+        <div id="registratiesLijst" class="admin-tabel">
+            <p>Laden...</p>
+        </div>
+    </main>
+    
+    <!-- Scroll knop -->
+    <button id="scrollBtn" class="scroll-btn" title="Scroll naar beneden">
+        <span class="scroll-icon">▼</span>
+    </button>
+    
+    <!-- Popup voor registratie toevoegen/bewerken -->
+    <div id="registratiePopup" class="popup">
+        <div class="popup-content">
+            <h3 id="popupTitle">Nieuwe registratie</h3>
+            
+            <label>Type *</label>
+            <select id="registratieType" required>
+                <option value="ophaling">📦 Ophaling (gewicht)</option>
+                <option value="opstart">🔄 Opstart (combinatie)</option>
+            </select>
+            
+            <label>Ziekenhuis *</label>
+            <select id="ziekenhuisSelect" required>
+                <option value="">Kies een ziekenhuis...</option>
+            </select>
+            
+            <label>Datum *</label>
+            <input type="date" id="registratieDatum" required>
+            
+            <div id="ophalingVeldenReg">
+                <label>Gewicht (kg) *</label>
+                <input type="number" id="gewicht" placeholder="Bijv. 15.5" step="0.1">
+            </div>
+            
+            <div id="opstartVelden" style="display: none;">
+                <label>Combinatie *</label>
+                <select id="combinatieSelect">
+                    <option value="">Kies een combinatie...</option>
+                </select>
+                
+                <label>Aantal *</label>
+                <input type="number" id="opstartAantal" min="1" value="1" step="1">
+                <small>Dit aantal wordt uit de voorraad gehaald</small>
+            </div>
+            
+            <label>Opmerkingen</label>
+            <textarea id="opmerkingen" rows="3" placeholder="Extra informatie..."></textarea>
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="saveRegistratieBtn" class="btn btn-primary">Opslaan</button>
+                <button id="closeRegistratiePopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Popup voor Excel import -->
+    <div id="importPopup" class="popup">
+        <div class="popup-content import-popup">
+            <h3>📥 Excel import</h3>
+            <p>Upload een Excel bestand (.xlsx, .xls, .csv) met ophaalregistraties.</p>
+            
+            <div class="import-template">
+                <h4>📋 Benodigde kolommen:</h4>
+                <table class="import-template-table">
+                    <thead>
+                        <tr>
+                            <th>Kolom</th>
+                            <th>Omschrijving</th>
+                            <th>Verplicht</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Ziekenhuis</strong></td>
+                            <td>Naam van het ziekenhuis (moet bestaan in adressen)</td>
+                            <td>✅ Ja</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Datum</strong></td>
+                            <td>Datum van ophaling (JJJJ-MM-DD of DD-MM-JJJJ)</td>
+                            <td>✅ Ja</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gewicht</strong></td>
+                            <td>Gewicht in kg (alleen voor ophalingen)</td>
+                            <td>❌ Nee</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Type</strong></td>
+                            <td>"ophaling" of "opstart"</td>
+                            <td>❌ Nee (standaard: ophaling)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Opmerkingen</strong></td>
+                            <td>Extra informatie</td>
+                            <td>❌ Nee</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button id="downloadTemplateBtn" class="btn btn-secondary">📥 Download template</button>
+            </div>
+            
+            <hr>
+            
+            <div class="import-upload">
+                <label>📁 Selecteer bestand</label>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+                <div id="importPreview" class="import-preview"></div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="confirmImportBtn" class="btn btn-primary">✅ Importeer</button>
+                <button id="closeImportPopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/registraties.js"></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adressen</title>
+    <link rel="stylesheet" href="css/style.css?v=7">
+</head>
+<body>
+    <div id="navigatie-placeholder"></div>
+    
+    <main class="container">
+        <div class="page-header">
+            <h1>📍 Adressen database</h1>
+            <button id="addAddressBtn" class="btn btn-primary">+ Nieuw adres toevoegen</button>
+        </div>
+        
+        <!-- Zoekbalk -->
+        <div class="search-section">
+            <div class="search-bar">
+                <input type="text" id="searchInput" placeholder="🔍 Zoeken..." class="search-input">
+                <button id="clearSearchBtn" class="btn btn-secondary">✖ Wissen</button>
+            </div>
+        </div>
+        
+        <div id="adressenLijst" class="adressen-tabel">
+            <p>Laden...</p>
+        </div>
+    </main>
+    
+    <!-- Popup voor toevoegen/bewerken -->
+    <div id="addressPopup" class="popup">
+        <div class="popup-content">
+            <h3 id="popupTitle">Nieuw adres</h3>
+            
+            <h4>📍 Basisgegevens</h4>
+            <input type="text" id="instellingNaam" placeholder="Instellingsnaam *" required>
+            <input type="text" id="straat" placeholder="Straat + huisnummer *" required>
+            <input type="text" id="postcode" placeholder="Postcode *" required>
+            <input type="text" id="plaats" placeholder="Plaats *" required>
+            <input type="text" id="telefoon" placeholder="Telefoonnummer (algemeen)">
+            
+            <h4>📞 Contactpersoon</h4>
+            <input type="text" id="contactpersoon_naam" placeholder="Contactpersoon naam">
+            <input type="email" id="contactpersoon_email" placeholder="Contactpersoon e-mailadres">
+            
+            <h4>📝 Extra informatie</h4>
+            <textarea id="extra_info" class="extra-info" rows="3" placeholder="Parkeren, route, laadperron, laadklep, etc."></textarea>
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="saveAddressBtn" class="btn btn-primary">Opslaan</button>
+                <button id="closeAddressPopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/adressen.js"></script>
+</body>
+</html>

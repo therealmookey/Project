@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <link rel="stylesheet" href="css/style.css?v=11">
+</head>
+<body>
+    <div id="navigatie-placeholder"></div>
+    
+    <main class="container">
+        <div class="page-header">
+            <h1>👑 Admin Panel</h1>
+            <button id="addUserBtn" class="btn btn-primary">+ Nieuwe gebruiker toevoegen</button>
+        </div>
+        
+        <!-- Tabbladen -->
+        <div class="admin-tabs">
+            <button class="tab-btn active" data-tab="gebruikers">👥 Alle gebruikers</button>
+            <button class="tab-btn" data-tab="chauffeurs">🚚 Chauffeurs</button>
+            <button class="tab-btn" data-tab="instellingen">⚙️ Instellingen</button>
+        </div>
+        
+        <!-- Tab 1: Alle gebruikers -->
+        <div id="tabGebruikers" class="admin-tab active">
+            <div class="search-section">
+                <div class="search-bar">
+                    <input type="text" id="searchUserInput" placeholder="🔍 Zoeken op gebruikersnaam..." class="search-input">
+                    <button id="clearUserSearchBtn" class="btn btn-secondary">✖ Wissen</button>
+                </div>
+            </div>
+            <div id="gebruikersLijst" class="admin-tabel">
+                <p>Laden...</p>
+            </div>
+        </div>
+        
+        <!-- Tab 2: Alleen chauffeurs -->
+        <div id="tabChauffeurs" class="admin-tab">
+            <div class="search-section">
+                <div class="search-bar">
+                    <input type="text" id="searchChauffeurInput" placeholder="🔍 Zoeken op chauffeur..." class="search-input">
+                    <button id="clearChauffeurSearchBtn" class="btn btn-secondary">✖ Wissen</button>
+                </div>
+            </div>
+            <div id="chauffeursLijst" class="admin-tabel">
+                <p>Laden...</p>
+            </div>
+        </div>
+        
+        <!-- Tab 3: Instellingen -->
+        <div id="tabInstellingen" class="admin-tab">
+            <div class="instellingen-card">
+                <h3>🔧 Algemene instellingen</h3>
+                <div class="instelling-item">
+                    <label>Vast startpunt (magazijn)</label>
+                    <input type="text" id="startpuntInstelling" value="Schoonmansveld 48, 2870 Puurs" class="form-input">
+                    <button id="saveStartpuntBtn" class="btn btn-primary">Opslaan</button>
+                </div>
+                <hr>
+                <h3>📊 Systeeminformatie</h3>
+                <div class="instelling-item">
+                    <p><strong>Aantal gebruikers:</strong> <span id="aantalGebruikers">-</span></p>
+                    <p><strong>Aantal chauffeurs:</strong> <span id="aantalChauffeurs">-</span></p>
+                    <p><strong>Aantal adressen:</strong> <span id="aantalAdressen">-</span></p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Popup voor gebruiker toevoegen/bewerken -->
+    <div id="userPopup" class="popup">
+        <div class="popup-content">
+            <h3 id="userPopupTitle">Nieuwe gebruiker</h3>
+            
+            <label>Gebruikersnaam *</label>
+            <input type="text" id="userGebruikersnaam" placeholder="gebruikersnaam" required>
+            
+            <label>E-mailadres *</label>
+            <input type="email" id="userEmail" placeholder="gebruiker@voorbeeld.nl" required>
+            
+            <label>Wachtwoord *</label>
+            <input type="password" id="userPassword" placeholder="Wachtwoord (min. 6 tekens)">
+            <small>Laat leeg bij bewerken om wachtwoord niet te wijzigen</small>
+            
+            <label>Rol *</label>
+            <select id="userRol">
+                <option value="gebruiker">👤 Gebruiker</option>
+                <option value="admin">👑 Admin</option>
+            </select>
+            
+            <label>Chauffeur status</label>
+            <select id="userIsChauffeur">
+                <option value="false">❌ Geen chauffeur</option>
+                <option value="true">✅ Ja, deze gebruiker is ook chauffeur</option>
+            </select>
+            
+            <div id="chauffeurVelden" style="display: none;">
+                <label>Chauffeursnummer</label>
+                <input type="text" id="chauffeurNummer" placeholder="Bijv. CH-001">
+                
+                <label>Telefoonnummer chauffeur (WhatsApp)</label>
+                <input type="tel" id="chauffeurTelefoon" placeholder="0485 12 34 56">
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="saveUserBtn" class="btn btn-primary">Opslaan</button>
+                <button id="closeUserPopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>

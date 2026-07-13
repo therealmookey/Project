@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Management</title>
+    <link rel="stylesheet" href="css/style.css?v=27">
+</head>
+<body>
+    <div id="navigatie-placeholder"></div>
+    
+    <main class="container">
+        <div class="page-header">
+            <div class="page-header-left">
+                <h1>📦 Stock Management</h1>
+                <button id="addItemBtn" class="btn btn-primary">+ Nieuw item</button>
+                <button id="addCombinatieBtn" class="btn btn-success">+ Nieuwe combinatie</button>
+            </div>
+            <div class="page-header-right">
+                <button id="refreshBtn" class="btn btn-secondary">🔄 Ververs</button>
+            </div>
+        </div>
+        
+        <!-- Meldingen -->
+        <div id="stockAlerts" class="stock-alerts"></div>
+        
+        <!-- Filters -->
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-item">
+                    <label>🔍 Zoeken</label>
+                    <input type="text" id="searchStock" placeholder="Zoek op omschrijving of code..." class="search-input">
+                </div>
+                <div class="filter-item">
+                    <label>📊 Type</label>
+                    <select id="typeFilter" class="form-input">
+                        <option value="alles">Alle items</option>
+                        <option value="enkel">Losse items</option>
+                        <option value="combinatie">Combinatie items</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label>📊 Status</label>
+                    <select id="statusFilter" class="form-input">
+                        <option value="alles">Alle statussen</option>
+                        <option value="voorraad">Op voorraad (> minimum)</option>
+                        <option value="laag">Laag (<= minimum)</option>
+                        <option value="op">Op (0)</option>
+                    </select>
+                </div>
+                <div class="filter-item filter-buttons">
+                    <button id="filterBtn" class="btn btn-primary">Filter</button>
+                    <button id="resetFilterBtn" class="btn btn-secondary">Reset</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stock lijst -->
+        <div id="stockLijst" class="admin-tabel">
+            <p>Laden...</p>
+        </div>
+    </main>
+    
+    <!-- Popup voor item toevoegen/bewerken -->
+    <div id="itemPopup" class="popup">
+        <div class="popup-content">
+            <h3 id="popupTitle">Nieuw item</h3>
+            
+            <label>Item Code *</label>
+            <input type="text" id="itemCode" placeholder="Bijv. PL-001" required>
+            
+            <label>Omschrijving *</label>
+            <input type="text" id="itemOmschrijving" placeholder="Bijv. Plastiek ton 80L" required>
+            
+            <label>Aantal</label>
+            <input type="number" id="itemAantal" min="0" value="0" step="1">
+            
+            <label>Minimum voorraad</label>
+            <input type="number" id="itemMinimum" min="0" value="5" step="1">
+            
+            <label>Locatie</label>
+            <input type="text" id="itemLocatie" placeholder="Bijv. Magazijn A">
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="saveItemBtn" class="btn btn-primary">Opslaan</button>
+                <button id="closeItemPopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Popup voor combinatie toevoegen/bewerken -->
+    <div id="combinatiePopup" class="popup">
+        <div class="popup-content combinatie-popup">
+            <h3 id="combinatiePopupTitle">Nieuwe combinatie</h3>
+            
+            <label>Combinatie Code *</label>
+            <input type="text" id="combinatieCode" placeholder="Bijv. SET-001" required>
+            
+            <label>Combinatie Omschrijving *</label>
+            <input type="text" id="combinatieOmschrijving" placeholder="Bijv. Reinigingskit" required>
+            
+            <label>Locatie</label>
+            <input type="text" id="combinatieLocatie" placeholder="Bijv. Magazijn A">
+            
+            <input type="hidden" id="combinatieId" value="">
+            
+            <hr>
+            <h4>📦 Componenten</h4>
+            <p style="font-size:0.85rem;color:#6c757d;">Selecteer de items die in deze combinatie zitten en het aantal dat nodig is.</p>
+            
+            <div id="componentenLijst" class="componenten-lijst">
+                <p>Geen componenten toegevoegd.</p>
+            </div>
+            
+            <div class="component-toevoegen">
+                <select id="componentSelect" class="form-input">
+                    <option value="">Kies een component...</option>
+                </select>
+                <input type="number" id="componentAantal" min="1" value="1" step="1" style="width:80px;display:inline-block;">
+                <button id="addComponentBtn" class="btn btn-secondary">➕ Toevoegen</button>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="saveCombinatieBtn" class="btn btn-primary">Opslaan</button>
+                <button id="closeCombinatiePopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Popup voor mutatie (voorraad aanpassen) -->
+    <div id="mutatiePopup" class="popup">
+        <div class="popup-content">
+            <h3 id="mutatieTitle">Voorraad aanpassen</h3>
+            <p><strong>Item:</strong> <span id="mutatieItemName"></span></p>
+            <p><strong>Huidige voorraad:</strong> <span id="mutatieHuidigAantal">0</span> stuks</p>
+            
+            <label>Type</label>
+            <select id="mutatieType">
+                <option value="toevoeging">✅ Toevoegen</option>
+                <option value="afname">❌ Afnemen</option>
+                <option value="correctie">🔄 Correctie (nieuw aantal invoeren)</option>
+            </select>
+            
+            <div id="mutatieAantalDiv">
+                <label>Aantal</label>
+                <input type="number" id="mutatieAantal" min="1" value="1" step="1">
+            </div>
+            
+            <div id="mutatieCorrectieDiv" style="display: none;">
+                <label>Nieuw aantal</label>
+                <input type="number" id="mutatieCorrectieAantal" min="0" value="0" step="1">
+            </div>
+            
+            <label>Reden</label>
+            <input type="text" id="mutatieReden" placeholder="Bijv. Levering ontvangen, Gebruikt in productie">
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="saveMutatieBtn" class="btn btn-primary">Uitvoeren</button>
+                <button id="closeMutatiePopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/stock.js"></script>
+</body>
+</html>

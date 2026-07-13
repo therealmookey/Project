@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planning</title>
+    <link rel="stylesheet" href="css/style.css?v=21">
+    <!-- html2pdf voor PDF generatie -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- SortableJS voor drag & drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+    <div id="navigatie-placeholder"></div>
+    
+    <main class="container">
+        <div class="page-header">
+            <h1>📅 Planning</h1>
+            <button id="newPlanningBtn" class="btn btn-primary">+ Nieuwe planning</button>
+        </div>
+        
+        <!-- Alle planningen in één lijst -->
+        <div id="planningLijst" class="planning-lijst sortable-list">
+            <p>Laden...</p>
+        </div>
+    </main>
+    
+    <!-- Popup voor planning toevoegen/bewerken -->
+    <div id="planningPopup" class="popup">
+        <div class="popup-content">
+            <h3 id="planningPopupTitle">Nieuwe planning</h3>
+            
+            <label>Type *</label>
+            <select id="typeSelect" required>
+                <option value="">Kies type...</option>
+                <option value="ophaling">📦 Ophaling (volle tonnen ophalen)</option>
+                <option value="plaatsing">🚚 Plaatsing (lege tonnen afleveren)</option>
+            </select>
+            
+            <label>Adres *</label>
+            <select id="adresSelect" required>
+                <option value="">Kies een adres...</option>
+            </select>
+            
+            <label>Datum *</label>
+            <input type="date" id="planningDatum" required>
+            
+            <div id="ophalingVelden" style="display: none;">
+                <label>Aantal volle tonnen ophalen</label>
+                <input type="number" id="aantalTonnen" min="1" max="100" value="1" step="1">
+            </div>
+            
+            <div id="plaatsingVelden" style="display: none;">
+                <label>Aantal lege tonnen meenemen</label>
+                <input type="number" id="aantalLegeTonnen" min="1" max="100" value="1" step="1">
+            </div>
+            
+            <label>Opmerkingen</label>
+            <textarea id="opmerkingen" rows="3" placeholder="Extra informatie..."></textarea>
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="savePlanningBtn" class="btn btn-primary">Opslaan</button>
+                <button id="closePlanningPopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- WhatsApp popup -->
+    <div id="whatsappPopup" class="popup">
+        <div class="popup-content whatsapp-popup">
+            <h3>📱 Stuur route naar chauffeur</h3>
+            
+            <div class="route-bericht">
+                <h4>📝 WhatsApp bericht</h4>
+                <textarea id="whatsappBericht" rows="12" readonly style="width:100%; padding:10px; border-radius:8px; font-family:monospace; font-size:12px;"></textarea>
+            </div>
+            
+            <div class="route-actions">
+                <button id="sendWhatsAppBtn" class="btn btn-primary">📱 Verstuur via WhatsApp</button>
+                <button id="copyBerichtBtn" class="btn btn-secondary">📋 Kopieer bericht</button>
+                <button id="closeWhatsappPopup" class="btn btn-secondary">Sluiten</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/planning.js"></script>
+</body>
+</html>
