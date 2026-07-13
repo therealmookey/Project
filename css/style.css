@@ -2833,7 +2833,7 @@ hr {
     }
 }
 /* ============================================================
-   DARK MODE SLIDER (KLEIN)
+   DARK MODE SLIDER (DUN & GROEN)
    ============================================================ */
 
 .theme-switch-wrapper {
@@ -2843,17 +2843,17 @@ hr {
 }
 
 .theme-icon {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     line-height: 1;
     color: rgba(255, 255, 255, 0.8);
 }
 
-/* De slider container - KLEINER */
+/* De slider container - DUNNER */
 .theme-switch {
     position: relative;
     display: inline-block;
-    width: 36px;
-    height: 20px;
+    width: 38px;
+    height: 18px;
     flex-shrink: 0;
 }
 
@@ -2864,7 +2864,7 @@ hr {
     height: 0;
 }
 
-/* De slider (achtergrond) */
+/* De slider (achtergrond) - GROEN in light mode */
 .slider {
     position: absolute;
     cursor: pointer;
@@ -2872,17 +2872,17 @@ hr {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #6c757d;
+    background-color: #28a745;  /* GROEN in light mode */
     transition: 0.3s;
-    border-radius: 20px;
+    border-radius: 18px;
 }
 
-/* Het ronde knopje - KLEINER */
+/* Het ronde knopje - DUNNER */
 .slider:before {
     position: absolute;
     content: "";
-    height: 14px;
-    width: 14px;
+    height: 12px;
+    width: 12px;
     left: 3px;
     bottom: 3px;
     background-color: white;
@@ -2890,18 +2890,22 @@ hr {
     border-radius: 50%;
 }
 
-/* Aangevinkte staat (dark mode) */
+/* Aangevinkte staat (dark mode) - BLAUW */
 .theme-switch input:checked + .slider {
-    background-color: #2c7da0;
+    background-color: #2c7da0;  /* BLAUW in dark mode */
 }
 
 .theme-switch input:checked + .slider:before {
-    transform: translateX(16px);
+    transform: translateX(20px);
 }
 
 /* Hover effect */
 .theme-switch:hover .slider {
-    box-shadow: 0 0 6px rgba(44, 125, 160, 0.3);
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
+}
+
+.theme-switch input:checked:hover + .slider {
+    box-shadow: 0 0 8px rgba(44, 125, 160, 0.3);
 }
 
 /* ===== DARK MODE - SLIDER ICONS ===== */
@@ -2920,22 +2924,22 @@ hr {
     }
     
     .theme-switch {
-        width: 30px;
-        height: 17px;
+        width: 32px;
+        height: 16px;
     }
     
     .slider:before {
-        height: 11px;
-        width: 11px;
+        height: 10px;
+        width: 10px;
         left: 3px;
         bottom: 3px;
     }
     
     .theme-switch input:checked + .slider:before {
-        transform: translateX(13px);
+        transform: translateX(16px);
     }
     
     .theme-icon {
-        font-size: 0.65rem;
+        font-size: 0.7rem;
     }
 }
