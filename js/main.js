@@ -57,37 +57,29 @@ async function checkPageAuth() {
     }
 }
 
-// ===== DARK MODE FUNCTIES =====
+// ===== DARK MODE FUNCTIES (MET SLIDER) =====
 
 // Laad de opgeslagen thema voorkeur
 function loadThemePreference() {
     const savedTheme = localStorage.getItem('theme');
+    const checkbox = document.getElementById('themeCheckbox');
+    
     if (savedTheme === 'dark') {
         document.documentElement.setAttribute('data-theme', 'dark');
-        updateThemeToggle('dark');
+        if (checkbox) checkbox.checked = true;
     } else {
         document.documentElement.setAttribute('data-theme', 'light');
-        updateThemeToggle('light');
+        if (checkbox) checkbox.checked = false;
     }
 }
 
-// Update de toggle knop
-function updateThemeToggle(theme) {
-    const toggle = document.getElementById('themeToggle');
-    if (toggle) {
-        toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
-        toggle.title = theme === 'dark' ? 'Schakel naar lichte modus' : 'Schakel naar donkere modus';
-    }
-}
-
-// Wissel tussen dark en light mode
-function toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+// Wissel tussen dark en light mode (via slider)
+function toggleTheme(event) {
+    const isChecked = event.target.checked;
+    const newTheme = isChecked ? 'dark' : 'light';
     
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
-    updateThemeToggle(newTheme);
 }
 
 // ===== NAVIGATIE FUNCTIES (aangepast) =====
@@ -104,10 +96,10 @@ async function laadNavigatie() {
         
         await filterNavigatieModules();
         
-        // Dark mode toggle event listener
-        const themeToggle = document.getElementById('themeToggle');
-        if (themeToggle) {
-            themeToggle.addEventListener('click', toggleTheme);
+        // Dark mode slider event listener
+        const themeCheckbox = document.getElementById('themeCheckbox');
+        if (themeCheckbox) {
+            themeCheckbox.addEventListener('change', toggleTheme);
         }
         
         // Laad de opgeslagen thema voorkeur

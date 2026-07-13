@@ -2832,3 +2832,115 @@ hr {
         padding: 0.3rem 0.6rem;
     }
 }
+/* ============================================================
+   DARK MODE SLIDER
+   ============================================================ */
+
+.theme-switch-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.theme-icon {
+    font-size: 0.9rem;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* De slider container */
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 26px;
+    flex-shrink: 0;
+}
+
+/* Verberg de standaard checkbox */
+.theme-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+/* De slider (achtergrond) */
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #6c757d;
+    transition: 0.3s;
+    border-radius: 26px;
+}
+
+/* Het ronde knopje */
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+/* Aangevinkte staat (dark mode) */
+.theme-switch input:checked + .slider {
+    background-color: #2c7da0;
+}
+
+.theme-switch input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+/* Hover effect */
+.theme-switch:hover .slider {
+    box-shadow: 0 0 8px rgba(44, 125, 160, 0.4);
+}
+
+/* Focus effect */
+.theme-switch input:focus + .slider {
+    box-shadow: 0 0 8px rgba(44, 125, 160, 0.6);
+}
+
+/* ===== DARK MODE - SLIDER ICONS ===== */
+[data-theme="dark"] .theme-icon {
+    color: rgba(255, 215, 0, 0.9);
+}
+
+[data-theme="light"] .theme-icon {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* ===== RESPONSIVE SLIDER ===== */
+@media (max-width: 768px) {
+    .theme-switch-wrapper {
+        gap: 4px;
+    }
+    
+    .theme-switch {
+        width: 40px;
+        height: 22px;
+    }
+    
+    .slider:before {
+        height: 14px;
+        width: 14px;
+        left: 4px;
+        bottom: 4px;
+    }
+    
+    .theme-switch input:checked + .slider:before {
+        transform: translateX(18px);
+    }
+    
+    .theme-icon {
+        font-size: 0.8rem;
+    }
+}
