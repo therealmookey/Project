@@ -2833,27 +2833,27 @@ hr {
     }
 }
 /* ============================================================
-   DARK MODE SLIDER
+   DARK MODE SLIDER (KLEIN)
    ============================================================ */
 
 .theme-switch-wrapper {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .theme-icon {
-    font-size: 0.9rem;
+    font-size: 0.75rem;
     line-height: 1;
     color: rgba(255, 255, 255, 0.8);
 }
 
-/* De slider container */
+/* De slider container - KLEINER */
 .theme-switch {
     position: relative;
     display: inline-block;
-    width: 50px;
-    height: 26px;
+    width: 36px;
+    height: 20px;
     flex-shrink: 0;
 }
 
@@ -2874,17 +2874,17 @@ hr {
     bottom: 0;
     background-color: #6c757d;
     transition: 0.3s;
-    border-radius: 26px;
+    border-radius: 20px;
 }
 
-/* Het ronde knopje */
+/* Het ronde knopje - KLEINER */
 .slider:before {
     position: absolute;
     content: "";
-    height: 18px;
-    width: 18px;
-    left: 4px;
-    bottom: 4px;
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
     background-color: white;
     transition: 0.3s;
     border-radius: 50%;
@@ -2896,17 +2896,12 @@ hr {
 }
 
 .theme-switch input:checked + .slider:before {
-    transform: translateX(24px);
+    transform: translateX(16px);
 }
 
 /* Hover effect */
 .theme-switch:hover .slider {
-    box-shadow: 0 0 8px rgba(44, 125, 160, 0.4);
-}
-
-/* Focus effect */
-.theme-switch input:focus + .slider {
-    box-shadow: 0 0 8px rgba(44, 125, 160, 0.6);
+    box-shadow: 0 0 6px rgba(44, 125, 160, 0.3);
 }
 
 /* ===== DARK MODE - SLIDER ICONS ===== */
@@ -2925,22 +2920,22 @@ hr {
     }
     
     .theme-switch {
-        width: 40px;
-        height: 22px;
+        width: 30px;
+        height: 17px;
     }
     
     .slider:before {
-        height: 14px;
-        width: 14px;
-        left: 4px;
-        bottom: 4px;
+        height: 11px;
+        width: 11px;
+        left: 3px;
+        bottom: 3px;
     }
     
     .theme-switch input:checked + .slider:before {
-        transform: translateX(18px);
+        transform: translateX(13px);
     }
     
     .theme-icon {
-        font-size: 0.8rem;
+        font-size: 0.65rem;
     }
 }
