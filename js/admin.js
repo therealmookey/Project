@@ -342,6 +342,7 @@ async function laadModuleRechtenVoorGebruiker(userId) {
 
 // Voeg in de opslaan functie:
 // Verzamel de module rechten en sla ze op
+// ===== MODULE RECHTEN OPSLAAN (MET FOUTAFHANDELING) =====
 async function saveModuleRechten(userId) {
     const checkboxes = document.querySelectorAll('.module-recht-checkbox');
     const rechtenData = [];
@@ -354,20 +355,54 @@ async function saveModuleRechten(userId) {
         });
     });
     
-    // Verwijder bestaande rechten
-    await window.supabase
-        .from('gebruikers_module_rechten')
-        .delete()
-        .eq('user_id', userId);
-    
-    // Voeg nieuwe rechten toe
-    if (rechtenData.length > 0) {
-        await window.supabase
-            .from('gebruikers_module_rechten')
-            .insert(rechtenData);
+    if (rechtenData.length === 0) {
+        console.log('Geen module rechten om op te slaan');
+        return;
     }
-}
     
+    try {
+        // Gebruik de service_role key voor de update (veiligste manier)
+        const serviceRoleKey = 'JOUW_SERVICE_ROLE_KEY_HIER'; // Vervang met jouw key!
+        const supabaseUrl = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
+        
+        // Verwijder bestaande rechten
+        await fetch(`${supabaseUrl}/rest/v1/gebruikers_module_rechten?user_id=eq.${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${serviceRoleKey}`,
+                'apikey': serviceRoleKey,
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        // Voeg nieuwe rechten toe (alleen de actieve)
+        const actieveRechten = rechtenData.filter(r => r.actief === true);
+        
+        if (actieveRechten.length > 0) {
+            const insertResponse = await fetch(`${supabaseUrl}/rest/v1/gebruikers_module_rechten`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${serviceRoleKey}`,
+                    'apikey': serviceRoleKey,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(actieveRechten)
+            });
+            
+            if (!insertResponse.ok) {
+                const errorText = await insertResponse.text();
+                throw new Error(`Insert failed: ${insertResponse.status} - ${errorText}`);
+            }
+        }
+        
+        console.log('Module rechten opgeslagen voor gebruiker:', userId);
+        
+    } catch (err) {
+        console.error('Fout bij opslaan module rechten:', err);
+        throw err;
+    }
+}  
     // ===== CHAUFFEURS LIJST LADEN =====
     async function laadChauffeurs() {
         if (!chauffeursLijst) return;
