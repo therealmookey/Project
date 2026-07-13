@@ -57,7 +57,40 @@ async function checkPageAuth() {
     }
 }
 
-// ===== NAVIGATIE FUNCTIES =====
+// ===== DARK MODE FUNCTIES =====
+
+// Laad de opgeslagen thema voorkeur
+function loadThemePreference() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        updateThemeToggle('dark');
+    } else {
+        document.documentElement.setAttribute('data-theme', 'light');
+        updateThemeToggle('light');
+    }
+}
+
+// Update de toggle knop
+function updateThemeToggle(theme) {
+    const toggle = document.getElementById('themeToggle');
+    if (toggle) {
+        toggle.textContent = theme === 'dark' ? '☀️' : '🌙';
+        toggle.title = theme === 'dark' ? 'Schakel naar lichte modus' : 'Schakel naar donkere modus';
+    }
+}
+
+// Wissel tussen dark en light mode
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeToggle(newTheme);
+}
+
+// ===== NAVIGATIE FUNCTIES (aangepast) =====
 
 async function laadNavigatie() {
     const placeholder = document.getElementById('navigatie-placeholder');
@@ -70,6 +103,15 @@ async function laadNavigatie() {
         placeholder.innerHTML = html;
         
         await filterNavigatieModules();
+        
+        // Dark mode toggle event listener
+        const themeToggle = document.getElementById('themeToggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', toggleTheme);
+        }
+        
+        // Laad de opgeslagen thema voorkeur
+        loadThemePreference();
         
         const logoutBtn = document.getElementById('logoutBtnNav');
         if (logoutBtn) {
@@ -91,7 +133,6 @@ async function laadNavigatie() {
         placeholder.innerHTML = '<nav style="background:#2c7da0; padding:10px; color:white;">Menu laden mislukt</nav>';
     }
 }
-
 // ===== MODULE FUNCTIES =====
 
 async function heeftModuleToegang(moduleSleutel) {
