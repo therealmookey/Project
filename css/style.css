@@ -692,8 +692,6 @@ label {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    max-height: 300px;
-    overflow-y: auto;
 }
 
 .analyse-item {
@@ -2218,7 +2216,6 @@ hr {
 [data-theme="dark"] .analyse-totaal {
     background: #2c7da0;
 }
-
 /* ===== DARK MODE - TABELLEN ===== */
 [data-theme="dark"] table thead th {
     background-color: #2a2a4e;
