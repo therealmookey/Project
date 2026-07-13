@@ -30,7 +30,7 @@ window.addEventListener('load', function() {
             element.style.display = 'block';
             setTimeout(() => {
                 element.style.display = 'none';
-            }, 5000);
+            }, 8000);
         }
     }
     
@@ -51,7 +51,7 @@ window.addEventListener('load', function() {
         };
     }
     
-    // REGISTREREN (met bevestiging)
+    // ===== REGISTREREN (VERBETERD) =====
     if (registerBtn) {
         registerBtn.onclick = async () => {
             const gebruikersnaam = document.getElementById('registerUsername').value;
@@ -68,6 +68,21 @@ window.addEventListener('load', function() {
                 return;
             }
             
+            // Controleer of gebruikersnaam al bestaat
+            try {
+                const { data: bestaande, error: checkError } = await window.supabase
+                    .from('gebruikers_rollen')
+                    .select('gebruikersnaam')
+                    .eq('gebruikersnaam', gebruikersnaam);
+                
+                if (bestaande && bestaande.length > 0) {
+                    toonBericht('message', 'Deze gebruikersnaam is al in gebruik', 'error');
+                    return;
+                }
+            } catch (err) {
+                console.error('Fout bij check gebruikersnaam:', err);
+            }
+            
             try {
                 // Account aanmaken in Supabase Auth
                 const { data: authData, error: authError } = await window.supabase.auth.signUp({
@@ -75,60 +90,67 @@ window.addEventListener('load', function() {
                     password: password
                 });
                 
-                if (authError) throw authError;
-                
-                if (authData.user) {
-                    // Rol en gebruikersnaam toevoegen met status 'wachtend'
-                    const { error: rolError } = await window.supabase
-                        .from('gebruikers_rollen')
-                        .insert([{
-                            user_id: authData.user.id,
-                            gebruikersnaam: gebruikersnaam,
-                            rol: 'gebruiker',
-                            is_chauffeur: false,
-                            status: 'wachtend'
-                        }]);
-                    
-                    if (rolError) throw rolError;
-                    
-                    toonBericht('message', 
-                        '✅ Account aanvraag ontvangen! Een administrator moet je account nog goedkeuren. Je ontvangt een e-mail zodra dit is gebeurd.', 
-                        'success'
-                    );
-                    
-                    document.getElementById('registerUsername').value = '';
-                    document.getElementById('registerEmail').value = '';
-                    document.getElementById('registerPassword').value = '';
-                    
-                    // Stuur notificatie naar admin (via email)
-                    await stuurAdminNotificatie(gebruikersnaam, email);
+                if (authError) {
+                    console.error('Auth error:', authError);
+                    toonBericht('message', 'Fout bij aanmaken account: ' + authError.message, 'error');
+                    return;
                 }
+                
+                if (!authData.user) {
+                    toonBericht('message', 'Account kon niet worden aangemaakt. Probeer opnieuw.', 'error');
+                    return;
+                }
+                
+                console.log('Auth account aangemaakt:', authData.user.id);
+                
+                // Wacht even voordat we de rol toevoegen
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Rol en gebruikersnaam toevoegen met status 'wachtend'
+                const { error: rolError } = await window.supabase
+                    .from('gebruikers_rollen')
+                    .insert([{
+                        user_id: authData.user.id,
+                        gebruikersnaam: gebruikersnaam,
+                        rol: 'gebruiker',
+                        is_chauffeur: false,
+                        status: 'wachtend'
+                    }]);
+                
+                if (rolError) {
+                    console.error('Rol error:', rolError);
+                    toonBericht('message', 'Account aangemaakt, maar kon niet worden gekoppeld. Neem contact op met de beheerder.', 'error');
+                    return;
+                }
+                
+                console.log('Gebruiker toegevoegd aan gebruikers_rollen:', gebruikersnaam);
+                
+                toonBericht('message', 
+                    '✅ Account aanvraag ontvangen! Een administrator moet je account nog goedkeuren. Je ontvangt een e-mail zodra dit is gebeurd.', 
+                    'success'
+                );
+                
+                document.getElementById('registerUsername').value = '';
+                document.getElementById('registerEmail').value = '';
+                document.getElementById('registerPassword').value = '';
+                
+                // Stuur notificatie naar admin
+                stuurAdminNotificatie(gebruikersnaam, email);
+                
             } catch (err) {
+                console.error('Registratie fout:', err);
                 toonBericht('message', 'Fout: ' + err.message, 'error');
             }
         };
     }
     
-    // Admin notificatie functie (via een simpele alert voor nu)
+    // Admin notificatie functie
     async function stuurAdminNotificatie(gebruikersnaam, email) {
-        // Haal admin emails op
-        const { data: admins, error } = await window.supabase
-            .from('admins')
-            .select('email');
-        
-        if (error) {
-            console.error('Fout bij ophalen admins:', error);
-            return;
-        }
-        
-        // Voor nu: toon een melding in de console
         console.log(`🔔 Nieuwe registratie: ${gebruikersnaam} (${email})`);
         console.log('📋 Ga naar admin panel om goed te keuren.');
-        
-        // In een latere versie: stuur een e-mail
     }
     
-    // INLOGGEN (met status check)
+    // ===== INLOGGEN (met status check) =====
     if (loginBtn) {
         loginBtn.onclick = async () => {
             const email = document.getElementById('loginEmail').value;
@@ -212,7 +234,7 @@ window.addEventListener('load', function() {
             
             try {
                 const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
-                    redirectTo: window.location.origin + '/Abbott-project/reset-password.html'
+                    redirectTo: window.location.origin + '/Project/reset-password.html'
                 });
                 
                 if (error) {
@@ -226,5 +248,16 @@ window.addEventListener('load', function() {
             }
         };
     }
+    
+    // Enter toets voor inloggen
+    document.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            if (loginForm && loginForm.classList.contains('active')) {
+                if (loginBtn) loginBtn.click();
+            } else if (registerForm && registerForm.classList.contains('active')) {
+                if (registerBtn) registerBtn.click();
+            }
+        }
+    });
     
 });
