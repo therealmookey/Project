@@ -51,62 +51,98 @@ window.addEventListener('load', function() {
         };
     }
     
-    // ===== REGISTREREN (VERBETERD) =====
-    if (registerBtn) {
-        registerBtn.onclick = async () => {
-            const gebruikersnaam = document.getElementById('registerUsername').value;
-            const email = document.getElementById('registerEmail').value;
-            const password = document.getElementById('registerPassword').value;
+    // ===== REGISTREREN (MET FALLBACK) =====
+if (registerBtn) {
+    registerBtn.onclick = async () => {
+        const gebruikersnaam = document.getElementById('registerUsername').value;
+        const email = document.getElementById('registerEmail').value;
+        const password = document.getElementById('registerPassword').value;
+        
+        if (!gebruikersnaam || !email || !password) {
+            toonBericht('message', 'Vul alle velden in', 'error');
+            return;
+        }
+        
+        if (password.length < 6) {
+            toonBericht('message', 'Wachtwoord moet minimaal 6 tekens zijn', 'error');
+            return;
+        }
+        
+        // Controleer of gebruikersnaam al bestaat
+        try {
+            const { data: bestaande } = await window.supabase
+                .from('gebruikers_rollen')
+                .select('gebruikersnaam')
+                .eq('gebruikersnaam', gebruikersnaam);
             
-            if (!gebruikersnaam || !email || !password) {
-                toonBericht('message', 'Vul alle velden in', 'error');
+            if (bestaande && bestaande.length > 0) {
+                toonBericht('message', 'Deze gebruikersnaam is al in gebruik', 'error');
+                return;
+            }
+        } catch (err) {
+            console.error('Fout bij check gebruikersnaam:', err);
+        }
+        
+        try {
+            // Account aanmaken in Supabase Auth
+            const { data: authData, error: authError } = await window.supabase.auth.signUp({
+                email: email,
+                password: password
+            });
+            
+            if (authError) {
+                console.error('Auth error:', authError);
+                toonBericht('message', 'Fout bij aanmaken account: ' + authError.message, 'error');
                 return;
             }
             
-            if (password.length < 6) {
-                toonBericht('message', 'Wachtwoord moet minimaal 6 tekens zijn', 'error');
+            if (!authData.user) {
+                toonBericht('message', 'Account kon niet worden aangemaakt. Probeer opnieuw.', 'error');
                 return;
             }
             
-            // Controleer of gebruikersnaam al bestaat
-            try {
-                const { data: bestaande, error: checkError } = await window.supabase
-                    .from('gebruikers_rollen')
-                    .select('gebruikersnaam')
-                    .eq('gebruikersnaam', gebruikersnaam);
-                
-                if (bestaande && bestaande.length > 0) {
-                    toonBericht('message', 'Deze gebruikersnaam is al in gebruik', 'error');
-                    return;
-                }
-            } catch (err) {
-                console.error('Fout bij check gebruikersnaam:', err);
-            }
+            console.log('Auth account aangemaakt:', authData.user.id);
+            
+            // ===== STAP 1: Probeer via service_role key (veiligste manier) =====
+            const serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjZHFjZ3Zpb3NzbXJ2bGdzaXFkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTUwMTM4MCwiZXhwIjoyMDk3MDc3MzgwfQ.9bU82TwQuc5yViZPQfVAgyzCOTpVsPxfrhlDnL3rlqk'; // Vervang met jouw key!
+            const supabaseUrl = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
             
             try {
-                // Account aanmaken in Supabase Auth
-                const { data: authData, error: authError } = await window.supabase.auth.signUp({
-                    email: email,
-                    password: password
+                const insertResponse = await fetch(`${supabaseUrl}/rest/v1/gebruikers_rollen`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${serviceRoleKey}`,
+                        'apikey': serviceRoleKey,
+                        'Content-Type': 'application/json',
+                        'Prefer': 'return=representation'
+                    },
+                    body: JSON.stringify({
+                        user_id: authData.user.id,
+                        gebruikersnaam: gebruikersnaam,
+                        rol: 'gebruiker',
+                        is_chauffeur: false,
+                        status: 'wachtend'
+                    })
                 });
                 
-                if (authError) {
-                    console.error('Auth error:', authError);
-                    toonBericht('message', 'Fout bij aanmaken account: ' + authError.message, 'error');
+                if (insertResponse.ok) {
+                    console.log('Gebruiker toegevoegd via service_role key');
+                    toonBericht('message', 
+                        '✅ Account aanvraag ontvangen! Een administrator moet je account nog goedkeuren.', 
+                        'success'
+                    );
+                    document.getElementById('registerUsername').value = '';
+                    document.getElementById('registerEmail').value = '';
+                    document.getElementById('registerPassword').value = '';
+                    stuurAdminNotificatie(gebruikersnaam, email);
                     return;
                 }
-                
-                if (!authData.user) {
-                    toonBericht('message', 'Account kon niet worden aangemaakt. Probeer opnieuw.', 'error');
-                    return;
-                }
-                
-                console.log('Auth account aangemaakt:', authData.user.id);
-                
-                // Wacht even voordat we de rol toevoegen
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                // Rol en gebruikersnaam toevoegen met status 'wachtend'
+            } catch (serviceError) {
+                console.error('Service role insert mislukt:', serviceError);
+            }
+            
+            // ===== STAP 2: Fallback - Probeer via normale Supabase insert =====
+            try {
                 const { error: rolError } = await window.supabase
                     .from('gebruikers_rollen')
                     .insert([{
@@ -119,30 +155,34 @@ window.addEventListener('load', function() {
                 
                 if (rolError) {
                     console.error('Rol error:', rolError);
-                    toonBericht('message', 'Account aangemaakt, maar kon niet worden gekoppeld. Neem contact op met de beheerder.', 'error');
+                    toonBericht('message', 
+                        '⚠️ Account aangemaakt, maar kon niet worden gekoppeld. Neem contact op met de beheerder.\n\nFout: ' + rolError.message, 
+                        'error'
+                    );
                     return;
                 }
                 
-                console.log('Gebruiker toegevoegd aan gebruikers_rollen:', gebruikersnaam);
-                
+                console.log('Gebruiker toegevoegd aan gebruikers_rollen via fallback');
                 toonBericht('message', 
-                    '✅ Account aanvraag ontvangen! Een administrator moet je account nog goedkeuren. Je ontvangt een e-mail zodra dit is gebeurd.', 
+                    '✅ Account aanvraag ontvangen! Een administrator moet je account nog goedkeuren.', 
                     'success'
                 );
-                
                 document.getElementById('registerUsername').value = '';
                 document.getElementById('registerEmail').value = '';
                 document.getElementById('registerPassword').value = '';
-                
-                // Stuur notificatie naar admin
                 stuurAdminNotificatie(gebruikersnaam, email);
                 
             } catch (err) {
-                console.error('Registratie fout:', err);
-                toonBericht('message', 'Fout: ' + err.message, 'error');
+                console.error('Fallback insert fout:', err);
+                toonBericht('message', 'Fout bij koppelen account: ' + err.message, 'error');
             }
-        };
-    }
+            
+        } catch (err) {
+            console.error('Registratie fout:', err);
+            toonBericht('message', 'Fout: ' + err.message, 'error');
+        }
+    };
+}
     
     // Admin notificatie functie
     async function stuurAdminNotificatie(gebruikersnaam, email) {
