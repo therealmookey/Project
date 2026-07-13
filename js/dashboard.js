@@ -139,9 +139,7 @@ function toonAgenda() {
     
     dagenContainer.innerHTML = html;
     
-    // Verwijder oude event listeners door nieuwe toe te voegen
     document.querySelectorAll('.agenda-dag:not(.leeg)').forEach(el => {
-        // Mouse events voor tooltip
         el.addEventListener('mouseenter', function(e) {
             toonTooltip(this, e);
         });
@@ -151,8 +149,6 @@ function toonAgenda() {
         el.addEventListener('mousemove', function(e) {
             verplaatsTooltip(e);
         });
-        
-        // Click event - gebruik een functie die de datum doorgeeft
         el.addEventListener('click', function() {
             const datum = this.dataset.datum;
             console.log('Geklikt op dag:', datum);
@@ -160,11 +156,9 @@ function toonAgenda() {
         });
     });
     
-    // Selecteer vandaag standaard
     const vandaagEl = document.querySelector(`.agenda-dag[data-datum="${vandaagStr}"]`);
     if (vandaagEl && rittenContainer) {
         vandaagEl.classList.add('geselecteerd');
-        // Wacht even zodat de DOM klaar is
         setTimeout(() => {
             toonRittenVoorDag(vandaagStr);
         }, 100);
@@ -233,7 +227,6 @@ function toonRittenVoorDag(datumStr) {
     
     if (!rittenContainer) return;
     
-    // Markeer de geselecteerde dag
     document.querySelectorAll('.agenda-dag').forEach(el => {
         el.classList.remove('geselecteerd');
     });
@@ -251,18 +244,15 @@ function toonRittenVoorDag(datumStr) {
         return;
     }
     
-    // Haal adres info op voor de ritten
     const adresIds = ritten.map(r => r.adres_id).filter(id => id);
     let adressenMap = {};
     
-    // Gebruik de al beschikbare adres data als die er is
     ritten.forEach(rit => {
         if (rit.adres) {
             adressenMap[rit.adres_id] = rit.adres;
         }
     });
     
-    // Als er nog ontbrekende adressen zijn, haal ze op
     const ontbrekendeIds = adresIds.filter(id => !adressenMap[id]);
     if (ontbrekendeIds.length > 0) {
         window.supabase
@@ -408,6 +398,7 @@ async function laadOphalingAnalyse() {
         const vandaag = new Date();
         vandaag.setHours(0, 0, 0, 0);
         
+        // Filter op ziekenhuizen die binnen 5 dagen een ophaling nodig hebben
         const binnenkort = data.filter(item => {
             if (!item.verwachte_volgende) return false;
             const verwachteDatum = new Date(item.verwachte_volgende);
@@ -416,8 +407,10 @@ async function laadOphalingAnalyse() {
             return dagenVerschil >= 0 && dagenVerschil <= 5;
         });
         
+        // Ook items die al te laat zijn
         const teLaat = data.filter(item => item.status === 'Te laat');
         
+        // Combineer en verwijder dubbelen
         const teLatenIds = teLaat.map(i => i.ziekenhuis_id);
         const filteredData = [...teLaat];
         for (const item of binnenkort) {
@@ -426,9 +419,18 @@ async function laadOphalingAnalyse() {
             }
         }
         
+        // ===== SORTEER OP STATUS (Te laat eerst) =====
         filteredData.sort((a, b) => {
-            if (a.status === 'Te laat' && b.status !== 'Te laat') return -1;
-            if (a.status !== 'Te laat' && b.status === 'Te laat') return 1;
+            // Status volgorde: Te laat (1), Bijna te laat (2), Binnenkort nodig (3), Op schema (4)
+            const statusOrder = {
+                'Te laat': 1,
+                'Bijna te laat': 2,
+                'Binnenkort nodig': 3,
+                'Op schema': 4
+            };
+            const statusA = statusOrder[a.status] || 5;
+            const statusB = statusOrder[b.status] || 5;
+            if (statusA !== statusB) return statusA - statusB;
             return a.instelling_naam.localeCompare(b.instelling_naam);
         });
         
@@ -459,6 +461,12 @@ async function laadOphalingAnalyse() {
                 dagenText = `<span class="badge badge-info">Over ${dagenVerschil} dagen verwacht</span>`;
             }
             
+            // Toon extra info: laatste gewicht en tonnen
+            let extraInfo = '';
+            if (item.laatste_gewicht) {
+                extraInfo = ` | Laatste: ${item.laatste_gewicht} kg (${item.laatste_tonnen || 1} ton)`;
+            }
+            
             html += `
                 <div class="analyse-item ${statusClass}">
                     <div class="analyse-item-header">
@@ -471,7 +479,7 @@ async function laadOphalingAnalyse() {
                         <div class="analyse-stats">
                             <span>📊 Gemiddeld: ${item.gemiddeld_interval} dagen</span>
                             <span>📋 Aantal ophalingen: ${item.aantal_ophalingen}</span>
-                            <span>📅 Laatste: ${new Date(item.laatste_ophaling).toLocaleDateString('nl-NL')}</span>
+                            <span>📅 Laatste: ${new Date(item.laatste_ophaling).toLocaleDateString('nl-NL')}${extraInfo}</span>
                             ${item.verwachte_volgende ? `<span>🔮 Verwachte volgende: ${new Date(item.verwachte_volgende).toLocaleDateString('nl-NL')}</span>` : ''}
                             ${dagenText}
                         </div>
