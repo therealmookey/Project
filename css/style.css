@@ -1573,6 +1573,499 @@ hr {
     50% { box-shadow: 0 4px 30px rgba(108,117,125,0.6); transform: scale(1.05); }
 }
 
+/* ============================================================
+   DARK MODE STIJLEN (VERBETERDE LEESBAARHEID)
+   ============================================================ */
+
+/* ===== DARK MODE SLIDER ===== */
+.theme-switch-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.theme-icon {
+    font-size: 0.8rem;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.theme-switch {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.theme-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #28a745;
+    transition: 0.3s;
+    border-radius: 18px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 12px;
+    width: 12px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+}
+
+.theme-switch input:checked + .slider {
+    background-color: #2c7da0;
+}
+
+.theme-switch input:checked + .slider:before {
+    transform: translateX(20px);
+}
+
+.theme-switch:hover .slider {
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
+}
+.theme-switch input:checked:hover + .slider {
+    box-shadow: 0 0 8px rgba(44, 125, 160, 0.3);
+}
+
+/* ===== DARK MODE BASIS ===== */
+[data-theme="dark"] {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-card: #1e1e3a;
+    --bg-hover: #2a2a4e;
+    --bg-input: #2a2a4e;
+    --bg-table: #1a1a2e;
+    --bg-table-header: #2a2a4e;
+    --bg-table-hover: #2a2a4e;
+    --text-primary: #f0f0f0;
+    --text-secondary: #d0d0d0;
+    --text-muted: #a0a0a0;
+    --border-color: #3a3a5e;
+    --shadow-color: rgba(0, 0, 0, 0.4);
+    --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    --input-bg: #2a2a4e;
+    --input-border: #4a4a6e;
+    --popup-overlay: rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="dark"] body {
+    background-color: #0f0f1a;
+    color: #f0f0f0;
+}
+
+[data-theme="dark"] .container {
+    background-color: transparent;
+}
+
+[data-theme="dark"] .theme-icon {
+    color: rgba(255, 215, 0, 0.9);
+}
+
+[data-theme="light"] .theme-icon {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* ===== DARK MODE - KNOMMEN ===== */
+[data-theme="dark"] .btn-secondary {
+    background-color: #2a2a4e;
+    color: #e0e0e0;
+    border-color: #3a3a5e;
+}
+[data-theme="dark"] .btn-secondary:hover {
+    background-color: #3a3a5e;
+}
+
+[data-theme="dark"] .btn-danger {
+    background-color: #5a1a2a;
+    color: #e0a0a0;
+    border-color: #6a2a3a;
+}
+[data-theme="dark"] .btn-danger:hover {
+    background-color: #6a2a3a;
+}
+
+/* ===== DARK MODE - NAVIGATIE ===== */
+[data-theme="dark"] .main-nav {
+    background-color: #16213e;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+[data-theme="dark"] .nav-links a:hover {
+    background-color: #2a2a4e;
+}
+[data-theme="dark"] .nav-logout {
+    background-color: #5a1a2a;
+}
+[data-theme="dark"] .nav-logout:hover {
+    background-color: #6a2a3a;
+}
+
+/* ===== DARK MODE - KAARTEN ===== */
+[data-theme="dark"] .dashboard-card,
+[data-theme="dark"] .agenda-section,
+[data-theme="dark"] .analyse-section,
+[data-theme="dark"] .filter-section,
+[data-theme="dark"] .search-section,
+[data-theme="dark"] .admin-tabel,
+[data-theme="dark"] .instellingen-card,
+[data-theme="dark"] .profiel-card,
+[data-theme="dark"] .date-selector-section {
+    background-color: #1a1a2e;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+/* ===== DARK MODE - TABELLEN ===== */
+[data-theme="dark"] table thead th {
+    background-color: #2a2a4e;
+    color: #f0f0f0;
+    border-bottom: 2px solid #4a4a6e;
+}
+
+[data-theme="dark"] table tbody td {
+    border-bottom-color: #2a2a4e;
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] table tbody tr:nth-child(even) {
+    background-color: #1a1a2e;
+}
+
+[data-theme="dark"] table tbody tr:hover {
+    background-color: #2a2a4e;
+}
+
+[data-theme="dark"] .adressen-tabel {
+    background-color: #1a1a2e;
+}
+
+/* ===== DARK MODE - FORMULIEREN ===== */
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="tel"],
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background-color: #2a2a4e;
+    border-color: #4a4a6e;
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus {
+    border-color: #4a7da0;
+    box-shadow: 0 0 0 3px rgba(44, 125, 160, 0.2);
+}
+
+[data-theme="dark"] label {
+    color: #d0d0d0;
+}
+
+[data-theme="dark"] small {
+    color: #a0a0a0;
+}
+
+/* ===== DARK MODE - POPUPS ===== */
+[data-theme="dark"] .popup-content {
+    background-color: #1a1a2e;
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .popup-content h3 {
+    color: #4a8da0;
+}
+
+[data-theme="dark"] .popup-content h4 {
+    color: #4a8da0;
+    border-bottom-color: #2a2a4e;
+}
+
+[data-theme="dark"] .popup {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* ===== DARK MODE - PLANNING ===== */
+[data-theme="dark"] .planning-item {
+    background-color: #1e1e3a;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .planning-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .planning-info h4 {
+    color: #5a9ab0;
+}
+
+[data-theme="dark"] .planning-info p {
+    color: #d0d0d0;
+}
+
+[data-theme="dark"] .planning-info strong {
+    color: #f0f0f0;
+}
+
+[data-theme="dark"] .datum-header {
+    background: #1a2a3e;
+    border-left-color: #5a9ab0;
+}
+
+[data-theme="dark"] .datum-dag {
+    color: #5a9ab0;
+}
+
+[data-theme="dark"] .datum-datum {
+    color: #f0f0f0;
+}
+
+[data-theme="dark"] .datum-count {
+    background: #2a4a6e;
+    color: #f0f0f0;
+}
+
+[data-theme="dark"] .chauffeur-select {
+    background-color: #2a2a4e;
+    border-color: #4a4a6e;
+    color: #f0f0f0;
+}
+
+[data-theme="dark"] .chauffeur-selector-wrapper label {
+    color: #d0d0d0;
+}
+
+[data-theme="dark"] .stop-number-badge {
+    background: #2a4a6e;
+}
+
+/* ===== DARK MODE - ADRESSEN ===== */
+[data-theme="dark"] .telefoon-link {
+    color: #5a9ab0;
+}
+[data-theme="dark"] .telefoon-link:hover {
+    color: #7abadd;
+}
+
+[data-theme="dark"] .email-link {
+    color: #5a9ab0;
+}
+[data-theme="dark"] .email-link:hover {
+    color: #7abadd;
+}
+
+[data-theme="dark"] .contactpersoon-cell {
+    color: #d0d0d0;
+}
+
+[data-theme="dark"] .extra-info-cell {
+    color: #a0a0a0;
+}
+
+/* ===== DARK MODE - AGENDA ===== */
+[data-theme="dark"] .agenda-weekdays div {
+    background: #2a2a4e;
+    color: #d0d0d0;
+}
+
+[data-theme="dark"] .agenda-dag {
+    background: #2a2a4e;
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .agenda-dag:hover {
+    background: #3a3a5e;
+}
+
+[data-theme="dark"] .agenda-dag.vandaag {
+    background: #2c7da0;
+    color: white;
+}
+
+[data-theme="dark"] .agenda-dag.geselecteerd {
+    background: #2c7da0;
+    color: white;
+}
+
+[data-theme="dark"] .agenda-ritten {
+    background: #1a2a3e;
+}
+
+[data-theme="dark"] .agenda-rit-item {
+    background: #2a2a4e;
+}
+
+[data-theme="dark"] .agenda-rit-naam {
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .agenda-geen-ritten {
+    color: #a0a0a0;
+}
+
+[data-theme="dark"] .agenda-overzicht-header h4 {
+    color: #5a9ab0;
+}
+
+/* ===== DARK MODE - ANALYSE ===== */
+[data-theme="dark"] .analyse-item {
+    background: #1a2a3e;
+}
+
+[data-theme="dark"] .analyse-item.status-danger {
+    background: #2a1a2e;
+    border-left-color: #dc3545;
+}
+
+[data-theme="dark"] .analyse-item.status-warning {
+    background: #2a2a1e;
+    border-left-color: #ffc107;
+}
+
+[data-theme="dark"] .analyse-item.status-info {
+    background: #1a2a3e;
+    border-left-color: #17a2b8;
+}
+
+[data-theme="dark"] .analyse-item-header strong {
+    color: #5a9ab0;
+}
+
+[data-theme="dark"] .analyse-stats {
+    border-top-color: #2a2a4e;
+    color: #a0a0a0;
+}
+
+[data-theme="dark"] .analyse-totaal {
+    background: #2c7da0;
+}
+
+/* ===== DARK MODE - STOCK ===== */
+[data-theme="dark"] .stock-alerts .alert-warning {
+    background: #2a2a1e;
+    color: #d4a040;
+}
+
+[data-theme="dark"] .stock-alerts .alert-danger {
+    background: #2a1a2e;
+    color: #d06070;
+}
+
+[data-theme="dark"] .stock-alerts .alert-success {
+    background: #1a2a1e;
+    color: #60a060;
+}
+
+[data-theme="dark"] .componenten-lijst {
+    background: #2a2a4e;
+}
+
+[data-theme="dark"] .componenten-lijst li {
+    background: #1a1a2e;
+}
+
+/* ===== DARK MODE - LOGIN ===== */
+[data-theme="dark"] .login-box {
+    background: #1a1a2e;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .login-box h1 {
+    color: #5a9ab0;
+}
+
+[data-theme="dark"] .login-box > p {
+    color: #a0a0a0;
+}
+
+[data-theme="dark"] .login-tabs {
+    border-bottom-color: #2a2a4e;
+}
+
+[data-theme="dark"] .tab-btn {
+    color: #a0a0a0;
+}
+
+[data-theme="dark"] .tab-btn.active {
+    color: #5a9ab0;
+    border-bottom-color: #5a9ab0;
+}
+
+[data-theme="dark"] .tab-btn:hover {
+    background-color: #2a2a4e;
+}
+
+[data-theme="dark"] .forgot-link {
+    color: #5a9ab0;
+}
+
+/* ===== DARK MODE - STATUS BADGES ===== */
+[data-theme="dark"] .status-gepland {
+    background: #2a2a1e;
+    color: #d4a040;
+}
+
+[data-theme="dark"] .status-uitgevoerd {
+    background: #1a2a1e;
+    color: #60a060;
+}
+
+[data-theme="dark"] .status-geannuleerd {
+    background: #2a1a2e;
+    color: #d06070;
+}
+
+/* ===== DARK MODE - SCROLL KNO ===== */
+[data-theme="dark"] .scroll-btn {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== DARK MODE - TOOLTIP ===== */
+[data-theme="dark"] .agenda-tooltip {
+    background: #2a2a4e;
+    color: #e0e0e0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* ===== DARK MODE - RESPONSIVE ===== */
+@media (max-width: 768px) {
+    [data-theme="dark"] .theme-icon {
+        font-size: 0.7rem;
+    }
+    .theme-switch-wrapper {
+        gap: 4px;
+    }
+    .theme-switch {
+        width: 32px;
+        height: 16px;
+    }
+    .slider:before {
+        height: 10px;
+        width: 10px;
+        left: 3px;
+        bottom: 3px;
+    }
+    .theme-switch input:checked + .slider:before {
+        transform: translateX(16px);
+    }
+}
+
 /* ===== 35. PRINT STIJLEN ===== */
 @media print {
     .print-hide {
@@ -1983,963 +2476,5 @@ hr {
     }
     .scroll-btn .scroll-icon {
         font-size: 1rem;
-    }
-}
-/* ===== Twee kolommen layout ===== */
-.dashboard-two-column {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-/* ===== AGENDA (kleiner) ===== */
-.agenda-section {
-    background: white;
-    border-radius: 12px;
-    padding: 1rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-}
-
-.agenda-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.75rem;
-}
-
-.agenda-header h3 {
-    color: #2c7da0;
-    font-size: 1rem;
-    margin: 0;
-    flex: 1;
-    text-align: center;
-}
-
-.agenda-header .btn {
-    padding: 4px 10px;
-    font-size: 0.75rem;
-}
-
-.btn-small {
-    padding: 4px 10px;
-    font-size: 0.75rem;
-}
-
-.agenda-grid {
-    display: flex;
-    flex-direction: column;
-}
-
-.agenda-weekdays {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
-    margin-bottom: 2px;
-}
-
-.agenda-weekdays div {
-    text-align: center;
-    font-weight: 600;
-    color: #495057;
-    font-size: 0.7rem;
-    padding: 4px 0;
-    background: #f8f9fa;
-    border-radius: 4px;
-}
-
-.agenda-dagen {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 2px;
-}
-
-.agenda-dag {
-    aspect-ratio: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.8rem;
-    color: #333;
-    background: #f8f9fa;
-    position: relative;
-    min-height: 32px;
-    padding: 2px;
-}
-
-.agenda-dag:hover {
-    background: #e8f4f8;
-    transform: scale(1.05);
-}
-
-.agenda-dag.leeg {
-    background: transparent;
-    cursor: default;
-}
-
-.agenda-dag.vandaag {
-    background: #2c7da0;
-    color: white;
-    font-weight: bold;
-}
-
-.agenda-dag.heeft-ritten {
-    border: 2px solid #2c7da0;
-}
-
-.agenda-dag.vandaag.heeft-ritten {
-    border: 2px solid white;
-}
-
-.agenda-badge {
-    position: absolute;
-    top: 1px;
-    right: 2px;
-    background: #e63946;
-    color: white;
-    font-size: 0.5rem;
-    font-weight: bold;
-    padding: 1px 4px;
-    border-radius: 8px;
-    min-width: 14px;
-    text-align: center;
-    line-height: 1.3;
-}
-
-.agenda-dag.vandaag .agenda-badge {
-    background: #ffc107;
-    color: #333;
-}
-
-.agenda-ritten {
-    margin-top: 0.75rem;
-    padding: 0.75rem;
-    background: #f8f9fa;
-    border-radius: 6px;
-    min-height: 60px;
-}
-
-.agenda-ritten h4 {
-    color: #2c7da0;
-    font-size: 0.85rem;
-    margin-bottom: 0.5rem;
-}
-
-.agenda-ritten > p {
-    color: #6c757d;
-    text-align: center;
-    margin: 0.5rem 0;
-    font-size: 0.85rem;
-}
-
-.agenda-ritten-lijst {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.agenda-rit-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 4px 10px;
-    background: white;
-    border-radius: 4px;
-    border-left: 3px solid #2c7da0;
-    font-size: 0.8rem;
-    flex-wrap: wrap;
-}
-
-.agenda-rit-volgorde {
-    font-weight: bold;
-    color: #2c7da0;
-    min-width: 24px;
-    font-size: 0.7rem;
-}
-
-.agenda-rit-type {
-    font-size: 0.7rem;
-    padding: 1px 6px;
-    background: #e9ecef;
-    border-radius: 10px;
-}
-
-.agenda-rit-naam {
-    font-weight: 500;
-    flex: 1;
-    min-width: 80px;
-    font-size: 0.8rem;
-}
-
-/* ===== TOOLTIP ===== */
-.agenda-tooltip {
-    display: none;
-    position: fixed;
-    background: #2c7da0;
-    color: white;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    max-width: 250px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    pointer-events: none;
-}
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 1024px) {
-    .dashboard-two-column {
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-}
-
-@media (max-width: 768px) {
-    .agenda-dag {
-        font-size: 0.7rem;
-        min-height: 28px;
-    }
-    
-    .agenda-badge {
-        font-size: 0.4rem;
-        min-width: 12px;
-        padding: 0 3px;
-    }
-    
-    .agenda-rit-item {
-        font-size: 0.75rem;
-        padding: 4px 8px;
-    }
-    
-    .agenda-ritten-lijst {
-        gap: 3px;
-    }
-}
-
-@media (max-width: 480px) {
-    .agenda-dag {
-        font-size: 0.6rem;
-        min-height: 24px;
-    }
-    
-    .agenda-rit-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-    }
-    
-    .agenda-rit-naam {
-        min-width: auto;
-        width: 100%;
-    }
-    
-    .agenda-tooltip {
-        font-size: 0.7rem;
-        max-width: 180px;
-        padding: 4px 8px;
-    }
-}
-/* ===== AGENDA OVERZICHT ===== */
-.agenda-ritten {
-    margin-top: 0.75rem;
-    padding: 0.75rem;
-    background: #f8f9fa;
-    border-radius: 6px;
-    min-height: 60px;
-}
-
-.agenda-overzicht-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.agenda-overzicht-header h4 {
-    color: #2c7da0;
-    font-size: 0.85rem;
-    margin: 0;
-}
-
-.agenda-overzicht-count {
-    font-size: 0.75rem;
-    color: #6c757d;
-    background: #e9ecef;
-    padding: 2px 10px;
-    border-radius: 12px;
-}
-
-.agenda-geen-ritten {
-    text-align: center;
-    padding: 0.75rem 0;
-    color: #6c757d;
-}
-
-.agenda-geen-ritten span {
-    font-size: 1.5rem;
-    display: block;
-    margin-bottom: 0.25rem;
-}
-
-.agenda-geen-ritten p {
-    margin: 0;
-    font-size: 0.85rem;
-}
-
-.agenda-rit-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    background: white;
-    border-radius: 4px;
-    border-left: 3px solid #2c7da0;
-    font-size: 0.8rem;
-    flex-wrap: wrap;
-    margin-bottom: 4px;
-    transition: transform 0.2s;
-}
-
-.agenda-rit-item:hover {
-    transform: translateX(4px);
-}
-
-.agenda-rit-volgorde {
-    font-weight: bold;
-    color: #2c7da0;
-    min-width: 24px;
-    font-size: 0.7rem;
-}
-
-.agenda-rit-type {
-    font-size: 0.7rem;
-    padding: 1px 8px;
-    background: #e9ecef;
-    border-radius: 10px;
-}
-
-.agenda-rit-naam {
-    font-weight: 500;
-    flex: 1;
-    min-width: 80px;
-    font-size: 0.8rem;
-}
-
-.agenda-rit-extra {
-    font-size: 0.7rem;
-    color: #6c757d;
-    background: #f8f9fa;
-    padding: 1px 8px;
-    border-radius: 10px;
-}
-
-.agenda-rit-status {
-    font-size: 0.65rem;
-    padding: 1px 8px;
-    border-radius: 10px;
-    font-weight: 500;
-}
-
-.agenda-rit-status.status-gepland {
-    background: #fff3cd;
-    color: #856404;
-}
-
-.agenda-rit-status.status-uitgevoerd {
-    background: #d4edda;
-    color: #155724;
-}
-
-.agenda-rit-status.status-geannuleerd {
-    background: #f8d7da;
-    color: #721c24;
-}
-
-.agenda-rit-telefoon {
-    font-size: 0.7rem;
-    color: #2c7da0;
-}
-
-.agenda-dag.geselecteerd {
-    background: #2c7da0;
-    color: white;
-    font-weight: bold;
-    transform: scale(1.05);
-    box-shadow: 0 2px 8px rgba(44,125,160,0.3);
-}
-
-.agenda-dag.geselecteerd.heeft-ritten {
-    border-color: white;
-}
-
-.agenda-dag.geselecteerd .agenda-badge {
-    background: #ffc107;
-    color: #333;
-}
-
-/* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
-    .agenda-overzicht-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
-    }
-    
-    .agenda-rit-item {
-        font-size: 0.75rem;
-        padding: 4px 8px;
-        gap: 4px;
-    }
-    
-    .agenda-rit-naam {
-        min-width: 60px;
-    }
-    
-    .agenda-rit-telefoon {
-        font-size: 0.65rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .agenda-rit-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-        padding: 6px 8px;
-    }
-    
-    .agenda-rit-naam {
-        min-width: auto;
-        width: 100%;
-    }
-    
-    .agenda-rit-extra {
-        font-size: 0.65rem;
-    }
-    
-    .agenda-rit-telefoon {
-        font-size: 0.6rem;
-    }
-}
-/* ============================================================
-   DARK MODE STIJLEN
-   ============================================================ */
-
-/* ===== THEMA TOGGLE KNO ===== */
-.theme-toggle {
-    background: none;
-    border: none;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 0.4rem 0.8rem;
-    border-radius: 8px;
-    transition: background 0.3s, transform 0.2s;
-    color: white;
-}
-
-.theme-toggle:hover {
-    background-color: rgba(255, 255, 255, 0.15);
-    transform: scale(1.1);
-}
-
-[data-theme="dark"] .theme-toggle {
-    color: #ffd700;
-}
-
-[data-theme="dark"] .theme-toggle:hover {
-    background-color: rgba(255, 215, 0, 0.15);
-}
-
-/* ===== DARK MODE BASIS ===== */
-[data-theme="dark"] {
-    --bg-primary: #1a1a2e;
-    --bg-secondary: #16213e;
-    --bg-card: #1a1a2e;
-    --bg-hover: #2a2a4e;
-    --bg-input: #2a2a4e;
-    --bg-table: #1a1a2e;
-    --bg-table-header: #2a2a4e;
-    --bg-table-hover: #2a2a4e;
-    --text-primary: #e0e0e0;
-    --text-secondary: #b0b0b0;
-    --text-muted: #888888;
-    --border-color: #2a2a4e;
-    --shadow-color: rgba(0, 0, 0, 0.4);
-    --card-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-    --input-bg: #2a2a4e;
-    --input-border: #3a3a5e;
-    --popup-overlay: rgba(0, 0, 0, 0.7);
-}
-
-[data-theme="dark"] body {
-    background-color: #0f0f1a;
-    color: #e0e0e0;
-}
-
-[data-theme="dark"] .container {
-    background-color: transparent;
-}
-
-/* ===== DARK MODE - KNOMMEN ===== */
-[data-theme="dark"] .btn-secondary {
-    background-color: #2a2a4e;
-    color: #e0e0e0;
-    border-color: #3a3a5e;
-}
-
-[data-theme="dark"] .btn-secondary:hover {
-    background-color: #3a3a5e;
-}
-
-[data-theme="dark"] .btn-danger {
-    background-color: #5a1a2a;
-    color: #e0a0a0;
-    border-color: #6a2a3a;
-}
-
-[data-theme="dark"] .btn-danger:hover {
-    background-color: #6a2a3a;
-}
-
-/* ===== DARK MODE - NAVIGATIE ===== */
-[data-theme="dark"] .main-nav {
-    background-color: #16213e;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-}
-
-[data-theme="dark"] .nav-links a:hover {
-    background-color: #2a2a4e;
-}
-
-[data-theme="dark"] .nav-logout {
-    background-color: #5a1a2a;
-}
-
-[data-theme="dark"] .nav-logout:hover {
-    background-color: #6a2a3a;
-}
-
-/* ===== DARK MODE - KAARTEN ===== */
-[data-theme="dark"] .dashboard-card,
-[data-theme="dark"] .agenda-section,
-[data-theme="dark"] .analyse-section,
-[data-theme="dark"] .filter-section,
-[data-theme="dark"] .search-section,
-[data-theme="dark"] .admin-tabel,
-[data-theme="dark"] .instellingen-card,
-[data-theme="dark"] .profiel-card,
-[data-theme="dark"] .date-selector-section {
-    background-color: #1a1a2e;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-/* ===== DARK MODE - TABELLEN ===== */
-[data-theme="dark"] table thead th {
-    background-color: #2a2a4e;
-    color: #e0e0e0;
-}
-
-[data-theme="dark"] table tbody td {
-    border-bottom-color: #2a2a4e;
-    color: #d0d0d0;
-}
-
-[data-theme="dark"] table tbody tr:nth-child(even) {
-    background-color: #1a1a2e;
-}
-
-[data-theme="dark"] table tbody tr:hover {
-    background-color: #2a2a4e;
-}
-
-[data-theme="dark"] .adressen-tabel {
-    background-color: #1a1a2e;
-}
-
-/* ===== DARK MODE - FORMULIEREN ===== */
-[data-theme="dark"] input[type="text"],
-[data-theme="dark"] input[type="email"],
-[data-theme="dark"] input[type="password"],
-[data-theme="dark"] input[type="number"],
-[data-theme="dark"] input[type="date"],
-[data-theme="dark"] input[type="tel"],
-[data-theme="dark"] select,
-[data-theme="dark"] textarea {
-    background-color: #2a2a4e;
-    border-color: #3a3a5e;
-    color: #e0e0e0;
-}
-
-[data-theme="dark"] input:focus,
-[data-theme="dark"] select:focus,
-[data-theme="dark"] textarea:focus {
-    border-color: #4a7da0;
-    box-shadow: 0 0 0 3px rgba(44, 125, 160, 0.2);
-}
-
-[data-theme="dark"] label {
-    color: #b0b0b0;
-}
-
-[data-theme="dark"] small {
-    color: #888888;
-}
-
-/* ===== DARK MODE - POPUPS ===== */
-[data-theme="dark"] .popup-content {
-    background-color: #1a1a2e;
-    color: #e0e0e0;
-}
-
-[data-theme="dark"] .popup-content h3 {
-    color: #4a8da0;
-}
-
-[data-theme="dark"] .popup-content h4 {
-    color: #4a8da0;
-    border-bottom-color: #2a2a4e;
-}
-
-[data-theme="dark"] .popup {
-    background-color: rgba(0, 0, 0, 0.8);
-}
-
-/* ===== DARK MODE - PLANNING ===== */
-[data-theme="dark"] .planning-item {
-    background-color: #1a1a2e;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-}
-
-[data-theme="dark"] .planning-item:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-[data-theme="dark"] .planning-info h4 {
-    color: #4a8da0;
-}
-
-[data-theme="dark"] .planning-info p {
-    color: #b0b0b0;
-}
-
-[data-theme="dark"] .datum-header {
-    background: #1a2a3e;
-    border-left-color: #4a8da0;
-}
-
-[data-theme="dark"] .datum-dag {
-    color: #4a8da0;
-}
-
-[data-theme="dark"] .datum-datum {
-    color: #e0e0e0;
-}
-
-[data-theme="dark"] .datum-count {
-    background: #2a4a6e;
-    color: #e0e0e0;
-}
-
-[data-theme="dark"] .chauffeur-select {
-    background-color: #2a2a4e;
-    border-color: #3a3a5e;
-    color: #e0e0e0;
-}
-
-[data-theme="dark"] .stop-number-badge {
-    background: #2a4a6e;
-}
-
-/* ===== DARK MODE - AGENDA ===== */
-[data-theme="dark"] .agenda-weekdays div {
-    background: #2a2a4e;
-    color: #b0b0b0;
-}
-
-[data-theme="dark"] .agenda-dag {
-    background: #2a2a4e;
-    color: #d0d0d0;
-}
-
-[data-theme="dark"] .agenda-dag:hover {
-    background: #3a3a5e;
-}
-
-[data-theme="dark"] .agenda-dag.vandaag {
-    background: #2c7da0;
-    color: white;
-}
-
-[data-theme="dark"] .agenda-dag.geselecteerd {
-    background: #2c7da0;
-    color: white;
-}
-
-[data-theme="dark"] .agenda-ritten {
-    background: #1a2a3e;
-}
-
-[data-theme="dark"] .agenda-rit-item {
-    background: #2a2a4e;
-}
-
-[data-theme="dark"] .agenda-rit-naam {
-    color: #e0e0e0;
-}
-
-[data-theme="dark"] .agenda-geen-ritten {
-    color: #888888;
-}
-
-/* ===== DARK MODE - ANALYSE ===== */
-[data-theme="dark"] .analyse-item {
-    background: #1a2a3e;
-}
-
-[data-theme="dark"] .analyse-item.status-danger {
-    background: #2a1a2e;
-    border-left-color: #dc3545;
-}
-
-[data-theme="dark"] .analyse-item.status-warning {
-    background: #2a2a1e;
-    border-left-color: #ffc107;
-}
-
-[data-theme="dark"] .analyse-item.status-info {
-    background: #1a2a3e;
-    border-left-color: #17a2b8;
-}
-
-[data-theme="dark"] .analyse-item-header strong {
-    color: #4a8da0;
-}
-
-[data-theme="dark"] .analyse-stats {
-    border-top-color: #2a2a4e;
-    color: #888888;
-}
-
-[data-theme="dark"] .analyse-totaal {
-    background: #2c7da0;
-}
-
-/* ===== DARK MODE - STOCK ===== */
-[data-theme="dark"] .stock-alerts .alert-warning {
-    background: #2a2a1e;
-    color: #d4a040;
-}
-
-[data-theme="dark"] .stock-alerts .alert-danger {
-    background: #2a1a2e;
-    color: #d06070;
-}
-
-[data-theme="dark"] .stock-alerts .alert-success {
-    background: #1a2a1e;
-    color: #60a060;
-}
-
-[data-theme="dark"] .componenten-lijst {
-    background: #2a2a4e;
-}
-
-[data-theme="dark"] .componenten-lijst li {
-    background: #1a1a2e;
-}
-
-/* ===== DARK MODE - LOGIN ===== */
-[data-theme="dark"] .login-box {
-    background: #1a1a2e;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-}
-
-[data-theme="dark"] .login-box h1 {
-    color: #4a8da0;
-}
-
-[data-theme="dark"] .login-box > p {
-    color: #888888;
-}
-
-[data-theme="dark"] .login-tabs {
-    border-bottom-color: #2a2a4e;
-}
-
-[data-theme="dark"] .tab-btn {
-    color: #888888;
-}
-
-[data-theme="dark"] .tab-btn.active {
-    color: #4a8da0;
-    border-bottom-color: #4a8da0;
-}
-
-[data-theme="dark"] .tab-btn:hover {
-    background-color: #2a2a4e;
-}
-
-[data-theme="dark"] .forgot-link {
-    color: #4a8da0;
-}
-
-/* ===== DARK MODE - STATUS BADGES ===== */
-[data-theme="dark"] .status-gepland {
-    background: #2a2a1e;
-    color: #d4a040;
-}
-
-[data-theme="dark"] .status-uitgevoerd {
-    background: #1a2a1e;
-    color: #60a060;
-}
-
-[data-theme="dark"] .status-geannuleerd {
-    background: #2a1a2e;
-    color: #d06070;
-}
-
-/* ===== DARK MODE - SCROLL KNO ===== */
-[data-theme="dark"] .scroll-btn {
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-}
-
-/* ===== DARK MODE - TOOLTIP ===== */
-[data-theme="dark"] .agenda-tooltip {
-    background: #2a2a4e;
-    color: #e0e0e0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
-
-/* ===== RESPONSIVE DARK MODE ===== */
-@media (max-width: 768px) {
-    [data-theme="dark"] .theme-toggle {
-        font-size: 1rem;
-        padding: 0.3rem 0.6rem;
-    }
-}
-/* ============================================================
-   DARK MODE SLIDER (DUN & GROEN)
-   ============================================================ */
-
-.theme-switch-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.theme-icon {
-    font-size: 0.8rem;
-    line-height: 1;
-    color: rgba(255, 255, 255, 0.8);
-}
-
-/* De slider container - DUNNER */
-.theme-switch {
-    position: relative;
-    display: inline-block;
-    width: 38px;
-    height: 18px;
-    flex-shrink: 0;
-}
-
-/* Verberg de standaard checkbox */
-.theme-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-/* De slider (achtergrond) - GROEN in light mode */
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #28a745;  /* GROEN in light mode */
-    transition: 0.3s;
-    border-radius: 18px;
-}
-
-/* Het ronde knopje - DUNNER */
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 12px;
-    width: 12px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.3s;
-    border-radius: 50%;
-}
-
-/* Aangevinkte staat (dark mode) - BLAUW */
-.theme-switch input:checked + .slider {
-    background-color: #2c7da0;  /* BLAUW in dark mode */
-}
-
-.theme-switch input:checked + .slider:before {
-    transform: translateX(20px);
-}
-
-/* Hover effect */
-.theme-switch:hover .slider {
-    box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
-}
-
-.theme-switch input:checked:hover + .slider {
-    box-shadow: 0 0 8px rgba(44, 125, 160, 0.3);
-}
-
-/* ===== DARK MODE - SLIDER ICONS ===== */
-[data-theme="dark"] .theme-icon {
-    color: rgba(255, 215, 0, 0.9);
-}
-
-[data-theme="light"] .theme-icon {
-    color: rgba(255, 255, 255, 0.8);
-}
-
-/* ===== RESPONSIVE SLIDER ===== */
-@media (max-width: 768px) {
-    .theme-switch-wrapper {
-        gap: 4px;
-    }
-    
-    .theme-switch {
-        width: 32px;
-        height: 16px;
-    }
-    
-    .slider:before {
-        height: 10px;
-        width: 10px;
-        left: 3px;
-        bottom: 3px;
-    }
-    
-    .theme-switch input:checked + .slider:before {
-        transform: translateX(16px);
-    }
-    
-    .theme-icon {
-        font-size: 0.7rem;
     }
 }
