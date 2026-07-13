@@ -452,7 +452,7 @@ async function laadOphalingAnalyse() {
             const verwachteDatum = new Date(item.verwachte_volgende);
             verwachteDatum.setHours(0, 0, 0, 0);
             const dagenVerschil = Math.ceil((verwachteDatum - vandaag) / (1000 * 60 * 60 * 24));
-            const isBinnenkort = dagenVerschil >= 0 && dagenVerschil <= 5;
+            const isBinnenkort = dagenVerschil >= 0 && dagenVerschil <= 7;
             
             let dagenText = '';
             if (item.status === 'Te laat') {
