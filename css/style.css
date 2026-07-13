@@ -369,47 +369,355 @@ label {
     margin-bottom: 1.5rem;
 }
 
-/* ===== 8. OPHALING ANALYSE ===== */
-.analyse-section {
-    background: white;
-    border-radius: 16px;
-    padding: 1.5rem;
+/* ===== 8. TWO-COLUMN LAYOUT ===== */
+.dashboard-two-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
     margin-bottom: 2rem;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
-.analyse-section h2 {
+
+/* ===== 9. AGENDA ===== */
+.agenda-section {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.agenda-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.agenda-header h3 {
     color: #2c7da0;
+    font-size: 1rem;
+    margin: 0;
+    flex: 1;
+    text-align: center;
+}
+
+.agenda-header .btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+}
+
+.btn-small {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+}
+
+.agenda-grid {
+    display: flex;
+    flex-direction: column;
+}
+
+.agenda-weekdays {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+    margin-bottom: 2px;
+}
+
+.agenda-weekdays div {
+    text-align: center;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.7rem;
+    padding: 4px 0;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.agenda-dagen {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.agenda-dag {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.8rem;
+    color: #333;
+    background: #f8f9fa;
+    position: relative;
+    min-height: 32px;
+    padding: 2px;
+}
+
+.agenda-dag:hover {
+    background: #e8f4f8;
+    transform: scale(1.05);
+}
+
+.agenda-dag.leeg {
+    background: transparent;
+    cursor: default;
+}
+
+.agenda-dag.vandaag {
+    background: #2c7da0;
+    color: white;
+    font-weight: bold;
+}
+
+.agenda-dag.heeft-ritten {
+    border: 2px solid #2c7da0;
+}
+
+.agenda-dag.vandaag.heeft-ritten {
+    border: 2px solid white;
+}
+
+.agenda-dag.geselecteerd {
+    background: #2c7da0;
+    color: white;
+    font-weight: bold;
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(44,125,160,0.3);
+}
+
+.agenda-dag.geselecteerd.heeft-ritten {
+    border-color: white;
+}
+
+.agenda-badge {
+    position: absolute;
+    top: 1px;
+    right: 2px;
+    background: #e63946;
+    color: white;
+    font-size: 0.5rem;
+    font-weight: bold;
+    padding: 1px 4px;
+    border-radius: 8px;
+    min-width: 14px;
+    text-align: center;
+    line-height: 1.3;
+}
+
+.agenda-dag.vandaag .agenda-badge {
+    background: #ffc107;
+    color: #333;
+}
+
+.agenda-dag.geselecteerd .agenda-badge {
+    background: #ffc107;
+    color: #333;
+}
+
+/* ===== 10. AGENDA RITTEN OVERZICHT ===== */
+.agenda-ritten {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    min-height: 60px;
+}
+
+.agenda-overzicht-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.agenda-overzicht-header h4 {
+    color: #2c7da0;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.agenda-overzicht-count {
+    font-size: 0.75rem;
+    color: #6c757d;
+    background: #e9ecef;
+    padding: 2px 10px;
+    border-radius: 12px;
+}
+
+.agenda-geen-ritten {
+    text-align: center;
+    padding: 0.75rem 0;
+    color: #6c757d;
+}
+
+.agenda-geen-ritten span {
+    font-size: 1.5rem;
+    display: block;
     margin-bottom: 0.25rem;
 }
+
+.agenda-geen-ritten p {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.agenda-ritten-lijst {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.agenda-rit-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: white;
+    border-radius: 4px;
+    border-left: 3px solid #2c7da0;
+    font-size: 0.8rem;
+    flex-wrap: wrap;
+    margin-bottom: 4px;
+    transition: transform 0.2s;
+}
+
+.agenda-rit-item:hover {
+    transform: translateX(4px);
+}
+
+.agenda-rit-volgorde {
+    font-weight: bold;
+    color: #2c7da0;
+    min-width: 24px;
+    font-size: 0.7rem;
+}
+
+.agenda-rit-type {
+    font-size: 0.7rem;
+    padding: 1px 8px;
+    background: #e9ecef;
+    border-radius: 10px;
+}
+
+.agenda-rit-naam {
+    font-weight: 500;
+    flex: 1;
+    min-width: 80px;
+    font-size: 0.8rem;
+}
+
+.agenda-rit-extra {
+    font-size: 0.7rem;
+    color: #6c757d;
+    background: #f8f9fa;
+    padding: 1px 8px;
+    border-radius: 10px;
+}
+
+.agenda-rit-status {
+    font-size: 0.65rem;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-weight: 500;
+}
+
+.agenda-rit-status.status-gepland {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.agenda-rit-status.status-uitgevoerd {
+    background: #d4edda;
+    color: #155724;
+}
+
+.agenda-rit-status.status-geannuleerd {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.agenda-rit-telefoon {
+    font-size: 0.7rem;
+    color: #2c7da0;
+}
+
+/* ===== 11. AGENDA TOOLTIP ===== */
+.agenda-tooltip {
+    display: none;
+    position: fixed;
+    background: #2c7da0;
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    max-width: 250px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    pointer-events: none;
+}
+
+/* ===== 12. OPHALING ANALYSE ===== */
+.analyse-section {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.analyse-section h3 {
+    color: #2c7da0;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
 .analyse-section > p {
     color: #6c757d;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
 }
 
 .analyse-lijst {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.5rem;
+    max-height: 300px;
+    overflow-y: auto;
 }
+
 .analyse-item {
-    padding: 1rem;
-    border-radius: 8px;
-    border-left: 4px solid #2c7da0;
+    padding: 0.75rem;
+    border-radius: 6px;
+    border-left: 3px solid #2c7da0;
     background: #f8f9fa;
     transition: transform 0.2s;
 }
+
 .analyse-item:hover {
-    transform: translateX(4px);
+    transform: translateX(3px);
 }
+
 .analyse-item.status-danger {
     border-left-color: #dc3545;
     background: #fdf0f0;
 }
+
 .analyse-item.status-warning {
     border-left-color: #ffc107;
     background: #fff8e1;
 }
+
 .analyse-item.status-info {
     border-left-color: #17a2b8;
     background: #e8f4f8;
@@ -420,35 +728,40 @@ label {
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
 }
+
 .analyse-item-header strong {
-    font-size: 1.05rem;
+    font-size: 0.9rem;
     color: #2c7da0;
 }
+
 .analyse-status {
     font-weight: 600;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
 .analyse-item-details {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     color: #495057;
 }
+
 .analyse-item-details > div {
     margin-bottom: 2px;
 }
+
 .analyse-stats {
     display: flex;
     flex-wrap: wrap;
-    gap: 1rem;
-    margin-top: 0.5rem;
-    padding-top: 0.5rem;
+    gap: 0.75rem;
+    margin-top: 0.25rem;
+    padding-top: 0.25rem;
     border-top: 1px solid #e9ecef;
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     color: #6c757d;
 }
+
 .analyse-stats span {
     white-space: nowrap;
 }
@@ -456,13 +769,14 @@ label {
 .analyse-totaal {
     background: #2c7da0;
     color: white;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
     font-weight: 600;
+    font-size: 0.85rem;
 }
 
-/* ===== 9. PAGINA HEADER ===== */
+/* ===== 13. PAGINA HEADER ===== */
 .page-header {
     display: flex;
     justify-content: space-between;
@@ -496,7 +810,7 @@ label {
     align-items: center;
 }
 
-/* ===== 10. ZOEKBALK ===== */
+/* ===== 14. ZOEKBALK ===== */
 .search-section {
     background: white;
     border-radius: 12px;
@@ -530,7 +844,7 @@ label {
     color: #6c757d;
 }
 
-/* ===== 11. TABELLEN ===== */
+/* ===== 15. TABELLEN ===== */
 .table-container {
     overflow-x: auto;
     background: white;
@@ -568,7 +882,7 @@ tbody tr:hover {
     transition: background 0.2s;
 }
 
-/* ===== 12. ADDRESSEN ===== */
+/* ===== 16. ADDRESSEN ===== */
 .adressen-tabel {
     background: white;
     border-radius: 12px;
@@ -640,7 +954,7 @@ tbody tr:hover {
     box-shadow: 0 0 0 2px rgba(44,125,160,0.2);
 }
 
-/* ===== 13. TABS (Admin, Planning, Modules) ===== */
+/* ===== 17. TABS ===== */
 .admin-tabs,
 .planning-tabs,
 .module-tabs {
@@ -687,7 +1001,7 @@ tbody tr:hover {
     display: block;
 }
 
-/* ===== 14. ADMIN TABEL ===== */
+/* ===== 18. ADMIN TABEL ===== */
 .admin-tabel {
     background: white;
     border-radius: 12px;
@@ -706,7 +1020,7 @@ tbody tr:hover {
     font-size: 0.75rem;
 }
 
-/* ===== 15. INSTELLINGEN ===== */
+/* ===== 19. INSTELLINGEN ===== */
 .instellingen-card {
     background: white;
     border-radius: 12px;
@@ -732,7 +1046,7 @@ hr {
     border-top: 1px solid #e9ecef;
 }
 
-/* ===== 16. PLANNING ===== */
+/* ===== 20. PLANNING ===== */
 .planning-lijst {
     display: flex;
     flex-direction: column;
@@ -784,7 +1098,7 @@ hr {
     font-size: 0.75rem;
 }
 
-/* ===== 17. STATUS BADGES ===== */
+/* ===== 21. STATUS BADGES ===== */
 .planning-status {
     padding: 4px 12px;
     border-radius: 20px;
@@ -805,7 +1119,7 @@ hr {
     color: #721c24;
 }
 
-/* ===== 18. FILTERS ===== */
+/* ===== 22. FILTERS ===== */
 .filter-section {
     background: white;
     padding: 1.25rem;
@@ -866,7 +1180,7 @@ hr {
     flex: 1;
 }
 
-/* ===== 19. PROFIEL ===== */
+/* ===== 23. PROFIEL ===== */
 .profiel-card {
     background: white;
     border-radius: 16px;
@@ -888,7 +1202,7 @@ hr {
     margin: 1.5rem 0;
 }
 
-/* ===== 20. POPUP / MODAL ===== */
+/* ===== 24. POPUP / MODAL ===== */
 .popup {
     display: none;
     position: fixed;
@@ -938,7 +1252,7 @@ hr {
     margin: 0;
 }
 
-/* ===== 21. WHATSAPP POPUP ===== */
+/* ===== 25. WHATSAPP POPUP ===== */
 .whatsapp-popup {
     max-width: 550px;
 }
@@ -964,7 +1278,7 @@ hr {
     min-width: 120px;
 }
 
-/* ===== 22. ROUTE PLANNER ===== */
+/* ===== 26. ROUTE PLANNER ===== */
 .route-controls {
     display: flex;
     gap: 1rem;
@@ -1091,7 +1405,7 @@ hr {
     min-width: 150px;
 }
 
-/* ===== 23. DRAG & DROP ===== */
+/* ===== 27. DRAG & DROP ===== */
 .drag-handle {
     cursor: grab;
     font-size: 1.2rem;
@@ -1153,7 +1467,7 @@ hr {
     display: none;
 }
 
-/* ===== 24. MODULEBEHEER ===== */
+/* ===== 28. MODULEBEHEER ===== */
 .module-checkboxes {
     display: flex;
     flex-direction: column;
@@ -1179,7 +1493,7 @@ hr {
     margin: 0;
 }
 
-/* ===== 25. DATUM SELECTOR ===== */
+/* ===== 29. DATUM SELECTOR ===== */
 .date-selector-section {
     background: white;
     border-radius: 12px;
@@ -1227,7 +1541,7 @@ hr {
     color: #495057;
 }
 
-/* ===== 26. DAG ACTIES ===== */
+/* ===== 30. DAG ACTIES ===== */
 .day-actions {
     margin-top: 1.5rem;
 }
@@ -1242,7 +1556,7 @@ hr {
     min-width: 200px;
 }
 
-/* ===== 27. DATUM HEADER ===== */
+/* ===== 31. DATUM HEADER ===== */
 .datum-header {
     background: #e8f4f8;
     border-radius: 12px;
@@ -1293,7 +1607,7 @@ hr {
     white-space: nowrap;
 }
 
-/* ===== 28. CHAUFFEUR SELECTOR ===== */
+/* ===== 32. CHAUFFEUR SELECTOR ===== */
 .chauffeur-selector-wrapper {
     display: flex;
     align-items: center;
@@ -1320,7 +1634,7 @@ hr {
     border-color: #2c7da0;
 }
 
-/* ===== 29. STOCK MANAGEMENT ===== */
+/* ===== 33. STOCK MANAGEMENT ===== */
 .stock-alerts {
     margin-bottom: 1.5rem;
 }
@@ -1377,7 +1691,7 @@ hr {
     color: #004085;
 }
 
-/* ===== 30. COMBINATIE POPUP ===== */
+/* ===== 34. COMBINATIE POPUP ===== */
 .combinatie-popup {
     max-width: 600px;
 }
@@ -1409,7 +1723,7 @@ hr {
     margin-bottom: 0;
 }
 
-/* ===== 31. OPSTART POPUP ===== */
+/* ===== 35. OPSTART POPUP ===== */
 .opstart-popup {
     max-width: 450px;
 }
@@ -1426,7 +1740,7 @@ hr {
     margin-bottom: 0.75rem;
 }
 
-/* ===== 32. IMPORT POPUP ===== */
+/* ===== 36. IMPORT POPUP ===== */
 .import-popup {
     max-width: 700px;
 }
@@ -1484,7 +1798,7 @@ hr {
     margin-bottom: 0.75rem;
 }
 
-/* ===== 33. BADGES ===== */
+/* ===== 37. BADGES ===== */
 .badge {
     padding: 2px 10px;
     border-radius: 12px;
@@ -1504,7 +1818,7 @@ hr {
     color: #0c5460;
 }
 
-/* ===== 34. SCROLL KNO ===== */
+/* ===== 38. SCROLL KNO ===== */
 .scroll-btn {
     position: fixed;
     right: 30px;
@@ -1574,10 +1888,8 @@ hr {
 }
 
 /* ============================================================
-   DARK MODE STIJLEN (VERBETERDE LEESBAARHEID)
+   DARK MODE SLIDER
    ============================================================ */
-
-/* ===== DARK MODE SLIDER ===== */
 .theme-switch-wrapper {
     display: flex;
     align-items: center;
@@ -1643,7 +1955,17 @@ hr {
     box-shadow: 0 0 8px rgba(44, 125, 160, 0.3);
 }
 
-/* ===== DARK MODE BASIS ===== */
+[data-theme="dark"] .theme-icon {
+    color: rgba(255, 215, 0, 0.9);
+}
+
+[data-theme="light"] .theme-icon {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* ============================================================
+   DARK MODE STIJLEN
+   ============================================================ */
 [data-theme="dark"] {
     --bg-primary: #1a1a2e;
     --bg-secondary: #16213e;
@@ -1673,14 +1995,6 @@ hr {
     background-color: transparent;
 }
 
-[data-theme="dark"] .theme-icon {
-    color: rgba(255, 215, 0, 0.9);
-}
-
-[data-theme="light"] .theme-icon {
-    color: rgba(255, 255, 255, 0.8);
-}
-
 /* ===== DARK MODE - KNOMMEN ===== */
 [data-theme="dark"] .btn-secondary {
     background-color: #2a2a4e;
@@ -1700,6 +2014,10 @@ hr {
     background-color: #6a2a3a;
 }
 
+[data-theme="dark"] .btn-primary {
+    background-color: #2c7da0;
+}
+
 /* ===== DARK MODE - NAVIGATIE ===== */
 [data-theme="dark"] .main-nav {
     background-color: #16213e;
@@ -1714,6 +2032,12 @@ hr {
 [data-theme="dark"] .nav-logout:hover {
     background-color: #6a2a3a;
 }
+[data-theme="dark"] .nav-logo {
+    color: #f0f0f0;
+}
+[data-theme="dark"] .nav-links a {
+    color: #d0d0d0;
+}
 
 /* ===== DARK MODE - KAARTEN ===== */
 [data-theme="dark"] .dashboard-card,
@@ -1727,6 +2051,172 @@ hr {
 [data-theme="dark"] .date-selector-section {
     background-color: #1a1a2e;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .dashboard-card h2 {
+    color: #5a9ab0;
+}
+[data-theme="dark"] .dashboard-card p {
+    color: #c0c0c0;
+}
+
+/* ===== DARK MODE - AGENDA ===== */
+[data-theme="dark"] .agenda-header h3 {
+    color: #5a9ab0;
+}
+
+[data-theme="dark"] .agenda-weekdays div {
+    background: #2a2a4e !important;
+    color: #f0f0f0 !important;
+    border: 1px solid #3a3a5e;
+}
+
+[data-theme="dark"] .agenda-dag {
+    background: #2a2a4e !important;
+    color: #e0e0e0 !important;
+    border: 1px solid #3a3a5e;
+}
+
+[data-theme="dark"] .agenda-dag:hover {
+    background: #3a3a5e !important;
+}
+
+[data-theme="dark"] .agenda-dag.vandaag {
+    background: #2c7da0 !important;
+    color: white !important;
+    border-color: #4a9ab0 !important;
+}
+
+[data-theme="dark"] .agenda-dag.geselecteerd {
+    background: #2c7da0 !important;
+    color: white !important;
+    border-color: #4a9ab0 !important;
+}
+
+[data-theme="dark"] .agenda-dag.leeg {
+    background: transparent !important;
+    border: none !important;
+}
+
+[data-theme="dark"] .agenda-dag.heeft-ritten {
+    border: 2px solid #5a9ab0 !important;
+}
+
+[data-theme="dark"] .agenda-dag.vandaag.heeft-ritten {
+    border: 2px solid #8ac0d8 !important;
+}
+
+[data-theme="dark"] .agenda-badge {
+    background: #e63946 !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .agenda-dag.vandaag .agenda-badge {
+    background: #ffc107 !important;
+    color: #333 !important;
+}
+
+[data-theme="dark"] .agenda-dag.geselecteerd .agenda-badge {
+    background: #ffc107 !important;
+    color: #333 !important;
+}
+
+[data-theme="dark"] .agenda-ritten {
+    background: #1a2a3e !important;
+}
+
+[data-theme="dark"] .agenda-ritten h4 {
+    color: #5a9ab0 !important;
+}
+
+[data-theme="dark"] .agenda-rit-item {
+    background: #2a2a4e !important;
+    color: #e0e0e0 !important;
+    border-left-color: #5a9ab0 !important;
+}
+
+[data-theme="dark"] .agenda-rit-naam {
+    color: #f0f0f0 !important;
+}
+
+[data-theme="dark"] .agenda-rit-volgorde {
+    color: #5a9ab0 !important;
+}
+
+[data-theme="dark"] .agenda-rit-type {
+    background: #3a3a5e !important;
+    color: #d0d0d0 !important;
+}
+
+[data-theme="dark"] .agenda-geen-ritten {
+    color: #a0a0a0 !important;
+}
+
+[data-theme="dark"] .agenda-overzicht-header h4 {
+    color: #5a9ab0 !important;
+}
+
+[data-theme="dark"] .agenda-overzicht-count {
+    background: #2a2a4e !important;
+    color: #c0c0c0 !important;
+}
+
+[data-theme="dark"] .agenda-tooltip {
+    background: #2a2a4e !important;
+    color: #f0f0f0 !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* ===== DARK MODE - ANALYSE ===== */
+[data-theme="dark"] .analyse-section h3 {
+    color: #5a9ab0;
+}
+[data-theme="dark"] .analyse-section > p {
+    color: #a0a0a0;
+}
+
+[data-theme="dark"] .analyse-item {
+    background: #1a2a3e;
+}
+
+[data-theme="dark"] .analyse-item.status-danger {
+    background: #2a1a2e;
+    border-left-color: #dc3545;
+}
+
+[data-theme="dark"] .analyse-item.status-warning {
+    background: #2a2a1e;
+    border-left-color: #ffc107;
+}
+
+[data-theme="dark"] .analyse-item.status-info {
+    background: #1a2a3e;
+    border-left-color: #17a2b8;
+}
+
+[data-theme="dark"] .analyse-item-header strong {
+    color: #5a9ab0 !important;
+}
+
+[data-theme="dark"] .analyse-item-details {
+    color: #d0d0d0 !important;
+}
+
+[data-theme="dark"] .analyse-item-details > div {
+    color: #d0d0d0 !important;
+}
+
+[data-theme="dark"] .analyse-stats {
+    border-top-color: #2a2a4e;
+    color: #a0a0a0 !important;
+}
+
+[data-theme="dark"] .analyse-stats span {
+    color: #a0a0a0 !important;
+}
+
+[data-theme="dark"] .analyse-totaal {
+    background: #2c7da0;
 }
 
 /* ===== DARK MODE - TABELLEN ===== */
@@ -1751,6 +2241,28 @@ hr {
 
 [data-theme="dark"] .adressen-tabel {
     background-color: #1a1a2e;
+}
+
+[data-theme="dark"] .telefoon-link {
+    color: #5a9ab0;
+}
+[data-theme="dark"] .telefoon-link:hover {
+    color: #7abadd;
+}
+
+[data-theme="dark"] .email-link {
+    color: #5a9ab0;
+}
+[data-theme="dark"] .email-link:hover {
+    color: #7abadd;
+}
+
+[data-theme="dark"] .contactpersoon-cell {
+    color: #d0d0d0;
+}
+
+[data-theme="dark"] .extra-info-cell {
+    color: #a0a0a0;
 }
 
 /* ===== DARK MODE - FORMULIEREN ===== */
@@ -1789,16 +2301,24 @@ hr {
 }
 
 [data-theme="dark"] .popup-content h3 {
-    color: #4a8da0;
+    color: #5a9ab0;
 }
 
 [data-theme="dark"] .popup-content h4 {
-    color: #4a8da0;
+    color: #5a9ab0;
     border-bottom-color: #2a2a4e;
 }
 
 [data-theme="dark"] .popup {
     background-color: rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="dark"] .popup-content input,
+[data-theme="dark"] .popup-content select,
+[data-theme="dark"] .popup-content textarea {
+    background-color: #2a2a4e;
+    border-color: #4a4a6e;
+    color: #e0e0e0;
 }
 
 /* ===== DARK MODE - PLANNING ===== */
@@ -1855,105 +2375,20 @@ hr {
     background: #2a4a6e;
 }
 
-/* ===== DARK MODE - ADRESSEN ===== */
-[data-theme="dark"] .telefoon-link {
-    color: #5a9ab0;
-}
-[data-theme="dark"] .telefoon-link:hover {
-    color: #7abadd;
-}
-
-[data-theme="dark"] .email-link {
-    color: #5a9ab0;
-}
-[data-theme="dark"] .email-link:hover {
-    color: #7abadd;
-}
-
-[data-theme="dark"] .contactpersoon-cell {
-    color: #d0d0d0;
-}
-
-[data-theme="dark"] .extra-info-cell {
-    color: #a0a0a0;
-}
-
-/* ===== DARK MODE - AGENDA ===== */
-[data-theme="dark"] .agenda-weekdays div {
-    background: #2a2a4e;
-    color: #d0d0d0;
-}
-
-[data-theme="dark"] .agenda-dag {
-    background: #2a2a4e;
-    color: #e0e0e0;
-}
-
-[data-theme="dark"] .agenda-dag:hover {
-    background: #3a3a5e;
-}
-
-[data-theme="dark"] .agenda-dag.vandaag {
-    background: #2c7da0;
-    color: white;
-}
-
-[data-theme="dark"] .agenda-dag.geselecteerd {
-    background: #2c7da0;
-    color: white;
-}
-
-[data-theme="dark"] .agenda-ritten {
-    background: #1a2a3e;
-}
-
-[data-theme="dark"] .agenda-rit-item {
-    background: #2a2a4e;
-}
-
-[data-theme="dark"] .agenda-rit-naam {
-    color: #e0e0e0;
-}
-
-[data-theme="dark"] .agenda-geen-ritten {
-    color: #a0a0a0;
-}
-
-[data-theme="dark"] .agenda-overzicht-header h4 {
-    color: #5a9ab0;
-}
-
-/* ===== DARK MODE - ANALYSE ===== */
-[data-theme="dark"] .analyse-item {
-    background: #1a2a3e;
-}
-
-[data-theme="dark"] .analyse-item.status-danger {
-    background: #2a1a2e;
-    border-left-color: #dc3545;
-}
-
-[data-theme="dark"] .analyse-item.status-warning {
+/* ===== DARK MODE - STATUS BADGES ===== */
+[data-theme="dark"] .status-gepland {
     background: #2a2a1e;
-    border-left-color: #ffc107;
+    color: #d4a040;
 }
 
-[data-theme="dark"] .analyse-item.status-info {
-    background: #1a2a3e;
-    border-left-color: #17a2b8;
+[data-theme="dark"] .status-uitgevoerd {
+    background: #1a2a1e;
+    color: #60a060;
 }
 
-[data-theme="dark"] .analyse-item-header strong {
-    color: #5a9ab0;
-}
-
-[data-theme="dark"] .analyse-stats {
-    border-top-color: #2a2a4e;
-    color: #a0a0a0;
-}
-
-[data-theme="dark"] .analyse-totaal {
-    background: #2c7da0;
+[data-theme="dark"] .status-geannuleerd {
+    background: #2a1a2e;
+    color: #d06070;
 }
 
 /* ===== DARK MODE - STOCK ===== */
@@ -1978,6 +2413,11 @@ hr {
 
 [data-theme="dark"] .componenten-lijst li {
     background: #1a1a2e;
+}
+
+[data-theme="dark"] .stock-status.status-combinatie {
+    background: #1a2a4e;
+    color: #80b0d0;
 }
 
 /* ===== DARK MODE - LOGIN ===== */
@@ -2015,32 +2455,9 @@ hr {
     color: #5a9ab0;
 }
 
-/* ===== DARK MODE - STATUS BADGES ===== */
-[data-theme="dark"] .status-gepland {
-    background: #2a2a1e;
-    color: #d4a040;
-}
-
-[data-theme="dark"] .status-uitgevoerd {
-    background: #1a2a1e;
-    color: #60a060;
-}
-
-[data-theme="dark"] .status-geannuleerd {
-    background: #2a1a2e;
-    color: #d06070;
-}
-
 /* ===== DARK MODE - SCROLL KNO ===== */
 [data-theme="dark"] .scroll-btn {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-}
-
-/* ===== DARK MODE - TOOLTIP ===== */
-[data-theme="dark"] .agenda-tooltip {
-    background: #2a2a4e;
-    color: #e0e0e0;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 /* ===== DARK MODE - RESPONSIVE ===== */
@@ -2066,7 +2483,7 @@ hr {
     }
 }
 
-/* ===== 35. PRINT STIJLEN ===== */
+/* ===== 39. PRINT STIJLEN ===== */
 @media print {
     .print-hide {
         display: none !important;
@@ -2154,7 +2571,7 @@ hr {
     }
 }
 
-/* ===== 36. RESPONSIVE ===== */
+/* ===== 40. RESPONSIVE ===== */
 @media (max-width: 1024px) {
     .container {
         padding: 1.5rem;
@@ -2163,6 +2580,10 @@ hr {
     .filter-item {
         min-width: 140px;
         max-width: 200px;
+    }
+    .dashboard-two-column {
+        grid-template-columns: 1fr;
+        gap: 1rem;
     }
 }
 
@@ -2419,6 +2840,23 @@ hr {
     .scroll-btn.scroll-both .scroll-icon {
         font-size: 0.85rem;
     }
+
+    .agenda-dag {
+        font-size: 0.7rem;
+        min-height: 28px;
+    }
+    .agenda-badge {
+        font-size: 0.4rem;
+        min-width: 12px;
+        padding: 0 3px;
+    }
+    .agenda-rit-item {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+    .agenda-ritten-lijst {
+        gap: 3px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -2476,5 +2914,24 @@ hr {
     }
     .scroll-btn .scroll-icon {
         font-size: 1rem;
+    }
+
+    .agenda-dag {
+        font-size: 0.6rem;
+        min-height: 24px;
+    }
+    .agenda-rit-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+    .agenda-rit-naam {
+        min-width: auto;
+        width: 100%;
+    }
+    .agenda-tooltip {
+        font-size: 0.7rem;
+        max-width: 180px;
+        padding: 4px 8px;
     }
 }
