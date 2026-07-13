@@ -282,6 +282,91 @@ document.addEventListener('DOMContentLoaded', async function() {
             gebruikersLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
         }
     }
+	// ===== MODULE RECHTEN BIJ GEBRUIKER BEWERKEN =====
+
+// Voeg deze functie toe in admin.js
+async function laadModuleRechtenVoorGebruiker(userId) {
+    const moduleContainer = document.getElementById('moduleRechtenContainer');
+    if (!moduleContainer) return;
+    
+    try {
+        // Haal alle modules op
+        const { data: modules, error: modError } = await window.supabase
+            .from('modules')
+            .select('*')
+            .order('module_naam');
+        
+        if (modError) throw modError;
+        
+        // Haal bestaande rechten op voor deze gebruiker
+        const { data: rechten, error: rechtError } = await window.supabase
+            .from('gebruikers_module_rechten')
+            .select('*')
+            .eq('user_id', userId);
+        
+        if (rechtError) throw rechtError;
+        
+        const rechtenMap = {};
+        rechten.forEach(r => {
+            rechtenMap[r.module_sleutel] = r.actief;
+        });
+        
+        let html = '<div class="module-checkboxes">';
+        modules.forEach(module => {
+            const isActive = rechtenMap[module.module_sleutel] !== undefined ? 
+                rechtenMap[module.module_sleutel] : module.standaard_aan;
+            const checked = isActive ? 'checked' : '';
+            
+            html += `
+                <div class="module-checkbox-item">
+                    <label>
+                        <input type="checkbox" class="module-recht-checkbox" data-module="${module.module_sleutel}" ${checked}>
+                        <strong>${escapeHtml(module.module_naam)}</strong>
+                        <span style="font-size:0.85rem;color:#6c757d;">${escapeHtml(module.beschrijving || '')}</span>
+                    </label>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        moduleContainer.innerHTML = html;
+        
+    } catch (err) {
+        console.error('Fout bij laden module rechten:', err);
+        moduleContainer.innerHTML = `<p class="error">Fout bij laden: ${err.message}</p>`;
+    }
+}
+
+// Voeg in de bewerkGebruiker functie na het laden van de gebruiker:
+// await laadModuleRechtenVoorGebruiker(userId);
+
+// Voeg in de opslaan functie:
+// Verzamel de module rechten en sla ze op
+async function saveModuleRechten(userId) {
+    const checkboxes = document.querySelectorAll('.module-recht-checkbox');
+    const rechtenData = [];
+    
+    checkboxes.forEach(cb => {
+        rechtenData.push({
+            user_id: userId,
+            module_sleutel: cb.dataset.module,
+            actief: cb.checked
+        });
+    });
+    
+    // Verwijder bestaande rechten
+    await window.supabase
+        .from('gebruikers_module_rechten')
+        .delete()
+        .eq('user_id', userId);
+    
+    // Voeg nieuwe rechten toe
+    if (rechtenData.length > 0) {
+        await window.supabase
+            .from('gebruikers_module_rechten')
+            .insert(rechtenData);
+    }
+}
     
     // ===== CHAUFFEURS LIJST LADEN =====
     async function laadChauffeurs() {
