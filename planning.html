@@ -3,8 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Planning</title>
-    <link rel="stylesheet" href="css/style.css?v=21">
+    <title>Project - Planning</title>
+    
+    <!-- ===== VOORKOM FLITS VAN LIGHT MODE ===== -->
+    <script>
+        // Dit script wordt direct uitgevoerd voordat de CSS wordt geladen
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                // Voorkom nog meer flits
+                document.documentElement.style.backgroundColor = '#0f0f1a';
+                document.documentElement.style.color = '#f0f0f0';
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="css/style.css">
     <!-- html2pdf voor PDF generatie -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <!-- SortableJS voor drag & drop -->
