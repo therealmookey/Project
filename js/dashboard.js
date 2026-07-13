@@ -398,13 +398,13 @@ async function laadOphalingAnalyse() {
         const vandaag = new Date();
         vandaag.setHours(0, 0, 0, 0);
         
-        // Filter op ziekenhuizen die binnen 5 dagen een ophaling nodig hebben
+        // Filter op ziekenhuizen die binnen 7 dagen een ophaling nodig hebben
         const binnenkort = data.filter(item => {
             if (!item.verwachte_volgende) return false;
             const verwachteDatum = new Date(item.verwachte_volgende);
             verwachteDatum.setHours(0, 0, 0, 0);
             const dagenVerschil = Math.ceil((verwachteDatum - vandaag) / (1000 * 60 * 60 * 24));
-            return dagenVerschil >= 0 && dagenVerschil <= 5;
+            return dagenVerschil >= 0 && dagenVerschil <= 7;
         });
         
         // Ook items die al te laat zijn
