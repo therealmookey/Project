@@ -362,7 +362,7 @@ async function saveModuleRechten(userId) {
     
     try {
         // Gebruik de service_role key voor de update (veiligste manier)
-        const serviceRoleKey = 'JOUW_SERVICE_ROLE_KEY_HIER'; // Vervang met jouw key!
+        const serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjZHFjZ3Zpb3NzbXJ2bGdzaXFkIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTUwMTM4MCwiZXhwIjoyMDk3MDc3MzgwfQ.9bU82TwQuc5yViZPQfVAgyzCOTpVsPxfrhlDnL3rlqk'; // Vervang met jouw key!
         const supabaseUrl = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
         
         // Verwijder bestaande rechten
