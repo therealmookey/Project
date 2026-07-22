@@ -509,6 +509,171 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+// ===== GRAFIEK FUNCTIES =====
+
+let intervalChartInstance = null;
+
+async function laadGrafiek() {
+    try {
+        const { data, error } = await window.supabase
+            .from('ophaling_analyse')
+            .select('instelling_naam, gemiddeld_interval, aantal_ophalingen, status')
+            .order('gemiddeld_interval', { ascending: true });
+        
+        if (error) {
+            console.error('Fout bij laden grafiek data:', error);
+            return;
+        }
+        
+        if (!data || data.length === 0) {
+            console.log('Geen data voor grafiek');
+            return;
+        }
+        
+        // Bereid data voor
+        const labels = data.map(item => {
+            // Verkort lange namen
+            let naam = item.instelling_naam;
+            if (naam.length > 20) {
+                naam = naam.substring(0, 20) + '...';
+            }
+            return naam;
+        });
+        
+        const gemiddelden = data.map(item => item.gemiddeld_interval || 0);
+        const aantallen = data.map(item => item.aantal_ophalingen || 0);
+        const statussen = data.map(item => item.status);
+        
+        // Kleuren op basis van status
+        const kleuren = statussen.map(status => {
+            if (status === 'Te laat') return '#dc3545';
+            if (status === 'Bijna te laat') return '#ffc107';
+            if (status === 'Onvoldoende data') return '#6c757d';
+            return '#28a745'; // Op schema
+        });
+        
+        const borderKleuren = kleuren.map(c => c);
+        
+        // Teken de grafiek
+        const ctx = document.getElementById('intervalChart').getContext('2d');
+        
+        // Vernietig bestaande grafiek als die er is
+        if (intervalChartInstance) {
+            intervalChartInstance.destroy();
+        }
+        
+        intervalChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Gemiddeld interval (dagen)',
+                    data: gemiddelden,
+                    backgroundColor: kleuren.map(c => c + '80'), // 50% transparantie
+                    borderColor: kleuren,
+                    borderWidth: 2,
+                    borderRadius: 4,
+                    barPercentage: 0.7
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            font: {
+                                size: 12,
+                                weight: '500'
+                            },
+                            padding: 16,
+                            generateLabels: function(chart) {
+                                return [
+                                    { text: '🟢 Op schema', fillStyle: '#28a745', strokeStyle: '#28a745' },
+                                    { text: '🟡 Bijna te laat', fillStyle: '#ffc107', strokeStyle: '#ffc107' },
+                                    { text: '🔴 Te laat', fillStyle: '#dc3545', strokeStyle: '#dc3545' },
+                                    { text: '⚪ Onvoldoende data', fillStyle: '#6c757d', strokeStyle: '#6c757d' }
+                                ];
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            afterBody: function(tooltipItems) {
+                                const index = tooltipItems[0].dataIndex;
+                                const item = data[index];
+                                return [
+                                    `Aantal ophalingen: ${item.aantal_ophalingen}`,
+                                    `Status: ${item.status}`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Gemiddeld aantal dagen',
+                            font: {
+                                size: 12,
+                                weight: '500'
+                            }
+                        },
+                        ticks: {
+                            stepSize: 7,
+                            callback: function(value) {
+                                return value + ' dagen';
+                            }
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 30,
+                            font: {
+                                size: 10
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        
+    } catch (err) {
+        console.error('Fout bij laden grafiek:', err);
+    }
+}
+
+// Update de initialisatie
+document.addEventListener('DOMContentLoaded', function() {
+    checkDashboardAuth();
+    
+    // Laad grafiek na een korte vertraging (zodat de DOM klaar is)
+    setTimeout(() => {
+        laadGrafiek();
+    }, 500);
+    
+    // Herlaad grafiek bij filter wijziging
+    const filterSelect = document.getElementById('voorspellingFilter');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', function() {
+            huidigeVoorspellingCutoff = parseInt(this.value);
+            laadOphalingAnalyse();
+            // Grafiek opnieuw laden (data verandert niet, maar we kunnen het doen voor consistentie)
+            // laadGrafiek();
+        });
+    }
+});
+
+// Laad grafiek ook na het wisselen van maand in de agenda
+// Voeg dit toe aan de bestaande agenda navigatie
+function refreshGrafiek() {
+    laadGrafiek();
+}
 
 function escapeHtml(text) {
     if (!text) return '';

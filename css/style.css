@@ -3005,3 +3005,60 @@ hr {
         min-width: 0;
     }
 }
+/* ===== GRAFIEK ===== */
+.grafiek-section {
+    background: white;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-top: 2rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.grafiek-header {
+    margin-bottom: 1rem;
+}
+
+.grafiek-header h3 {
+    color: #2c7da0;
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.grafiek-header p {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+.grafiek-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* ===== DARK MODE ===== */
+[data-theme="dark"] .grafiek-section {
+    background: #1a1a2e;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .grafiek-header h3 {
+    color: #5a9ab0;
+}
+
+[data-theme="dark"] .grafiek-header p {
+    color: #a0a0a0;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .grafiek-container {
+        height: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    .grafiek-container {
+        height: 200px;
+    }
+}
