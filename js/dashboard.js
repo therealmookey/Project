@@ -4,7 +4,7 @@ let huidigeAgendaDatum = new Date();
 let agendaData = [];
 let agendaTooltipTimeout = null;
 let intervalChartInstance = null;
-let huidigeVoorspellingCutoff = 14; // Standaard 14 dagen
+let huidigeVoorspellingCutoff = 7; // Standaard 7 dagen
 
 async function checkDashboardAuth() {
     if (typeof window.supabase === 'undefined') {
