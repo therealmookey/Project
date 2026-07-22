@@ -60,18 +60,13 @@ async function laadKPI() {
         
         const totaalGewicht = gewichtData?.reduce((sum, r) => sum + (r.gewicht || 0), 0) || 0;
         
+        // Gemiddeld gewicht per ophaling
+        const gemiddeldGewicht = totaalOphalingen > 0 ? totaalGewicht / totaalOphalingen : 0;
+        
         // Actieve ziekenhuizen
         const { count: ziekenhuizen } = await window.supabase
             .from('adressen')
             .select('*', { count: 'exact', head: true });
-        
-      // Totaal aantal tonnen opgehaald (uit ophaalregistraties)
-const { data: tonnenData } = await window.supabase
-    .from('ophaalregistraties')
-    .select('aantal_tonnen')
-    .eq('type', 'ophaling');
-
-const totaalTonnen = tonnenData?.reduce((sum, r) => sum + (r.aantal_tonnen || 0), 0) || 0;
         
         // Ritten deze week
         const vandaag = new Date();
@@ -104,8 +99,8 @@ const totaalTonnen = tonnenData?.reduce((sum, r) => sum + (r.aantal_tonnen || 0)
         // Update UI
         document.getElementById('kpiTotaalOphalingen').textContent = totaalOphalingen || 0;
         document.getElementById('kpiTotaalGewicht').textContent = totaalGewicht.toFixed(0);
+        document.getElementById('kpiGemiddeldGewicht').textContent = gemiddeldGewicht.toFixed(1);
         document.getElementById('kpiZiekenhuizen').textContent = ziekenhuizen || 0;
-        document.getElementById('kpiTonnen').textContent = totaalTonnen;
         document.getElementById('kpiRittenWeek').textContent = rittenWeek || 0;
         document.getElementById('kpiOpstartenMaand').textContent = opstartenMaand || 0;
         
@@ -293,7 +288,6 @@ async function laadVoorraadWaarschuwingen() {
     const container = document.getElementById('voorraadWaarschuwingen');
     
     try {
-        // Haal alle items op en filter in JavaScript
         const { data, error } = await window.supabase
             .from('stock_items')
             .select('*')
@@ -301,7 +295,6 @@ async function laadVoorraadWaarschuwingen() {
         
         if (error) throw error;
         
-        // Filter items die onder de minimum voorraad zitten
         const warnings = data ? data.filter(item => item.aantal < item.minimum_stock) : [];
         
         if (!warnings || warnings.length === 0) {
@@ -430,7 +423,6 @@ async function laadActiviteitenLog() {
     const container = document.getElementById('activiteitenLog');
     
     try {
-        // Haal de laatste 50 mutaties op
         const { data, error } = await window.supabase
             .from('stock_mutaties')
             .select(`
