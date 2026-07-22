@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Project</title>
+    
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.style.backgroundColor = '#0f0f1a';
+                document.documentElement.style.color = '#f0f0f0';
+            }
+        })();
+    </script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="navigatie-placeholder"></div>
+    
+    <main class="container">
+        <div class="page-header">
+            <h1>📊 Analytics Dashboard</h1>
+            <p>Overzicht van alle statistieken en rapportages</p>
+        </div>
+        
+        <!-- KPI Dashboard -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-icon">📦</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Totaal ophalingen</span>
+                    <span class="kpi-value" id="kpiTotaalOphalingen">-</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">⚖️</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Totaal gewicht (kg)</span>
+                    <span class="kpi-value" id="kpiTotaalGewicht">-</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">🏥</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Actieve ziekenhuizen</span>
+                    <span class="kpi-value" id="kpiZiekenhuizen">-</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">🛢️</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Totaal tonnen</span>
+                    <span class="kpi-value" id="kpiTonnen">-</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">📅</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Ritten deze week</span>
+                    <span class="kpi-value" id="kpiRittenWeek">-</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon">🔄</div>
+                <div class="kpi-content">
+                    <span class="kpi-label">Opstarten deze maand</span>
+                    <span class="kpi-value" id="kpiOpstartenMaand">-</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Grafieken -->
+        <div class="analytics-grid">
+            <div class="analytics-card full-width">
+                <h3>📈 Maandelijkse ophalingen trend</h3>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="analytics-grid two-col">
+            <div class="analytics-card">
+                <h3>🏥 Top 10 ziekenhuizen</h3>
+                <div id="topZiekenhuizen" class="analytics-list">
+                    <p>Laden...</p>
+                </div>
+            </div>
+            <div class="analytics-card">
+                <h3>⚠️ Voorraad waarschuwingen</h3>
+                <div id="voorraadWaarschuwingen" class="analytics-list">
+                    <p>Laden...</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="analytics-grid">
+            <div class="analytics-card full-width">
+                <h3>📊 Ziekenhuis frequentie (gemiddeld interval in dagen)</h3>
+                <div class="chart-container">
+                    <canvas id="frequentieChart"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <div class="analytics-grid">
+            <div class="analytics-card full-width">
+                <h3>📋 Activiteitenlog</h3>
+                <div id="activiteitenLog" class="analytics-log">
+                    <p>Laden...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/analytics.js"></script>
+</body>
+</html>

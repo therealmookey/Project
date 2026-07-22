@@ -13,7 +13,8 @@ const BESCHERMDE_PAGINAS = [
     'modules.html',
     'profiel.html',
     'registraties.html',
-    'stock.html'
+    'stock.html',
+    'analytics.html'
 ];
 
 // Check of de huidige pagina beschermd is
@@ -82,7 +83,7 @@ function toggleTheme(event) {
     localStorage.setItem('theme', newTheme);
 }
 
-// ===== NAVIGATIE FUNCTIES (aangepast) =====
+// ===== NAVIGATIE FUNCTIES =====
 
 async function laadNavigatie() {
     const placeholder = document.getElementById('navigatie-placeholder');
@@ -120,11 +121,19 @@ async function laadNavigatie() {
             adminLink.style.display = isAdmin ? 'inline-block' : 'none';
         }
         
+        // Analytics link (alleen voor admins)
+        const analyticsLink = document.getElementById('analyticsLink');
+        if (analyticsLink) {
+            const isAdmin = await heeftModuleToegang('admin');
+            analyticsLink.style.display = isAdmin ? 'inline-block' : 'none';
+        }
+        
     } catch (error) {
         console.error('Fout bij laden navigatie:', error);
         placeholder.innerHTML = '<nav style="background:#2c7da0; padding:10px; color:white;">Menu laden mislukt</nav>';
     }
 }
+
 // ===== MODULE FUNCTIES =====
 
 async function heeftModuleToegang(moduleSleutel) {
@@ -184,12 +193,22 @@ async function filterNavigatieModules() {
             const href = link.getAttribute('href');
             if (!href) continue;
             if (href === 'dashboard.html' || href === 'profiel.html') continue;
+            
+            // Admin link speciaal behandelen
             if (href === 'admin.html') {
                 const isAdmin = await heeftModuleToegang('admin');
                 link.style.display = isAdmin ? 'inline-block' : 'none';
                 continue;
             }
             
+            // Analytics link speciaal behandelen (alleen admins)
+            if (href === 'analytics.html') {
+                const isAdmin = await heeftModuleToegang('admin');
+                link.style.display = isAdmin ? 'inline-block' : 'none';
+                continue;
+            }
+            
+            // Bepaal module sleutel op basis van href
             let moduleSleutel = '';
             if (href.includes('adressen')) moduleSleutel = 'adressen';
             else if (href.includes('planning')) moduleSleutel = 'planning';
@@ -258,6 +277,36 @@ async function isAdmin() {
     } catch (err) {
         console.error('Admin check exception:', err);
         return false;
+    }
+}
+
+// ===== DASHBOARD FUNCTIES =====
+
+// Laad dashboard statistieken (als die er zijn)
+async function laadDashboardStatistieken() {
+    if (!window.supabase) return;
+    
+    try {
+        // Aantal adressen
+        const { count: adresCount } = await window.supabase
+            .from('adressen')
+            .select('*', { count: 'exact', head: true });
+        
+        // Aantal planningen vandaag
+        const vandaag = new Date().toISOString().split('T')[0];
+        const { count: planningCount } = await window.supabase
+            .from('planningen')
+            .select('*', { count: 'exact', head: true })
+            .eq('datum', vandaag);
+        
+        // Update dashboard elementen als ze bestaan
+        const adresCountEl = document.getElementById('dashboardAdresCount');
+        const planningCountEl = document.getElementById('dashboardPlanningCount');
+        if (adresCountEl) adresCountEl.textContent = adresCount || 0;
+        if (planningCountEl) planningCountEl.textContent = planningCount || 0;
+        
+    } catch (err) {
+        console.error('Fout bij laden dashboard statistieken:', err);
     }
 }
 
