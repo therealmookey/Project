@@ -292,21 +292,24 @@ async function laadVoorraadWaarschuwingen() {
     const container = document.getElementById('voorraadWaarschuwingen');
     
     try {
+        // Haal alle items op en filter in JavaScript
         const { data, error } = await window.supabase
             .from('stock_items')
             .select('*')
-            .lt('aantal', window.supabase.raw('minimum_stock'))
             .order('aantal', { ascending: true });
         
         if (error) throw error;
         
-        if (!data || data.length === 0) {
+        // Filter items die onder de minimum voorraad zitten
+        const warnings = data ? data.filter(item => item.aantal < item.minimum_stock) : [];
+        
+        if (!warnings || warnings.length === 0) {
             container.innerHTML = '<p>✅ Alle items zijn op voorraad!</p>';
             return;
         }
         
         let html = '<ul class="warning-list">';
-        data.forEach(item => {
+        warnings.forEach(item => {
             const tekort = item.minimum_stock - item.aantal;
             const urgency = tekort > 10 ? '🔴' : tekort > 5 ? '🟡' : '🟠';
             html += `
