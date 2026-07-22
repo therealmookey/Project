@@ -64,14 +64,26 @@
             </div>
             
             <!-- Voorspellingen -->
-            <div class="analyse-section">
-                <h3>📊 Ophaling Voorspelling</h3>
-                <p>Ziekenhuizen die binnen 7 dagen een ophaling nodig hebben:</p>
-                <div id="analyseLijst" class="analyse-lijst">
-                    <p>Laden...</p>
-                </div>
-            </div>
+<div class="analyse-section">
+    <div class="analyse-header">
+        <div>
+            <h3>📊 Ophaling Voorspelling</h3>
+            <p>Ziekenhuizen die binnenkort een ophaling nodig hebben</p>
         </div>
+        <div class="analyse-filter">
+            <label for="voorspellingFilter">📅 Toon binnen:</label>
+            <select id="voorspellingFilter" class="form-input">
+                <option value="7">7 dagen</option>
+                <option value="14">14 dagen</option>
+                <option value="21">21 dagen</option>
+                <option value="30">30 dagen</option>
+            </select>
+        </div>
+    </div>
+    <div id="analyseLijst" class="analyse-lijst">
+        <p>Laden...</p>
+    </div>
+</div>
         
         <div class="dashboard-grid">
             <div class="dashboard-card">

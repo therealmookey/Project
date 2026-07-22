@@ -373,6 +373,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ===== OPHALING ANALYSE =====
 
+let huidigeVoorspellingCutoff = 7; // Standaard 7 dagen
+
 async function laadOphalingAnalyse() {
     const analyseLijst = document.getElementById('analyseLijst');
     if (!analyseLijst) return;
@@ -398,16 +400,19 @@ async function laadOphalingAnalyse() {
         const vandaag = new Date();
         vandaag.setHours(0, 0, 0, 0);
         
-        // Filter op ziekenhuizen die binnen 7 dagen een ophaling nodig hebben
+        // Filter op basis van de geselecteerde cutoff
+        const cutoff = huidigeVoorspellingCutoff;
+        
+        // Items die binnen de cutoff vallen
         const binnenkort = data.filter(item => {
             if (!item.verwachte_volgende) return false;
             const verwachteDatum = new Date(item.verwachte_volgende);
             verwachteDatum.setHours(0, 0, 0, 0);
             const dagenVerschil = Math.ceil((verwachteDatum - vandaag) / (1000 * 60 * 60 * 24));
-            return dagenVerschil >= 0 && dagenVerschil <= 7;
+            return dagenVerschil >= 0 && dagenVerschil <= cutoff;
         });
         
-        // Ook items die al te laat zijn
+        // Ook items die al te laat zijn (altijd tonen)
         const teLaat = data.filter(item => item.status === 'Te laat');
         
         // Combineer en verwijder dubbelen
@@ -419,9 +424,8 @@ async function laadOphalingAnalyse() {
             }
         }
         
-        // ===== SORTEER OP STATUS (Te laat eerst) =====
+        // Sorteer op status (Te laat eerst)
         filteredData.sort((a, b) => {
-            // Status volgorde: Te laat (1), Bijna te laat (2), Binnenkort nodig (3), Op schema (4)
             const statusOrder = {
                 'Te laat': 1,
                 'Bijna te laat': 2,
@@ -435,11 +439,11 @@ async function laadOphalingAnalyse() {
         });
         
         if (filteredData.length === 0) {
-            analyseLijst.innerHTML = '<p>✅ Alle ziekenhuizen zijn op schema. Er zijn geen ophalingen nodig in de komende 5 dagen.</p>';
+            analyseLijst.innerHTML = `<p>✅ Alle ziekenhuizen zijn op schema. Er zijn geen ophalingen nodig in de komende ${cutoff} dagen.</p>`;
             return;
         }
         
-        let html = `<div class="analyse-totaal">⚠️ ${filteredData.length} ziekenhuis(sen) hebben binnenkort een ophaling nodig</div>`;
+        let html = `<div class="analyse-totaal">⚠️ ${filteredData.length} ziekenhuis(sen) hebben binnenkort een ophaling nodig (binnen ${cutoff} dagen)</div>`;
         
         for (const item of filteredData) {
             const statusClass = item.status === 'Te laat' ? 'status-danger' : 
@@ -452,16 +456,15 @@ async function laadOphalingAnalyse() {
             const verwachteDatum = new Date(item.verwachte_volgende);
             verwachteDatum.setHours(0, 0, 0, 0);
             const dagenVerschil = Math.ceil((verwachteDatum - vandaag) / (1000 * 60 * 60 * 24));
-            const isBinnenkort = dagenVerschil >= 0 && dagenVerschil <= 7;
+            const isBinnenkort = dagenVerschil >= 0 && dagenVerschil <= cutoff;
             
             let dagenText = '';
             if (item.status === 'Te laat') {
                 dagenText = `<span class="badge badge-danger">${item.dagen_sinds_laatste} dagen geleden</span>`;
-            } else if (isBinnenkort) {
+            } else if (isBinnenkort && dagenVerschil >= 0) {
                 dagenText = `<span class="badge badge-info">Over ${dagenVerschil} dagen verwacht</span>`;
             }
             
-            // Toon extra info: laatste gewicht en tonnen
             let extraInfo = '';
             if (item.laatste_gewicht) {
                 extraInfo = ` | Laatste: ${item.laatste_gewicht} kg (${item.laatste_tonnen || 1} ton)`;
@@ -495,6 +498,17 @@ async function laadOphalingAnalyse() {
         analyseLijst.innerHTML = `<p class="error">Fout bij laden: ${err.message}</p>`;
     }
 }
+
+// Filter event listener
+document.addEventListener('DOMContentLoaded', function() {
+    const filterSelect = document.getElementById('voorspellingFilter');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', function() {
+            huidigeVoorspellingCutoff = parseInt(this.value);
+            laadOphalingAnalyse();
+        });
+    }
+});
 
 function escapeHtml(text) {
     if (!text) return '';

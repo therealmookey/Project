@@ -2932,3 +2932,76 @@ hr {
         padding: 4px 8px;
     }
 }
+/* ===== ANALYSE HEADER MET FILTER ===== */
+.analyse-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.analyse-header h3 {
+    margin: 0;
+}
+
+.analyse-header p {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+.analyse-filter {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.analyse-filter label {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #495057;
+    font-weight: 500;
+}
+
+.analyse-filter select {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    background: white;
+    cursor: pointer;
+    margin: 0;
+    min-width: 120px;
+}
+
+/* ===== DARK MODE ===== */
+[data-theme="dark"] .analyse-filter label {
+    color: #d0d0d0;
+}
+
+[data-theme="dark"] .analyse-filter select {
+    background: #2a2a4e;
+    border-color: #4a4a6e;
+    color: #e0e0e0;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .analyse-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+    
+    .analyse-filter {
+        justify-content: stretch;
+    }
+    
+    .analyse-filter select {
+        flex: 1;
+        min-width: 0;
+    }
+}
