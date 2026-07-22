@@ -65,12 +65,13 @@ async function laadKPI() {
             .from('adressen')
             .select('*', { count: 'exact', head: true });
         
-        // Totaal tonnen in stock
-        const { data: stockData } = await window.supabase
-            .from('stock_items')
-            .select('aantal');
-        
-        const totaalTonnen = stockData?.reduce((sum, i) => sum + (i.aantal || 0), 0) || 0;
+      // Totaal aantal tonnen opgehaald (uit ophaalregistraties)
+const { data: tonnenData } = await window.supabase
+    .from('ophaalregistraties')
+    .select('aantal_tonnen')
+    .eq('type', 'ophaling');
+
+const totaalTonnen = tonnenData?.reduce((sum, r) => sum + (r.aantal_tonnen || 0), 0) || 0;
         
         // Ritten deze week
         const vandaag = new Date();
