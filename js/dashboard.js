@@ -3,6 +3,8 @@
 let huidigeAgendaDatum = new Date();
 let agendaData = [];
 let agendaTooltipTimeout = null;
+let intervalChartInstance = null;
+let huidigeVoorspellingCutoff = 14; // Standaard 14 dagen
 
 async function checkDashboardAuth() {
     if (typeof window.supabase === 'undefined') {
@@ -21,6 +23,7 @@ async function checkDashboardAuth() {
         toonGebruikersnaam(session.user.id);
         laadAgenda();
         laadOphalingAnalyse();
+        laadGrafiek();
     }
 }
 
@@ -369,11 +372,18 @@ document.addEventListener('DOMContentLoaded', function() {
             alert(`📊 Statistieken\n\n📍 Aantal adressen: ${adresCount || 0}\n📅 Aantal planningen: ${planningCount || 0}`);
         });
     }
+    
+    // Filter event listener
+    const filterSelect = document.getElementById('voorspellingFilter');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', function() {
+            huidigeVoorspellingCutoff = parseInt(this.value);
+            laadOphalingAnalyse();
+        });
+    }
 });
 
 // ===== OPHALING ANALYSE =====
-
-let huidigeVoorspellingCutoff = 7; // Standaard 7 dagen
 
 async function laadOphalingAnalyse() {
     const analyseLijst = document.getElementById('analyseLijst');
@@ -400,10 +410,8 @@ async function laadOphalingAnalyse() {
         const vandaag = new Date();
         vandaag.setHours(0, 0, 0, 0);
         
-        // Filter op basis van de geselecteerde cutoff
         const cutoff = huidigeVoorspellingCutoff;
         
-        // Items die binnen de cutoff vallen
         const binnenkort = data.filter(item => {
             if (!item.verwachte_volgende) return false;
             const verwachteDatum = new Date(item.verwachte_volgende);
@@ -412,10 +420,8 @@ async function laadOphalingAnalyse() {
             return dagenVerschil >= 0 && dagenVerschil <= cutoff;
         });
         
-        // Ook items die al te laat zijn (altijd tonen)
         const teLaat = data.filter(item => item.status === 'Te laat');
         
-        // Combineer en verwijder dubbelen
         const teLatenIds = teLaat.map(i => i.ziekenhuis_id);
         const filteredData = [...teLaat];
         for (const item of binnenkort) {
@@ -424,7 +430,6 @@ async function laadOphalingAnalyse() {
             }
         }
         
-        // Sorteer op status (Te laat eerst)
         filteredData.sort((a, b) => {
             const statusOrder = {
                 'Te laat': 1,
@@ -499,19 +504,7 @@ async function laadOphalingAnalyse() {
     }
 }
 
-// Filter event listener
-document.addEventListener('DOMContentLoaded', function() {
-    const filterSelect = document.getElementById('voorspellingFilter');
-    if (filterSelect) {
-        filterSelect.addEventListener('change', function() {
-            huidigeVoorspellingCutoff = parseInt(this.value);
-            laadOphalingAnalyse();
-        });
-    }
-});
 // ===== GRAFIEK FUNCTIES =====
-
-let intervalChartInstance = null;
 
 async function laadGrafiek() {
     try {
@@ -527,37 +520,39 @@ async function laadGrafiek() {
         
         if (!data || data.length === 0) {
             console.log('Geen data voor grafiek');
+            const container = document.getElementById('grafiekInfo');
+            if (container) container.textContent = 'Nog geen data beschikbaar voor grafiek';
             return;
+        }
+        
+        // Update info
+        const infoEl = document.getElementById('grafiekInfo');
+        if (infoEl) {
+            infoEl.textContent = `${data.length} ziekenhuizen - Gemiddeld aantal dagen tussen ophalingen`;
         }
         
         // Bereid data voor
         const labels = data.map(item => {
-            // Verkort lange namen
             let naam = item.instelling_naam;
-            if (naam.length > 20) {
-                naam = naam.substring(0, 20) + '...';
+            if (naam.length > 25) {
+                naam = naam.substring(0, 22) + '...';
             }
             return naam;
         });
         
         const gemiddelden = data.map(item => item.gemiddeld_interval || 0);
-        const aantallen = data.map(item => item.aantal_ophalingen || 0);
         const statussen = data.map(item => item.status);
         
         // Kleuren op basis van status
         const kleuren = statussen.map(status => {
             if (status === 'Te laat') return '#dc3545';
             if (status === 'Bijna te laat') return '#ffc107';
-            if (status === 'Onvoldoende data') return '#6c757d';
-            return '#28a745'; // Op schema
+            if (status === 'Onvoldoende data') return '#adb5bd';
+            return '#28a745';
         });
         
-        const borderKleuren = kleuren.map(c => c);
-        
-        // Teken de grafiek
         const ctx = document.getElementById('intervalChart').getContext('2d');
         
-        // Vernietig bestaande grafiek als die er is
         if (intervalChartInstance) {
             intervalChartInstance.destroy();
         }
@@ -569,37 +564,27 @@ async function laadGrafiek() {
                 datasets: [{
                     label: 'Gemiddeld interval (dagen)',
                     data: gemiddelden,
-                    backgroundColor: kleuren.map(c => c + '80'), // 50% transparantie
+                    backgroundColor: kleuren.map(c => c + 'CC'),
                     borderColor: kleuren,
-                    borderWidth: 2,
-                    borderRadius: 4,
-                    barPercentage: 0.7
+                    borderWidth: 1.5,
+                    borderRadius: 3,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8
                 }]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: true,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            font: {
-                                size: 12,
-                                weight: '500'
-                            },
-                            padding: 16,
-                            generateLabels: function(chart) {
-                                return [
-                                    { text: '🟢 Op schema', fillStyle: '#28a745', strokeStyle: '#28a745' },
-                                    { text: '🟡 Bijna te laat', fillStyle: '#ffc107', strokeStyle: '#ffc107' },
-                                    { text: '🔴 Te laat', fillStyle: '#dc3545', strokeStyle: '#dc3545' },
-                                    { text: '⚪ Onvoldoende data', fillStyle: '#6c757d', strokeStyle: '#6c757d' }
-                                ];
-                            }
-                        }
+                        display: false
                     },
                     tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#e0e0e0',
+                        cornerRadius: 6,
+                        padding: 10,
                         callbacks: {
                             afterBody: function(tooltipItems) {
                                 const index = tooltipItems[0].dataIndex;
@@ -615,27 +600,37 @@ async function laadGrafiek() {
                 scales: {
                     y: {
                         beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.06)',
+                            drawBorder: false
+                        },
                         title: {
                             display: true,
-                            text: 'Gemiddeld aantal dagen',
+                            text: 'Dagen',
                             font: {
-                                size: 12,
+                                size: 11,
                                 weight: '500'
                             }
                         },
                         ticks: {
+                            font: {
+                                size: 10
+                            },
                             stepSize: 7,
                             callback: function(value) {
-                                return value + ' dagen';
+                                return value + 'd';
                             }
                         }
                     },
                     x: {
+                        grid: {
+                            display: false
+                        },
                         ticks: {
                             maxRotation: 45,
                             minRotation: 30,
                             font: {
-                                size: 10
+                                size: 9
                             }
                         }
                     }
@@ -643,36 +638,34 @@ async function laadGrafiek() {
             }
         });
         
+        // Voeg legenda toe
+        const legendContainer = document.getElementById('grafiekLegend');
+        if (legendContainer) {
+            const statusColors = {
+                'Op schema': '#28a745',
+                'Bijna te laat': '#ffc107',
+                'Te laat': '#dc3545',
+                'Onvoldoende data': '#adb5bd'
+            };
+            
+            let legendHtml = '';
+            for (const [status, color] of Object.entries(statusColors)) {
+                const komtVoor = data.some(item => item.status === status);
+                if (komtVoor) {
+                    legendHtml += `
+                        <span class="grafiek-legend-item">
+                            <span class="dot" style="background:${color}"></span>
+                            ${status}
+                        </span>
+                    `;
+                }
+            }
+            legendContainer.innerHTML = legendHtml;
+        }
+        
     } catch (err) {
         console.error('Fout bij laden grafiek:', err);
     }
-}
-
-// Update de initialisatie
-document.addEventListener('DOMContentLoaded', function() {
-    checkDashboardAuth();
-    
-    // Laad grafiek na een korte vertraging (zodat de DOM klaar is)
-    setTimeout(() => {
-        laadGrafiek();
-    }, 500);
-    
-    // Herlaad grafiek bij filter wijziging
-    const filterSelect = document.getElementById('voorspellingFilter');
-    if (filterSelect) {
-        filterSelect.addEventListener('change', function() {
-            huidigeVoorspellingCutoff = parseInt(this.value);
-            laadOphalingAnalyse();
-            // Grafiek opnieuw laden (data verandert niet, maar we kunnen het doen voor consistentie)
-            // laadGrafiek();
-        });
-    }
-});
-
-// Laad grafiek ook na het wisselen van maand in de agenda
-// Voeg dit toe aan de bestaande agenda navigatie
-function refreshGrafiek() {
-    laadGrafiek();
 }
 
 function escapeHtml(text) {
@@ -682,7 +675,8 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Initialiseer
+// ===== INITIALISATIE =====
+
 document.addEventListener('DOMContentLoaded', function() {
     checkDashboardAuth();
 });
