@@ -3466,3 +3466,43 @@ hr {
         height: 350px;
     }
 }
+/* ===== FREQUENTIE CHART EXTRA GROOT ===== */
+.chart-container-extra-large {
+    height: 600px;
+    width: 100%;
+    min-height: 400px;
+}
+
+/* Zorg dat de chart container meegroeit */
+.analytics-card.full-width .chart-container-extra-large {
+    height: auto;
+    min-height: 500px;
+    max-height: 800px;
+}
+
+/* Dark mode */
+[data-theme="dark"] .chart-container-extra-large canvas {
+    background: #1a1a2e;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .chart-container-extra-large {
+        height: 500px;
+        min-height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .chart-container-extra-large {
+        height: 450px;
+        min-height: 350px;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-container-extra-large {
+        height: 400px;
+        min-height: 300px;
+    }
+}

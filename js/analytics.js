@@ -389,7 +389,7 @@ async function laadFrequentieChart() {
         const { data, error } = await window.supabase
             .from('ophaling_analyse')
             .select('instelling_naam, gemiddeld_interval, aantal_ophalingen, status')
-            .order('gemiddeld_interval', { ascending: true });
+            .order('instelling_naam', { ascending: true });
         
         if (error) throw error;
         
@@ -404,15 +404,8 @@ async function laadFrequentieChart() {
             countEl.textContent = `${data.length} ziekenhuizen`;
         }
         
-        // Verkort namen voor de grafiek
-        const labels = data.map(item => {
-            let naam = item.instelling_naam;
-            // Verkort lange namen
-            if (naam.length > 28) {
-                naam = naam.substring(0, 25) + '...';
-            }
-            return naam;
-        });
+        // Gebruik volledige namen (niet afkappen)
+        const labels = data.map(item => item.instelling_naam);
         
         const intervals = data.map(item => item.gemiddeld_interval || 0);
         const aantallen = data.map(item => item.aantal_ophalingen || 0);
@@ -444,8 +437,8 @@ async function laadFrequentieChart() {
                     borderColor: kleuren,
                     borderWidth: 1,
                     borderRadius: 2,
-                    barPercentage: 0.7,
-                    categoryPercentage: 0.9
+                    barPercentage: 0.8,
+                    categoryPercentage: 0.95
                 }]
             },
             options: {
@@ -457,11 +450,13 @@ async function laadFrequentieChart() {
                         display: false
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        backgroundColor: 'rgba(0,0,0,0.85)',
                         titleColor: '#fff',
                         bodyColor: '#e0e0e0',
                         cornerRadius: 6,
-                        padding: 10,
+                        padding: 12,
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 12 },
                         callbacks: {
                             afterBody: function(tooltipItems) {
                                 const index = tooltipItems[0].dataIndex;
@@ -478,17 +473,18 @@ async function laadFrequentieChart() {
                     x: {
                         beginAtZero: true,
                         grid: {
-                            color: 'rgba(0,0,0,0.05)',
+                            color: 'rgba(0,0,0,0.06)',
                             drawBorder: false
                         },
                         title: {
                             display: true,
                             text: 'Dagen',
-                            font: { size: 11 }
+                            font: { size: 12 }
                         },
                         ticks: {
                             font: { size: 10 },
-                            stepSize: 7
+                            stepSize: 7,
+                            maxTicksLimit: 15
                         }
                     },
                     y: {
@@ -497,16 +493,39 @@ async function laadFrequentieChart() {
                         },
                         ticks: {
                             font: { 
-                                size: 9,
+                                size: 8,
                                 weight: '400'
                             },
                             maxRotation: 0,
-                            minRotation: 0
+                            minRotation: 0,
+                            autoSkip: false,  // Zorgt dat ALLE labels worden getoond!
+                            callback: function(value, index) {
+                                const label = labels[index];
+                                // Verkort alleen als nodig (max 35 karakters)
+                                if (label && label.length > 35) {
+                                    return label.substring(0, 32) + '...';
+                                }
+                                return label;
+                            }
                         }
+                    }
+                },
+                // Zorg dat de grafiek hoog genoeg is voor alle items
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10
                     }
                 }
             }
         });
+        
+        // Forceer hertekenen met volledige hoogte
+        setTimeout(() => {
+            if (frequentieChartInstance) {
+                frequentieChartInstance.resize();
+            }
+        }, 100);
         
     } catch (err) {
         console.error('Fout bij laden frequentie chart:', err);
