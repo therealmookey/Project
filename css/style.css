@@ -1,5 +1,5 @@
 /* ============================================================
-   PROJECT - COMPLETE STIJLGIDS
+   PROJECT - COMPLETE STIJLGIDS (Opgeschoonde versie)
    ============================================================ */
 
 /* ===== 1. ALGEMENE STIJLEN ===== */
@@ -172,6 +172,23 @@ label {
     font-weight: 600;
     color: #2c7da0;
     font-size: 0.85rem;
+}
+
+.extra-info {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 1rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+}
+.extra-info:focus {
+    outline: none;
+    border-color: #2c7da0;
+    box-shadow: 0 0 0 2px rgba(44,125,160,0.2);
 }
 
 /* ===== 4. BERICHTEN ===== */
@@ -933,23 +950,6 @@ tbody tr:hover {
     max-width: 300px;
     white-space: normal;
     word-wrap: break-word;
-}
-
-.extra-info {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 1rem;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 1rem;
-    font-family: inherit;
-    resize: vertical;
-    box-sizing: border-box;
-}
-.extra-info:focus {
-    outline: none;
-    border-color: #2c7da0;
-    box-shadow: 0 0 0 2px rgba(44,125,160,0.2);
 }
 
 /* ===== 17. TABS ===== */
@@ -2932,6 +2932,7 @@ hr {
         padding: 4px 8px;
     }
 }
+
 /* ===== ANALYSE HEADER MET FILTER ===== */
 .analyse-header {
     display: flex;
@@ -3005,6 +3006,7 @@ hr {
         min-width: 0;
     }
 }
+
 /* ===== GRAFIEK ===== */
 .grafiek-section {
     background: white;
@@ -3109,6 +3111,7 @@ hr {
         font-size: 0.65rem;
     }
 }
+
 /* ===== ANALYTICS ===== */
 
 /* KPI Dashboard */
@@ -3423,6 +3426,7 @@ hr {
 [data-theme="dark"] .warning-stock {
     color: #a0a0a0;
 }
+
 /* ===== FREQUENTIE CHART GROOT ===== */
 .analytics-card-header {
     display: flex;
@@ -3466,6 +3470,7 @@ hr {
         height: 350px;
     }
 }
+
 /* ===== FREQUENTIE CHART EXTRA GROOT ===== */
 .chart-container-extra-large {
     height: 600px;
