@@ -412,24 +412,33 @@ async function laadOphalingAnalyse() {
         
         const cutoff = huidigeVoorspellingCutoff;
         
+        // ALTIJD tonen: Te laat en Bijna te laat (ongeacht cutoff)
+        const altijdTonen = data.filter(item => 
+            item.status === 'Te laat' || item.status === 'Bijna te laat'
+        );
+        
+        // Binnen de cutoff: Op schema en Onvoldoende data
         const binnenkort = data.filter(item => {
             if (!item.verwachte_volgende) return false;
+            // Sla over als al in altijdTonen zit
+            if (item.status === 'Te laat' || item.status === 'Bijna te laat') return false;
+            
             const verwachteDatum = new Date(item.verwachte_volgende);
             verwachteDatum.setHours(0, 0, 0, 0);
             const dagenVerschil = Math.ceil((verwachteDatum - vandaag) / (1000 * 60 * 60 * 24));
             return dagenVerschil >= 0 && dagenVerschil <= cutoff;
         });
         
-        const teLaat = data.filter(item => item.status === 'Te laat');
-        
-        const teLatenIds = teLaat.map(i => i.ziekenhuis_id);
-        const filteredData = [...teLaat];
+        // Combineer en verwijder dubbelen
+        const altijdIds = altijdTonen.map(i => i.ziekenhuis_id);
+        const filteredData = [...altijdTonen];
         for (const item of binnenkort) {
-            if (!teLatenIds.includes(item.ziekenhuis_id)) {
+            if (!altijdIds.includes(item.ziekenhuis_id)) {
                 filteredData.push(item);
             }
         }
         
+        // Sorteer op status (Te laat eerst, dan Bijna te laat)
         filteredData.sort((a, b) => {
             const statusOrder = {
                 'Te laat': 1,
@@ -466,6 +475,14 @@ async function laadOphalingAnalyse() {
             let dagenText = '';
             if (item.status === 'Te laat') {
                 dagenText = `<span class="badge badge-danger">${item.dagen_sinds_laatste} dagen geleden</span>`;
+            } else if (item.status === 'Bijna te laat') {
+                if (dagenVerschil < 0) {
+                    dagenText = `<span class="badge badge-warning">${Math.abs(dagenVerschil)} dagen te laat</span>`;
+                } else if (dagenVerschil <= 5) {
+                    dagenText = `<span class="badge badge-info">Over ${dagenVerschil} dagen verwacht</span>`;
+                } else {
+                    dagenText = `<span class="badge badge-info">Over ${dagenVerschil} dagen</span>`;
+                }
             } else if (isBinnenkort && dagenVerschil >= 0) {
                 dagenText = `<span class="badge badge-info">Over ${dagenVerschil} dagen verwacht</span>`;
             }
