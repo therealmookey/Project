@@ -3423,3 +3423,46 @@ hr {
 [data-theme="dark"] .warning-stock {
     color: #a0a0a0;
 }
+/* ===== FREQUENTIE CHART GROOT ===== */
+.analytics-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.analytics-card-header h3 {
+    margin: 0;
+}
+
+.analytics-count {
+    font-size: 0.8rem;
+    color: #6c757d;
+    background: #f8f9fa;
+    padding: 2px 12px;
+    border-radius: 12px;
+}
+
+.chart-container-large {
+    height: 500px;
+    width: 100%;
+}
+
+/* Dark mode */
+[data-theme="dark"] .analytics-count {
+    background: #2a2a4e;
+    color: #a0a0a0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .chart-container-large {
+        height: 400px;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-container-large {
+        height: 350px;
+    }
+}

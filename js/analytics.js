@@ -388,7 +388,7 @@ async function laadFrequentieChart() {
     try {
         const { data, error } = await window.supabase
             .from('ophaling_analyse')
-            .select('instelling_naam, gemiddeld_interval, aantal_ophalingen')
+            .select('instelling_naam, gemiddeld_interval, aantal_ophalingen, status')
             .order('gemiddeld_interval', { ascending: true });
         
         if (error) throw error;
@@ -398,18 +398,33 @@ async function laadFrequentieChart() {
             return;
         }
         
+        // Update count
+        const countEl = document.getElementById('frequentieCount');
+        if (countEl) {
+            countEl.textContent = `${data.length} ziekenhuizen`;
+        }
+        
+        // Verkort namen voor de grafiek
         const labels = data.map(item => {
             let naam = item.instelling_naam;
-            if (naam.length > 20) naam = naam.substring(0, 17) + '...';
+            // Verkort lange namen
+            if (naam.length > 28) {
+                naam = naam.substring(0, 25) + '...';
+            }
             return naam;
         });
         
         const intervals = data.map(item => item.gemiddeld_interval || 0);
+        const aantallen = data.map(item => item.aantal_ophalingen || 0);
+        const statussen = data.map(item => item.status || 'Geen data');
         
-        const kleuren = intervals.map(interval => {
-            if (interval <= 14) return '#28a745';
-            if (interval <= 21) return '#ffc107';
-            return '#dc3545';
+        // Kleuren op basis van status
+        const kleuren = statussen.map(status => {
+            if (status === 'Te laat') return '#dc3545';
+            if (status === 'Bijna te laat') return '#ffc107';
+            if (status === 'Onvoldoende data') return '#adb5bd';
+            if (status === 'Geen data') return '#e9ecef';
+            return '#28a745';
         });
         
         const ctx = document.getElementById('frequentieChart').getContext('2d');
@@ -427,9 +442,10 @@ async function laadFrequentieChart() {
                     data: intervals,
                     backgroundColor: kleuren.map(c => c + 'CC'),
                     borderColor: kleuren,
-                    borderWidth: 1.5,
-                    borderRadius: 3,
-                    barPercentage: 0.6
+                    borderWidth: 1,
+                    borderRadius: 2,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.9
                 }]
             },
             options: {
@@ -441,11 +457,19 @@ async function laadFrequentieChart() {
                         display: false
                     },
                     tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#e0e0e0',
+                        cornerRadius: 6,
+                        padding: 10,
                         callbacks: {
                             afterBody: function(tooltipItems) {
                                 const index = tooltipItems[0].dataIndex;
                                 const item = data[index];
-                                return `Aantal ophalingen: ${item.aantal_ophalingen}`;
+                                return [
+                                    `Aantal ophalingen: ${item.aantal_ophalingen}`,
+                                    `Status: ${item.status || 'Geen data'}`
+                                ];
                             }
                         }
                     }
@@ -453,15 +477,31 @@ async function laadFrequentieChart() {
                 scales: {
                     x: {
                         beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)',
+                            drawBorder: false
+                        },
                         title: {
                             display: true,
                             text: 'Dagen',
-                            font: { size: 10 }
+                            font: { size: 11 }
+                        },
+                        ticks: {
+                            font: { size: 10 },
+                            stepSize: 7
                         }
                     },
                     y: {
+                        grid: {
+                            display: false
+                        },
                         ticks: {
-                            font: { size: 9 }
+                            font: { 
+                                size: 9,
+                                weight: '400'
+                            },
+                            maxRotation: 0,
+                            minRotation: 0
                         }
                     }
                 }
