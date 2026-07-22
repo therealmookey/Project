@@ -5,6 +5,59 @@ console.log('analytics.js geladen');
 let trendChartInstance = null;
 let frequentieChartInstance = null;
 
+// ===== LOG FUNCTIES =====
+
+// Log een actie
+async function logActie(actie, module, entityId = null, entityNaam = null, details = null) {
+    try {
+        if (!window.supabase) return;
+        
+        const { data: { user } } = await window.supabase.auth.getUser();
+        if (!user) return;
+        
+        const logData = {
+            user_id: user.id,
+            actie: actie,
+            module: module,
+            entity_id: entityId ? String(entityId) : null,
+            entity_naam: entityNaam,
+            details: details
+        };
+        
+        const { error } = await window.supabase
+            .from('activiteitenlog')
+            .insert([logData]);
+        
+        if (error) console.error('Fout bij loggen:', error);
+        
+    } catch (err) {
+        console.error('Fout bij loggen:', err);
+    }
+}
+
+// Haal logs op
+async function haalLogs(limit = 100) {
+    try {
+        const { data, error } = await window.supabase
+            .from('activiteitenlog')
+            .select(`
+                *,
+                user:user_id (gebruikersnaam)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        
+        if (error) throw error;
+        return data || [];
+        
+    } catch (err) {
+        console.error('Fout bij ophalen logs:', err);
+        return [];
+    }
+}
+
+// ===== INIT =====
+
 document.addEventListener('DOMContentLoaded', async function() {
     
     if (!window.supabase) {
@@ -32,6 +85,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     console.log('✅ Admin toegang voor analytics');
+    
+    // Maak log functies globaal beschikbaar
+    window.logActie = logActie;
+    window.haalLogs = haalLogs;
     
     // Laad alle data
     await laadKPI();
@@ -332,7 +389,6 @@ async function laadFrequentieChart() {
         const { data, error } = await window.supabase
             .from('ophaling_analyse')
             .select('instelling_naam, gemiddeld_interval, aantal_ophalingen')
-            .gt('aantal_ophalingen', 1)
             .order('gemiddeld_interval', { ascending: true });
         
         if (error) throw error;
@@ -423,18 +479,9 @@ async function laadActiviteitenLog() {
     const container = document.getElementById('activiteitenLog');
     
     try {
-        const { data, error } = await window.supabase
-            .from('stock_mutaties')
-            .select(`
-                *,
-                item:item_id (item_code, omschrijving)
-            `)
-            .order('created_at', { ascending: false })
-            .limit(50);
+        const logs = await haalLogs(100);
         
-        if (error) throw error;
-        
-        if (!data || data.length === 0) {
+        if (!logs || logs.length === 0) {
             container.innerHTML = '<p>Geen activiteiten gevonden.</p>';
             return;
         }
@@ -444,33 +491,67 @@ async function laadActiviteitenLog() {
             <thead>
                 <tr>
                     <th>Datum</th>
-                    <th>Item</th>
-                    <th>Type</th>
-                    <th>Aantal</th>
-                    <th>Reden</th>
+                    <th>Gebruiker</th>
+                    <th>Module</th>
+                    <th>Actie</th>
+                    <th>Entity</th>
+                    <th>Details</th>
                 </tr>
             </thead>
             <tbody>
         `;
         
-        const typeLabels = {
-            'toevoeging': '✅ Toevoeging',
-            'afname': '❌ Afname',
-            'correctie': '🔄 Correctie'
+        const actieIcons = {
+            'toegevoegd': '➕',
+            'bijgewerkt': '✏️',
+            'verwijderd': '🗑️',
+            'voorraad aangepast': '📦',
+            'ingelogd': '🔐',
+            'uitgelogd': '🚪'
         };
         
-        data.forEach(log => {
+        const moduleIcons = {
+            'adressen': '📍',
+            'stock': '📦',
+            'planning': '📅',
+            'gebruikers': '👤',
+            'registraties': '📋',
+            'admin': '👑'
+        };
+        
+        logs.forEach(log => {
             const datum = new Date(log.created_at).toLocaleString('nl-NL');
-            const type = typeLabels[log.type] || log.type;
-            const itemName = log.item?.item_code ? `${log.item.item_code} - ${log.item.omschrijving}` : 'Onbekend';
+            const actieIcon = actieIcons[log.actie] || '📌';
+            const moduleIcon = moduleIcons[log.module] || '📂';
+            const gebruiker = log.user?.gebruikersnaam || log.gebruikersnaam || 'Onbekend';
+            
+            let detailsHtml = '-';
+            if (log.details) {
+                try {
+                    const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                    detailsHtml = Object.entries(details)
+                        .filter(([key]) => !['user_id', 'created_at', 'id'].includes(key))
+                        .map(([key, value]) => {
+                            if (typeof value === 'object') return `${key}: ${JSON.stringify(value).substring(0, 30)}...`;
+                            return `${key}: ${value}`;
+                        })
+                        .join(', ');
+                    if (detailsHtml.length > 100) detailsHtml = detailsHtml.substring(0, 100) + '...';
+                } catch(e) {
+                    detailsHtml = String(log.details).substring(0, 100);
+                }
+            }
+            
+            const entityDisplay = log.entity_naam || log.entity_id || '-';
             
             html += `
                 <tr>
-                    <td>${datum}</td>
-                    <td>${escapeHtml(itemName)}</td>
-                    <td>${type}</td>
-                    <td>${log.aantal}</td>
-                    <td>${escapeHtml(log.reden || '-')}</td>
+                    <td style="font-size:0.8rem;">${datum}</td>
+                    <td><strong>${escapeHtml(gebruiker)}</strong></td>
+                    <td>${moduleIcon} ${escapeHtml(log.module)}</td>
+                    <td>${actieIcon} ${escapeHtml(log.actie)}</td>
+                    <td>${escapeHtml(entityDisplay)}</td>
+                    <td style="font-size:0.75rem;color:#6c757d;">${escapeHtml(detailsHtml)}</td>
                 </tr>
             `;
         });
