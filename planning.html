@@ -7,12 +7,10 @@
     
     <!-- ===== VOORKOM FLITS VAN LIGHT MODE ===== -->
     <script>
-        // Dit script wordt direct uitgevoerd voordat de CSS wordt geladen
         (function() {
             const theme = localStorage.getItem('theme');
             if (theme === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
-                // Voorkom nog meer flits
                 document.documentElement.style.backgroundColor = '#0f0f1a';
                 document.documentElement.style.color = '#f0f0f0';
             }
@@ -20,8 +18,10 @@
     </script>
     
     <link rel="stylesheet" href="css/style.css">
+    
     <!-- html2pdf voor PDF generatie -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
     <!-- SortableJS voor drag & drop -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
@@ -35,7 +35,7 @@
         </div>
         
         <!-- Alle planningen in één lijst -->
-        <div id="planningLijst" class="planning-lijst sortable-list">
+        <div id="planningLijst" class="planning-lijst">
             <p>Laden...</p>
         </div>
     </main>
@@ -80,34 +80,17 @@
         </div>
     </div>
     
-    <!-- WhatsApp popup -->
-    <div id="whatsappPopup" class="popup">
-        <div class="popup-content whatsapp-popup">
-            <h3>📱 Stuur route naar chauffeur</h3>
-            
-            <div class="route-bericht">
-                <h4>📝 WhatsApp bericht</h4>
-                <textarea id="whatsappBericht" rows="12" readonly style="width:100%; padding:10px; border-radius:8px; font-family:monospace; font-size:12px;"></textarea>
-            </div>
-            
-            <div class="route-actions">
-                <button id="sendWhatsAppBtn" class="btn btn-primary">📱 Verstuur via WhatsApp</button>
-                <button id="copyBerichtBtn" class="btn btn-secondary">📋 Kopieer bericht</button>
-                <button id="closeWhatsappPopup" class="btn btn-secondary">Sluiten</button>
-            </div>
-        </div>
-    </div>
     <!-- ===== SCRIPTS ===== -->
-<!-- 1. Supabase CDN -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- 2. Configuratie -->
-<script src="js/config.js"></script>
-
-<!-- 3. MAIN (als module) - laadt navigatie, thema, versie -->
-<script type="module" src="js/main.js"></script>
-
-<!-- 4. Admin specifiek (als module) -->
-<script type="module" src="js/planning.js"></script>
+    <!-- 1. Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 2. Configuratie -->
+    <script src="js/config.js"></script>
+    
+    <!-- 3. MAIN (als module) - laadt navigatie, thema, versie -->
+    <script type="module" src="js/main.js"></script>
+    
+    <!-- 4. Planning specifiek (als module) -->
+    <script type="module" src="js/planning.js"></script>
 </body>
 </html>

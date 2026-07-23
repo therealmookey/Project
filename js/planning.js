@@ -228,76 +228,92 @@ function toonPlanning(planningen) {
     setTimeout(() => initialiseerSortable(), 300);
 }
 
-// ===== SORTABLE INITIALISATIE (GE-FIXED) =====
+// ===== SORTABLE INITIALISATIE (WERKENDE VERSIE) =====
 function initialiseerSortable() {
-    // Zoek alleen de planning items, niet de hele container
-    const items = document.querySelectorAll('.planning-item');
-    if (!items || items.length === 0) {
-        console.warn('⚠️ Geen planning items gevonden voor sortable');
-        return;
-    }
-    
+    // Controleer of Sortable beschikbaar is
     if (typeof Sortable === 'undefined') {
-        console.warn('⚠️ SortableJS niet geladen');
+        console.warn('⚠️ SortableJS niet geladen. Controleer de script tag in planning.html');
         return;
     }
     
-    // We moeten de items individueel maken
-    // Zet de planning items in een aparte container
-    const container = document.querySelector('.sortable-list');
-    if (!container) {
-        console.warn('⚠️ Geen sortable container gevonden');
+    // Zoek alle sortable containers
+    const containers = document.querySelectorAll('.sortable-list');
+    if (!containers || containers.length === 0) {
+        console.warn('⚠️ Geen sortable containers gevonden');
         return;
     }
     
-    try {
-        // Maak een nieuwe Sortable op de container, maar alleen voor de items
-        const sortable = new Sortable(container, {
-            handle: '.drag-handle',
-            animation: 150,
-            ghostClass: 'sortable-ghost',
-            chosenClass: 'sortable-chosen',
-            dragClass: 'sortable-drag',
-            // Filter: geen items uitsluiten, maar we zorgen dat alleen items worden gesleept
-            filter: '.datum-header, .datum-header *',
-            preventOnFilter: false,
-            // Zorg dat alleen de planning items worden gesleept
-            draggable: '.planning-item',
-            // Zorg dat de datum headers blijven staan
-            onStart: function(evt) {
-                console.log('🔄 Sorteren gestart voor item:', evt.item.dataset.id);
-            },
-            onEnd: async function(evt) {
-                console.log('🔄 Sorteren voltooid!');
-                const items = container.querySelectorAll('.planning-item');
-                const updates = [];
-                
-                items.forEach((item, index) => {
-                    const id = parseInt(item.dataset.id);
-                    if (id) {
-                        updates.push({ id: id, volgorde: index });
-                    }
-                });
-                
-                try {
-                    for (const update of updates) {
-                        await supabase
-                            .from('planningen')
-                            .update({ dag_volgorde: update.volgorde })
-                            .eq('id', update.id);
-                    }
-                    showToast('✅ Volgorde opgeslagen!', 'success');
-                } catch (err) {
-                    console.error('Fout bij opslaan volgorde:', err);
-                    showToast('❌ Fout bij opslaan volgorde: ' + err.message, 'error');
-                }
+    console.log(`🔄 ${containers.length} sortable containers gevonden`);
+    
+    containers.forEach((container, index) => {
+        try {
+            // Vernietig bestaande Sortable instantie als die er is
+            if (container._sortable) {
+                container._sortable.destroy();
             }
-        });
-        
-        console.log('✅ Sortable geïnitialiseerd!');
-    } catch (err) {
-        console.error('Fout bij initialiseren sortable:', err);
-    }
+            
+            const sortable = new Sortable(container, {
+                // Alleen items met deze class zijn sleepbaar
+                draggable: '.planning-item',
+                // Alleen de drag-handle is het sleep-punt
+                handle: '.drag-handle',
+                // Animatie snelheid
+                animation: 150,
+                // Classes voor visuele feedback
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                // Datum headers mogen niet worden verplaatst
+                filter: '.datum-header',
+                preventOnFilter: false,
+                // Zorg dat items binnen dezelfde container blijven
+                group: 'planning',
+                // Toon een vertraging om klikken te onderscheiden van slepen
+                delay: 0,
+                // Toon een placeholder
+                forceFallback: false,
+                // Callback wanneer sorteren start
+                onStart: function(evt) {
+                    console.log('🔄 Sorteren gestart voor item:', evt.item.dataset.id);
+                },
+                // Callback wanneer sorteren eindigt
+                onEnd: async function(evt) {
+                    console.log('🔄 Sorteren voltooid voor item:', evt.item.dataset.id);
+                    
+                    // Haal alle items in de container op
+                    const items = container.querySelectorAll('.planning-item');
+                    const updates = [];
+                    
+                    items.forEach((item, index) => {
+                        const id = parseInt(item.dataset.id);
+                        if (id) {
+                            updates.push({ id: id, volgorde: index });
+                        }
+                    });
+                    
+                    // Update de volgorde in de database
+                    try {
+                        for (const update of updates) {
+                            await supabase
+                                .from('planningen')
+                                .update({ dag_volgorde: update.volgorde })
+                                .eq('id', update.id);
+                        }
+                        showToast('✅ Volgorde opgeslagen!', 'success');
+                    } catch (err) {
+                        console.error('Fout bij opslaan volgorde:', err);
+                        showToast('❌ Fout bij opslaan volgorde: ' + err.message, 'error');
+                    }
+                }
+            });
+            
+            // Bewaar de Sortable instantie voor later gebruik
+            container._sortable = sortable;
+            console.log(`✅ Sortable geïnitialiseerd voor container ${index + 1}`);
+        } catch (err) {
+            console.error(`Fout bij initialiseren sortable container ${index + 1}:`, err);
+        }
+    });
 }
 
 // ===== PLANNINGEN LADEN =====
