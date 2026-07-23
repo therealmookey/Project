@@ -52,7 +52,12 @@ async function laadModules() {
 
 // ===== MODULES TONEN (ALLE MODULES OVERZICHT) =====
 function toonModules(modules) {
-    if (!modulesLijst) return;
+    console.log('📋 toonModules aangeroepen, modulesLijst:', modulesLijst);
+    
+    if (!modulesLijst) {
+        console.error('❌ modulesLijst element niet gevonden!');
+        return;
+    }
     
     if (!modules || modules.length === 0) {
         modulesLijst.innerHTML = '<p>Geen modules gevonden.</p>';
@@ -110,6 +115,7 @@ function toonModules(modules) {
     `;
     
     modulesLijst.innerHTML = html;
+    console.log('✅ Modules weergegeven in tabModules:', modules.length);
 }
 
 // ===== GEBRUIKERS LADEN (MET RECHTEN) =====
@@ -362,6 +368,56 @@ function resetUserFilter() {
     laadGebruikersMetRechten();
 }
 
+// ===== TAB FUNCTIES =====
+function initTabs() {
+    console.log('🔄 Tabs initialiseren...');
+    
+    const tabs = document.querySelectorAll('.module-tabs .tab-btn');
+    console.log('📋 Aantal tabs gevonden:', tabs.length);
+    
+    tabs.forEach(btn => {
+        btn.addEventListener('click', function() {
+            console.log('🔘 Tab geklikt:', this.dataset.tab);
+            
+            // Verwijder active class van alle tabs
+            document.querySelectorAll('.module-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.module-tab').forEach(t => t.classList.remove('active'));
+            
+            // Voeg active class toe aan geklikte tab
+            this.classList.add('active');
+            const tabId = this.dataset.tab;
+            const tabContent = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if (tabContent) {
+                tabContent.classList.add('active');
+                console.log('✅ Tab content geactiveerd:', tabId);
+            } else {
+                console.error('❌ Tab content niet gevonden:', 'tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            }
+        });
+    });
+    
+    // Zorg dat de eerste tab actief is
+    const firstTab = document.querySelector('.module-tabs .tab-btn.active');
+    if (firstTab) {
+        const tabId = firstTab.dataset.tab;
+        const tabContent = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+        if (tabContent) {
+            tabContent.classList.add('active');
+        }
+    } else {
+        // Fallback: activeer de eerste tab
+        const firstBtn = document.querySelector('.module-tabs .tab-btn');
+        if (firstBtn) {
+            firstBtn.classList.add('active');
+            const tabId = firstBtn.dataset.tab;
+            const tabContent = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
+            if (tabContent) {
+                tabContent.classList.add('active');
+            }
+        }
+    }
+}
+
 // ===== INITIALISATIE =====
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -374,6 +430,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         return;
     }
     console.log('✅ Admin toegang verleend');
+    
+    // Initialiseer tabs
+    initTabs();
     
     // Laad data
     await laadModules();
@@ -415,4 +474,3 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 console.log('✅ modules.js geladen!');
-console.log('✅ Modules weergegeven in tabModules:', modules.length);
