@@ -115,8 +115,9 @@ export function addThemeToggle() {
     initTheme();
 }
 
-// ===== GEEN updateVersion AANROEP MEER =====
-// We hebben de updateVersion verwijderd om dubbele meldingen te voorkomen
+// Update de versie naar stap 3
+import { updateVersion } from './version.js';
+updateVersion(3, 'Theme Module', '2.1.0');
 
 // ===== EXPORT =====
 export default {
