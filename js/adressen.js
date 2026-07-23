@@ -2,11 +2,13 @@
 // ADRESSEN - Adressen pagina (adressen.html)
 // ============================================================
 
+console.log('🚀 adressen.js wordt geladen...');
+
 import { requireAuth } from './core/auth.js';
 import { showToast, escapeHtml } from './core/utils.js';
 import { supabase } from './core/supabase.js';
 
-console.log('adressen.js geladen');
+console.log('✅ Imports geladen!');
 
 // ===== STATE =====
 let alleAdressen = [];
@@ -23,6 +25,12 @@ const popupTitle = document.getElementById('popupTitle');
 const searchInput = document.getElementById('searchInput');
 const clearSearchBtn = document.getElementById('clearSearchBtn');
 
+console.log('✅ DOM elementen gevonden:', {
+    adressenLijst: !!adressenLijst,
+    addAddressBtn: !!addAddressBtn,
+    addressPopup: !!addressPopup
+});
+
 // ===== HULPFUNCTIES =====
 function getValue(id) {
     const el = document.getElementById(id);
@@ -37,7 +45,12 @@ function setValue(id, value) {
 // ===== ADRESSEN FUNCTIES =====
 
 function toonAdressen(adressen) {
-    if (!adressenLijst) return;
+    console.log('📋 toonAdressen aangeroepen met', adressen?.length || 0, 'adressen');
+    
+    if (!adressenLijst) {
+        console.error('❌ adressenLijst element niet gevonden!');
+        return;
+    }
     
     if (!adressen || adressen.length === 0) {
         adressenLijst.innerHTML = '<p>Geen adressen gevonden. Klik op "+ Nieuw adres" om er een toe te voegen.</p>';
@@ -112,6 +125,8 @@ function toonAdressen(adressen) {
     document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', () => verwijderAdres(btn.dataset.id));
     });
+    
+    console.log('✅ Adressen weergegeven!');
 }
 
 function filterAdressen(zoekterm) {
@@ -133,24 +148,38 @@ function filterAdressen(zoekterm) {
 }
 
 async function laadAdressen() {
-    if (!adressenLijst) return;
+    console.log('📋 laadAdressen aangeroepen...');
+    
+    if (!adressenLijst) {
+        console.error('❌ adressenLijst element niet gevonden!');
+        return;
+    }
+    
     adressenLijst.innerHTML = '<p>Bezig met laden...</p>';
     
     try {
+        console.log('📡 Ophalen adressen van Supabase...');
+        
         const { data, error } = await supabase
             .from('adressen')
             .select('*')
             .order('instelling_naam');
         
         if (error) {
+            console.error('❌ Supabase fout:', error);
             adressenLijst.innerHTML = `<p class="error">Fout: ${error.message}</p>`;
             return;
         }
         
+        console.log('📋 Aantal adressen ontvangen:', data?.length || 0);
+        
         alleAdressen = data || [];
         const gefilterdeAdressen = filterAdressen(huidigeZoekterm);
         toonAdressen(gefilterdeAdressen);
+        
+        console.log('✅ Adressen geladen!');
     } catch (err) {
+        console.error('❌ Fout bij laden adressen:', err);
         adressenLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
     }
 }
@@ -248,15 +277,28 @@ async function saveAddress() {
 
 // ===== INITIALISATIE =====
 
+console.log('🔄 Initialisatie gestart...');
+
 document.addEventListener('DOMContentLoaded', async function() {
+    console.log('🔄 DOMContentLoaded event triggered');
+    
     // Controleer of gebruiker is ingelogd en goedgekeurd
+    console.log('🔐 Auth check...');
     const auth = await requireAuth('index.html');
-    if (!auth.isAuthenticated) return;
+    console.log('🔐 Auth result:', auth);
+    
+    if (!auth.isAuthenticated) {
+        console.warn('⚠️ Niet ingelogd, redirect...');
+        return;
+    }
+    
+    console.log('✅ Ingelogd als:', auth.user?.email);
     
     // Laad adressen
-    laadAdressen();
+    await laadAdressen();
     
     // ===== EVENT LISTENERS =====
+    console.log('🔄 Event listeners toevoegen...');
     
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
@@ -264,6 +306,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             const gefilterdeAdressen = filterAdressen(huidigeZoekterm);
             toonAdressen(gefilterdeAdressen);
         });
+        console.log('✅ Search input listener toegevoegd');
     }
     
     if (clearSearchBtn) {
@@ -273,6 +316,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             toonAdressen(alleAdressen);
             searchInput.focus();
         });
+        console.log('✅ Clear search button listener toegevoegd');
     }
     
     if (addAddressBtn) {
@@ -289,16 +333,19 @@ document.addEventListener('DOMContentLoaded', async function() {
             setValue('extra_info', '');
             addressPopup.style.display = 'flex';
         });
+        console.log('✅ Add address button listener toegevoegd');
     }
     
     if (saveAddressBtn) {
         saveAddressBtn.addEventListener('click', saveAddress);
+        console.log('✅ Save address button listener toegevoegd');
     }
     
     if (closeAddressPopup) {
         closeAddressPopup.addEventListener('click', () => {
             addressPopup.style.display = 'none';
         });
+        console.log('✅ Close popup button listener toegevoegd');
     }
     
     window.addEventListener('click', (e) => {
@@ -306,4 +353,13 @@ document.addEventListener('DOMContentLoaded', async function() {
             addressPopup.style.display = 'none';
         }
     });
+    
+    console.log('✅ Adressen pagina geïnitialiseerd!');
 });
+
+// Als DOM al geladen is
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    console.log('🔄 DOM is al geladen, trigger direct...');
+    // We moeten de event listener opnieuw triggeren
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+}
