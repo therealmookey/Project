@@ -73,7 +73,6 @@ async function laadAdressen() {
         
         alleAdressen = data || [];
         
-        // Vul de ziekenhuis select
         const select = document.getElementById('ziekenhuisSelect');
         if (select) {
             select.innerHTML = '<option value="">Kies een ziekenhuis...</option>';
@@ -91,17 +90,40 @@ async function laadAdressen() {
     }
 }
 
-// ===== COMBINATIES LADEN =====
+// ===== COMBINATIES LADEN (ALLEEN ECHTE COMBINATIES) =====
 async function laadCombinaties() {
     try {
-        const { data, error } = await supabase
+        // Haal alle items op die een combinatie zijn
+        // Een item is een combinatie als het voorkomt in combinatie_componenten als combinatie_id
+        const { data: combinatieIds, error: idsError } = await supabase
+            .from('combinatie_componenten')
+            .select('combinatie_id');
+        
+        if (idsError) throw idsError;
+        
+        // Verzamel unieke combinatie IDs
+        const uniqueIds = [...new Set(combinatieIds.map(c => c.combinatie_id))];
+        
+        if (uniqueIds.length === 0) {
+            // Geen combinaties gevonden
+            const select = document.getElementById('combinatieSelect');
+            if (select) {
+                select.innerHTML = '<option value="">Geen combinaties beschikbaar</option>';
+            }
+            console.log('📋 Geen combinaties gevonden');
+            return;
+        }
+        
+        // Haal de details van deze combinaties op
+        const { data: combinaties, error: combError } = await supabase
             .from('stock_items')
             .select('id, item_code, omschrijving')
-            .order('omschrijving');
+            .in('id', uniqueIds)
+            .order('item_code');
         
-        if (error) throw error;
+        if (combError) throw combError;
         
-        alleCombinaties = data || [];
+        alleCombinaties = combinaties || [];
         
         // Vul de combinatie select
         const select = document.getElementById('combinatieSelect');
@@ -121,21 +143,6 @@ async function laadCombinaties() {
     }
 }
 
-// ===== HULPFUNCTIE: Huidige gefilterde data ophalen =====
-function getHuidigeGefilterdeData() {
-    let filteredData = alleRegistraties;
-    
-    // Filter op ziekenhuis naam
-    if (searchZiekenhuis && searchZiekenhuis.value) {
-        const term = searchZiekenhuis.value.toLowerCase();
-        filteredData = filteredData.filter(reg => 
-            reg.ziekenhuis?.instelling_naam?.toLowerCase().includes(term)
-        );
-    }
-    
-    return filteredData;
-}
-
 // ===== REGISTRATIES LADEN =====
 async function laadRegistraties() {
     if (!registratiesLijst) return;
@@ -152,7 +159,6 @@ async function laadRegistraties() {
             `)
             .order('registratiedatum', { ascending: false });
         
-        // Filters toepassen
         if (filterDatumVanaf && filterDatumVanaf.value) {
             query = query.gte('registratiedatum', filterDatumVanaf.value);
         }
@@ -179,11 +185,10 @@ async function laadRegistraties() {
     }
 }
 
-// ===== REGISTRATIES TONEN (MET TOTAALOVERZICHT) =====
+// ===== REGISTRATIES TONEN =====
 function toonRegistraties(registraties) {
     if (!registratiesLijst) return;
     
-    // Pas client-side filtering toe voor de weergave
     let filteredData = registraties;
     if (searchZiekenhuis && searchZiekenhuis.value) {
         const term = searchZiekenhuis.value.toLowerCase();
@@ -192,111 +197,61 @@ function toonRegistraties(registraties) {
         );
     }
     
-    // ===== BEREKEN TOTAALOVERZICHT =====
-    const ophalingen = filteredData.filter(reg => reg.type === 'ophaling');
-    const opstarten = filteredData.filter(reg => reg.type === 'opstart');
+    if (!filteredData || filteredData.length === 0) {
+        registratiesLijst.innerHTML = '<p>Geen registraties gevonden.</p>';
+        return;
+    }
     
-    const totaalAantal = filteredData.length;
-    const totaalOphalingen = ophalingen.length;
-    const totaalOpstarten = opstarten.length;
-    const totaalGewicht = ophalingen.reduce((sum, reg) => sum + (reg.gewicht || 0), 0);
-    const gemiddeldGewicht = totaalOphalingen > 0 ? totaalGewicht / totaalOphalingen : 0;
+    let html = `
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Datum</th>
+                        <th>Ziekenhuis</th>
+                        <th>Type</th>
+                        <th>Gewicht (kg)</th>
+                        <th>Combinatie</th>
+                        <th>Aantal</th>
+                        <th>Opmerkingen</th>
+                        <th>Acties</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
     
-    // ===== TOTAALOVERZICHT HTML =====
-    let totaalHtml = `
-        <div class="registratie-totaal">
-            <div class="totaal-grid">
-                <div class="totaal-item">
-                    <span class="totaal-label">📋 Totaal registraties</span>
-                    <span class="totaal-value">${totaalAantal}</span>
-                </div>
-                <div class="totaal-item">
-                    <span class="totaal-label">📦 Ophalingen</span>
-                    <span class="totaal-value">${totaalOphalingen}</span>
-                </div>
-                <div class="totaal-item">
-                    <span class="totaal-label">⚖️ Totaal gewicht</span>
-                    <span class="totaal-value">${totaalGewicht.toFixed(1)} kg</span>
-                </div>
-                <div class="totaal-item">
-                    <span class="totaal-label">📊 Gemiddeld gewicht</span>
-                    <span class="totaal-value">${gemiddeldGewicht.toFixed(1)} kg</span>
-                </div>
-                <div class="totaal-item">
-                    <span class="totaal-label">🔄 Opstarten</span>
-                    <span class="totaal-value">${totaalOpstarten}</span>
-                </div>
-            </div>
-            ${searchZiekenhuis?.value || filterDatumVanaf?.value || filterDatumTot?.value || (typeFilter?.value && typeFilter.value !== 'alles') ? `
-                <div class="totaal-filter-info">
-                    🔍 Gefilterd: ${filteredData.length} van ${registraties.length} registraties
-                </div>
-            ` : ''}
+    filteredData.forEach(reg => {
+        const typeLabel = reg.type === 'ophaling' ? '📦 Ophaling' : '🔄 Opstart';
+        const gewichtDisplay = reg.gewicht ? `${reg.gewicht} kg` : '-';
+        const combinatieDisplay = reg.combinatie ? `${reg.combinatie.item_code} - ${reg.combinatie.omschrijving}` : '-';
+        const aantalDisplay = reg.opstart_aantal || '-';
+        
+        html += `
+            <tr>
+                <td>${formatDate(reg.registratiedatum)}</td>
+                <td><strong>${escapeHtml(reg.ziekenhuis?.instelling_naam || 'Onbekend')}</strong></td>
+                <td>${typeLabel}</td>
+                <td>${gewichtDisplay}</td>
+                <td>${escapeHtml(combinatieDisplay)}</td>
+                <td>${aantalDisplay}</td>
+                <td>${escapeHtml(reg.opmerkingen || '-')}</td>
+                <td>
+                    <button class="btn btn-secondary edit-btn" data-id="${reg.id}">✏️</button>
+                    <button class="btn btn-danger delete-btn" data-id="${reg.id}">🗑️</button>
+                </td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
         </div>
     `;
     
-    // ===== TABEL HTML =====
-    let tabelHtml = '';
-    if (!filteredData || filteredData.length === 0) {
-        tabelHtml = '<p>Geen registraties gevonden.</p>';
-    } else {
-        tabelHtml = `
-            <div style="overflow-x: auto;">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Datum</th>
-                            <th>Ziekenhuis</th>
-                            <th>Type</th>
-                            <th>Gewicht (kg)</th>
-                            <th>Combinatie</th>
-                            <th>Aantal</th>
-                            <th>Opmerkingen</th>
-                            <th>Acties</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-        
-        filteredData.forEach(reg => {
-            const typeLabel = reg.type === 'ophaling' ? '📦 Ophaling' : '🔄 Opstart';
-            const gewichtDisplay = reg.gewicht ? `${reg.gewicht} kg` : '-';
-            const combinatieDisplay = reg.combinatie ? `${reg.combinatie.item_code} - ${reg.combinatie.omschrijving}` : '-';
-            const aantalDisplay = reg.opstart_aantal || '-';
-            
-            tabelHtml += `
-                <tr>
-                    <td>${formatDate(reg.registratiedatum)}</td>
-                    <td><strong>${escapeHtml(reg.ziekenhuis?.instelling_naam || 'Onbekend')}</strong></td>
-                    <td>${typeLabel}</td>
-                    <td>${gewichtDisplay}</td>
-                    <td>${escapeHtml(combinatieDisplay)}</td>
-                    <td>${aantalDisplay}</td>
-                    <td>${escapeHtml(reg.opmerkingen || '-')}</td>
-                    <td>
-                        <button class="btn btn-secondary edit-btn" data-id="${reg.id}">✏️</button>
-                        <button class="btn btn-danger delete-btn" data-id="${reg.id}">🗑️</button>
-                    </td>
-                </tr>
-            `;
-        });
-        
-        tabelHtml += `
-                    </tbody>
-                </table>
-            </div>
-        `;
-    }
-    
-    // ===== COMBINEER TOTAAL + TABEL =====
-    registratiesLijst.innerHTML = `
-        ${tabelHtml}
-        ${filteredData.length > 0 ? totaalHtml : ''}
-    `;
-    
+    registratiesLijst.innerHTML = html;
     console.log('✅ Registraties weergegeven:', filteredData.length);
     
-    // Event listeners
     document.querySelectorAll('.edit-btn').forEach(btn => {
         btn.addEventListener('click', () => bewerkRegistratie(btn.dataset.id));
     });
@@ -328,7 +283,6 @@ async function bewerkRegistratie(id) {
         setValue('opstartAantal', data.opstart_aantal || 1);
         setValue('opmerkingen', data.opmerkingen || '');
         
-        // Toon/verberg velden
         ophalingVeldenReg.style.display = data.type === 'ophaling' ? 'block' : 'none';
         opstartVelden.style.display = data.type === 'opstart' ? 'block' : 'none';
         
@@ -357,6 +311,7 @@ async function verwijderRegistratie(id) {
     }
 }
 
+// ===== REGISTRATIE OPSLAAN =====
 async function saveRegistratie() {
     const type = getValue('registratieType');
     const ziekenhuis_id = getValue('ziekenhuisSelect');
@@ -389,14 +344,14 @@ async function saveRegistratie() {
         registratieData.opstart_aantal = opstartAantal;
         registratieData.gewicht = null;
         
-        // Check voorraad beschikbaar (optioneel)
+        // Check voorraad beschikbaar
         if (combinatieId) {
             const { data: componenten, error: checkError } = await supabase
                 .from('combinatie_componenten')
                 .select('*, component:component_id (id, item_code, omschrijving, aantal)')
                 .eq('combinatie_id', combinatieId);
             
-            if (!checkError && componenten) {
+            if (!checkError && componenten && componenten.length > 0) {
                 let tekort = [];
                 for (const comp of componenten) {
                     const nodig = comp.aantal * opstartAantal;
@@ -500,7 +455,7 @@ function resetFilters() {
     laadRegistraties();
 }
 
-// ===== EXCEL EXPORT (MET FILTER) =====
+// ===== EXCEL EXPORT =====
 async function exportExcel() {
     const huidigeData = getHuidigeGefilterdeData();
     
@@ -545,7 +500,7 @@ async function exportExcel() {
     }
 }
 
-// ===== PDF EXPORT (MET FILTER) =====
+// ===== PDF EXPORT =====
 async function exportPdf() {
     const huidigeData = getHuidigeGefilterdeData();
     
@@ -642,6 +597,20 @@ async function exportPdf() {
     }
 }
 
+// ===== HULPFUNCTIE: Huidige gefilterde data =====
+function getHuidigeGefilterdeData() {
+    let filteredData = alleRegistraties;
+    
+    if (searchZiekenhuis && searchZiekenhuis.value) {
+        const term = searchZiekenhuis.value.toLowerCase();
+        filteredData = filteredData.filter(reg => 
+            reg.ziekenhuis?.instelling_naam?.toLowerCase().includes(term)
+        );
+    }
+    
+    return filteredData;
+}
+
 // ===== EXCEL IMPORT =====
 function openImportPopup() {
     if (importPopup) {
@@ -655,7 +624,6 @@ function closeImportPopupFunc() {
     if (importPopup) importPopup.style.display = 'none';
 }
 
-// ===== DOWNLOAD TEMPLATE =====
 function downloadTemplate() {
     const templateData = [
         {
@@ -701,7 +669,6 @@ function initScrollButtons() {
     let isScrolling = false;
     let scrollTimeout = null;
     
-    // Functie om de knop te tonen/verbergen
     function updateScrollButton() {
         const scrollY = window.scrollY;
         const windowHeight = window.innerHeight;
@@ -709,34 +676,27 @@ function initScrollButtons() {
         const maxScroll = documentHeight - windowHeight;
         
         if (maxScroll <= 100) {
-            // Geen scroll nodig, verberg knop
             scrollBtn.style.display = 'none';
             return;
         }
         
-        // Toon knop
         scrollBtn.style.display = 'flex';
         
-        // Bepaal of we naar boven of beneden moeten
         if (scrollY < 100) {
-            // Bovenin: toon pijltje naar beneden
             scrollBtn.className = 'scroll-btn scroll-down';
             scrollBtn.innerHTML = '<span class="scroll-icon">▼</span>';
             scrollBtn.title = 'Scroll naar beneden';
         } else if (scrollY > maxScroll - 100) {
-            // Beneden: toon pijltje naar boven
             scrollBtn.className = 'scroll-btn scroll-up';
             scrollBtn.innerHTML = '<span class="scroll-icon">▲</span>';
             scrollBtn.title = 'Scroll naar boven';
         } else {
-            // In het midden: toon beide pijltjes
             scrollBtn.className = 'scroll-btn scroll-both';
             scrollBtn.innerHTML = '<span class="scroll-icon">▲▼</span>';
             scrollBtn.title = 'Scroll naar boven of beneden';
         }
     }
     
-    // Scroll naar boven of beneden
     function handleScrollClick() {
         if (isScrolling) return;
         isScrolling = true;
@@ -751,13 +711,10 @@ function initScrollButtons() {
         const isAtBottom = scrollY > maxScroll - 100;
         
         if (isAtTop) {
-            // Bovenin: scroll naar beneden
             targetY = maxScroll;
         } else if (isAtBottom) {
-            // Beneden: scroll naar boven
             targetY = 0;
         } else {
-            // In het midden: scroll naar boven of beneden (kies de dichtstbijzijnde)
             const distanceToTop = scrollY;
             const distanceToBottom = maxScroll - scrollY;
             if (distanceToTop < distanceToBottom) {
@@ -767,22 +724,18 @@ function initScrollButtons() {
             }
         }
         
-        // Vloeiend scrollen
         window.scrollTo({
             top: targetY,
             behavior: 'smooth'
         });
         
-        // Reset na 1 seconde
         setTimeout(() => {
             isScrolling = false;
         }, 1000);
     }
     
-    // Event listeners
     scrollBtn.addEventListener('click', handleScrollClick);
     
-    // Update knop bij scrollen
     window.addEventListener('scroll', function() {
         if (scrollTimeout) {
             cancelAnimationFrame(scrollTimeout);
@@ -790,7 +743,6 @@ function initScrollButtons() {
         scrollTimeout = requestAnimationFrame(updateScrollButton);
     });
     
-    // Update knop bij resize
     window.addEventListener('resize', function() {
         if (scrollTimeout) {
             cancelAnimationFrame(scrollTimeout);
@@ -798,7 +750,6 @@ function initScrollButtons() {
         scrollTimeout = requestAnimationFrame(updateScrollButton);
     });
     
-    // Initialiseer
     setTimeout(updateScrollButton, 500);
 }
 
@@ -888,7 +839,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         downloadTemplateBtn.addEventListener('click', downloadTemplate);
     }
     
-    // ===== ENTER-TOETS ACTIVEERT FILTER =====
+    // Enter-toets activeert filter
     if (searchZiekenhuis) {
         searchZiekenhuis.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
@@ -916,7 +867,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
-    // ===== SCROLL KNOMMEN INITIALISEREN =====
     initScrollButtons();
     
     console.log('✅ Registraties pagina geïnitialiseerd!');
