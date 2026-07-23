@@ -310,6 +310,47 @@ async function laadDashboardStatistieken() {
     }
 }
 
+// ===== VERSIE BADGE (zonder import) =====
+function addVersionBadgeDirect() {
+    // Controleer of de badge al bestaat
+    if (document.getElementById('version-badge')) return;
+
+    const badge = document.createElement('div');
+    badge.id = 'version-badge';
+    badge.innerHTML = `
+        <span style="
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(44, 125, 160, 0.9);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-family: monospace;
+            z-index: 9999;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        "
+        onmouseenter="this.style.opacity='1'"
+        onmouseleave="this.style.opacity='0.7'"
+        onclick="this.style.display='none'; localStorage.setItem('hideVersionBadge', 'true')"
+        title="Klik om te verbergen">
+            v2.0.0 
+            <span style="font-size:9px; opacity:0.7;">${new Date().toISOString().replace('T', ' ').substring(5, 16)}</span>
+            <span style="font-size:9px; background:rgba(255,255,255,0.2); padding:0 6px; border-radius:10px; margin-left:4px;">
+                ⚡2/8
+            </span>
+        </span>
+    `;
+
+    if (!localStorage.getItem('hideVersionBadge')) {
+        document.body.appendChild(badge);
+    }
+}
+
 // ===== INITIALISATIE =====
 
 // Controleer authenticatie bij het laden van de pagina
@@ -326,15 +367,12 @@ if (document.getElementById('dashboardAdresCount') || document.getElementById('d
     document.addEventListener('DOMContentLoaded', laadDashboardStatistieken);
 }
 
-// Importeer de versie-badge functie
-import { addVersionBadge } from './core/version.js';
-
-// Voeg de badge toe als de pagina klaar is
+// Voeg de versie-badge toe
 document.addEventListener('DOMContentLoaded', function() {
-    addVersionBadge();
+    addVersionBadgeDirect();
 });
 
 // Voor het geval de DOM al geladen is
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    addVersionBadge();
+    addVersionBadgeDirect();
 }
