@@ -30,14 +30,6 @@ const closeModulePopup = document.getElementById('closeModulePopup');
 
 console.log('✅ DOM elementen gevonden');
 
-// ===== HULPFUNCTIES =====
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 // ===== MODULES LADEN =====
 async function laadModules() {
     try {
@@ -106,7 +98,7 @@ function toonModules(modules) {
 async function laadGebruikersMetRechten() {
     if (!gebruikersModuleLijst) return;
     
-    gebruikersModuleLijst.innerHTML = '<p>Bezig met laden...</p>';
+    gebuikersModuleLijst.innerHTML = '<p>Bezig met laden...</p>';
     
     try {
         // Haal alle gebruikers op
@@ -323,7 +315,6 @@ async function saveModuleRights() {
         }
         
         // Update de lokale rechten
-        const newRechten = updates.filter(u => u.actief).map(u => u.module_sleutel);
         const existingRechten = alleRechten.filter(r => r.user_id !== currentUserId);
         const newRechtenData = updates.map(u => ({
             user_id: currentUserId,
