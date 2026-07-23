@@ -385,118 +385,179 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ===== OPHALING ANALYSE =====
 
+// ===== OPHALING ANALYSE (BIJGEWERKT MET CORRECTE STATUSLOGICA) =====
 async function laadOphalingAnalyse() {
     const analyseLijst = document.getElementById('analyseLijst');
     if (!analyseLijst) return;
-    
+
     analyseLijst.innerHTML = '<p>Bezig met laden...</p>';
-    
+
     try {
         const { data, error } = await window.supabase
             .from('ophaling_analyse')
             .select('*');
-        
+
         if (error) {
             console.error('Fout bij laden analyse:', error);
             analyseLijst.innerHTML = `<p class="error">Fout bij laden: ${error.message}</p>`;
             return;
         }
-        
+
         if (!data || data.length === 0) {
             analyseLijst.innerHTML = '<p>Nog geen ophalingen geregistreerd. Voeg ophalingen toe in de registraties.</p>';
             return;
         }
-        
+
         const vandaag = new Date();
         vandaag.setHours(0, 0, 0, 0);
-        
-        const cutoff = huidigeVoorspellingCutoff;
-        
-        // ALTIJD tonen: Te laat en Bijna te laat (ongeacht cutoff)
-        const altijdTonen = data.filter(item => 
+
+        // ===== BEPAAL STATUS PER ZIEKENHUIS MET DE NIEUWE LOGICA =====
+        const dataMetStatus = data.map(item => {
+            let status = 'Onbekend';
+            let dagenSindsLaatste = null;
+            let dagenTotVerwachte = null;
+            let verwachteDatum = null;
+
+            // Onvoldoende data (minder dan 2 ophalingen)
+            if (!item.aantal_ophalingen || item.aantal_ophalingen < 2) {
+                status = 'Onvoldoende data';
+                return { ...item, status, dagenSindsLaatste, dagenTotVerwachte, verwachteDatum };
+            }
+
+            // Geen laatste ophaling
+            if (!item.laatste_ophaling) {
+                status = 'Geen data';
+                return { ...item, status, dagenSindsLaatste, dagenTotVerwachte, verwachteDatum };
+            }
+
+            const laatsteDatum = new Date(item.laatste_ophaling);
+            laatsteDatum.setHours(0, 0, 0, 0);
+
+            const gemiddeldInterval = item.gemiddeld_interval || 14; // Fallback naar 14 dagen
+            const verwachte = new Date(laatsteDatum);
+            verwachte.setDate(verwachte.getDate() + gemiddeldInterval);
+            verwachte.setHours(0, 0, 0, 0);
+            verwachteDatum = verwachte;
+
+            // Bereken dagen sinds verwachte datum
+            const dagenSindsVerwachte = Math.floor((vandaag - verwachte) / (1000 * 60 * 60 * 24));
+
+            // Nieuwe statuslogica:
+            // - Te laat: dagenSindsVerwachte > 0 (elke dag na verwachte datum)
+            // - Bijna te laat: dagenSindsVerwachte >= -3 (binnen 3 dagen)
+            // - Op schema: dagenSindsVerwachte < -3 (meer dan 3 dagen)
+
+            if (dagenSindsVerwachte > 0) {
+                status = 'Te laat';
+                dagenSindsLaatste = dagenSindsVerwachte;
+            } else if (dagenSindsVerwachte >= -3) {
+                status = 'Bijna te laat';
+                dagenTotVerwachte = Math.abs(dagenSindsVerwachte);
+            } else {
+                status = 'Op schema';
+                dagenTotVerwachte = Math.abs(dagenSindsVerwachte);
+            }
+
+            return { ...item, status, dagenSindsLaatste, dagenTotVerwachte, verwachteDatum };
+        });
+
+        // ===== FILTER: ALTIJD TE LAAT EN BIJNA TE LAAT TONEN =====
+        // Toon altijd: Te laat en Bijna te laat (ongeacht cutoff)
+        const altijdTonen = dataMetStatus.filter(item => 
             item.status === 'Te laat' || item.status === 'Bijna te laat'
         );
-        
-        // Binnen de cutoff: Op schema en Onvoldoende data
-        const binnenkort = data.filter(item => {
-            if (!item.verwachte_volgende) return false;
-            // Sla over als al in altijdTonen zit
+
+        // Binnen de cutoff: Op schema (alleen als die binnen de gekozen cutoff vallen)
+        const cutoff = huidigeVoorspellingCutoff || 7;
+        const binnenkort = dataMetStatus.filter(item => {
             if (item.status === 'Te laat' || item.status === 'Bijna te laat') return false;
-            
-            const verwachteDatum = new Date(item.verwachte_volgende);
-            verwachteDatum.setHours(0, 0, 0, 0);
-            const dagenVerschil = Math.ceil((verwachteDatum - vandaag) / (1000 * 60 * 60 * 24));
+            if (item.status !== 'Op schema') return false;
+            if (!item.verwachteDatum) return false;
+
+            const dagenVerschil = Math.ceil((item.verwachteDatum - vandaag) / (1000 * 60 * 60 * 24));
             return dagenVerschil >= 0 && dagenVerschil <= cutoff;
         });
-        
+
         // Combineer en verwijder dubbelen
-        const altijdIds = altijdTonen.map(i => i.ziekenhuis_id);
+        const altijdIds = new Set(altijdTonen.map(i => i.ziekenhuis_id));
         const filteredData = [...altijdTonen];
         for (const item of binnenkort) {
-            if (!altijdIds.includes(item.ziekenhuis_id)) {
+            if (!altijdIds.has(item.ziekenhuis_id)) {
                 filteredData.push(item);
             }
         }
-        
-        // Sorteer op status (Te laat eerst, dan Bijna te laat)
+
+        // Sorteer op urgentie: Te laat > Bijna te laat > Binnenkort > Op schema
         filteredData.sort((a, b) => {
             const statusOrder = {
                 'Te laat': 1,
                 'Bijna te laat': 2,
-                'Binnenkort nodig': 3,
-                'Op schema': 4
+                'Binnenkort': 3,
+                'Op schema': 4,
+                'Onvoldoende data': 5,
+                'Geen data': 6
             };
-            const statusA = statusOrder[a.status] || 5;
-            const statusB = statusOrder[b.status] || 5;
-            if (statusA !== statusB) return statusA - statusB;
-            return a.instelling_naam.localeCompare(b.instelling_naam);
+            const orderA = statusOrder[a.status] || 5;
+            const orderB = statusOrder[b.status] || 5;
+            if (orderA !== orderB) return orderA - orderB;
+            return (a.instelling_naam || '').localeCompare(b.instelling_naam || '');
         });
-        
+
         if (filteredData.length === 0) {
             analyseLijst.innerHTML = `<p>✅ Alle ziekenhuizen zijn op schema. Er zijn geen ophalingen nodig in de komende ${cutoff} dagen.</p>`;
             return;
         }
-        
+
+        // ===== HTML GENEREREN =====
         let html = `<div class="analyse-totaal">⚠️ ${filteredData.length} ziekenhuis(sen) hebben binnenkort een ophaling nodig (binnen ${cutoff} dagen)</div>`;
-        
+
         for (const item of filteredData) {
-            const statusClass = item.status === 'Te laat' ? 'status-danger' : 
-                               (item.status === 'Bijna te laat' ? 'status-warning' : 'status-info');
-            
-            let statusEmoji = '🟢';
-            if (item.status === 'Te laat') statusEmoji = '🔴';
-            else if (item.status === 'Bijna te laat') statusEmoji = '🟡';
-            
-            const verwachteDatum = new Date(item.verwachte_volgende);
-            verwachteDatum.setHours(0, 0, 0, 0);
-            const dagenVerschil = Math.ceil((verwachteDatum - vandaag) / (1000 * 60 * 60 * 24));
-            const isBinnenkort = dagenVerschil >= 0 && dagenVerschil <= cutoff;
-            
-            let dagenText = '';
-            if (item.status === 'Te laat') {
-                dagenText = `<span class="badge badge-danger">${item.dagen_sinds_laatste} dagen geleden</span>`;
-            } else if (item.status === 'Bijna te laat') {
-                if (dagenVerschil < 0) {
-                    dagenText = `<span class="badge badge-warning">${Math.abs(dagenVerschil)} dagen te laat</span>`;
-                } else if (dagenVerschil <= 5) {
-                    dagenText = `<span class="badge badge-info">Over ${dagenVerschil} dagen verwacht</span>`;
-                } else {
-                    dagenText = `<span class="badge badge-info">Over ${dagenVerschil} dagen</span>`;
-                }
-            } else if (isBinnenkort && dagenVerschil >= 0) {
-                dagenText = `<span class="badge badge-info">Over ${dagenVerschil} dagen verwacht</span>`;
+            // Bepaal de juiste kleurklasse op basis van status
+            let statusClass = '';
+            let statusEmoji = '';
+            let statusDisplay = item.status || 'Onbekend';
+
+            switch (item.status) {
+                case 'Te laat':
+                    statusClass = 'status-danger';
+                    statusEmoji = '🔴';
+                    break;
+                case 'Bijna te laat':
+                    statusClass = 'status-warning';
+                    statusEmoji = '🟡';
+                    break;
+                case 'Op schema':
+                    statusClass = 'status-success';
+                    statusEmoji = '🟢';
+                    break;
+                case 'Onvoldoende data':
+                case 'Geen data':
+                default:
+                    statusClass = 'status-onvoldoende';
+                    statusEmoji = '⚪';
+                    break;
             }
-            
+
+            // Toon extra informatie over dagen
+            let dagenText = '';
+            if (item.dagenSindsLaatste !== null && item.dagenSindsLaatste > 0) {
+                dagenText = `<span class="badge badge-danger">${item.dagenSindsLaatste} dagen te laat</span>`;
+            } else if (item.dagenTotVerwachte !== null && item.dagenTotVerwachte <= 3) {
+                dagenText = `<span class="badge badge-warning">Over ${item.dagenTotVerwachte} dagen verwacht</span>`;
+            } else if (item.dagenTotVerwachte !== null && item.dagenTotVerwachte > 3) {
+                dagenText = `<span class="badge badge-info">Over ${item.dagenTotVerwachte} dagen</span>`;
+            }
+
             let extraInfo = '';
             if (item.laatste_gewicht) {
                 extraInfo = ` | Laatste: ${item.laatste_gewicht} kg (${item.laatste_tonnen || 1} ton)`;
             }
-            
+
             html += `
                 <div class="analyse-item ${statusClass}">
                     <div class="analyse-item-header">
                         <strong>${escapeHtml(item.instelling_naam)}</strong>
-                        <span class="analyse-status">${statusEmoji} ${item.status}</span>
+                        <span class="analyse-status">${statusEmoji} ${statusDisplay}</span>
                     </div>
                     <div class="analyse-item-details">
                         <div>📍 ${escapeHtml(item.straat)}, ${escapeHtml(item.postcode)} ${escapeHtml(item.plaats)}</div>
@@ -505,16 +566,16 @@ async function laadOphalingAnalyse() {
                             <span>📊 Gemiddeld: ${item.gemiddeld_interval} dagen</span>
                             <span>📋 Aantal ophalingen: ${item.aantal_ophalingen}</span>
                             <span>📅 Laatste: ${new Date(item.laatste_ophaling).toLocaleDateString('nl-NL')}${extraInfo}</span>
-                            ${item.verwachte_volgende ? `<span>🔮 Verwachte volgende: ${new Date(item.verwachte_volgende).toLocaleDateString('nl-NL')}</span>` : ''}
+                            ${item.verwachteDatum ? `<span>🔮 Verwachte volgende: ${new Date(item.verwachteDatum).toLocaleDateString('nl-NL')}</span>` : ''}
                             ${dagenText}
                         </div>
                     </div>
                 </div>
             `;
         }
-        
+
         analyseLijst.innerHTML = html;
-        
+
     } catch (err) {
         console.error('Fout bij laden analyse:', err);
         analyseLijst.innerHTML = `<p class="error">Fout bij laden: ${err.message}</p>`;

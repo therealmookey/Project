@@ -3511,3 +3511,44 @@ hr {
         min-height: 300px;
     }
 }
+/* ===== ANALYSE STATUS KLEUREN ===== */
+.analyse-item.status-danger {
+    border-left-color: #dc3545;
+    background: #fdf0f0;
+}
+
+.analyse-item.status-warning {
+    border-left-color: #ffc107;
+    background: #fff8e1;
+}
+
+.analyse-item.status-success {
+    border-left-color: #28a745;
+    background: #f0fdf4;
+}
+
+.analyse-item.status-onvoldoende {
+    border-left-color: #adb5bd;
+    background: #f8f9fa;
+}
+
+/* Dark mode varianten */
+[data-theme="dark"] .analyse-item.status-danger {
+    background: #2a1a2e;
+    border-left-color: #dc3545;
+}
+
+[data-theme="dark"] .analyse-item.status-warning {
+    background: #2a2a1e;
+    border-left-color: #ffc107;
+}
+
+[data-theme="dark"] .analyse-item.status-success {
+    background: #1a2a1e;
+    border-left-color: #28a745;
+}
+
+[data-theme="dark"] .analyse-item.status-onvoldoende {
+    background: #1a1a2e;
+    border-left-color: #adb5bd;
+}
