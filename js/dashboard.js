@@ -1,5 +1,4 @@
 // ===== DASHBOARD FUNCTIES =====
-
 let huidigeAgendaDatum = new Date();
 let agendaData = [];
 let agendaTooltipTimeout = null;
@@ -13,7 +12,6 @@ async function checkDashboardAuth() {
     }
 
     const { data: { session }, error } = await window.supabase.auth.getSession();
-    
     if (error || !session) {
         console.log('Geen sessie gevonden, terug naar login.');
         window.location.href = 'index.html';
@@ -22,14 +20,13 @@ async function checkDashboardAuth() {
         toonGebruikersnaam(session.user.id);
         laadAgenda();
         laadOphalingAnalyse();
-        laadGrafiek();
     }
 }
 
 function toonGebruikersnaam(userId) {
     const userEmailSpan = document.getElementById('userEmail');
     if (!userEmailSpan) return;
-    
+
     try {
         window.supabase
             .from('gebruikers_rollen')
@@ -51,14 +48,12 @@ function toonGebruikersnaam(userId) {
 }
 
 // ===== AGENDA FUNCTIES =====
-
 async function laadAgenda() {
     const startDatum = new Date(huidigeAgendaDatum.getFullYear(), huidigeAgendaDatum.getMonth(), 1);
     const eindDatum = new Date(huidigeAgendaDatum.getFullYear(), huidigeAgendaDatum.getMonth() + 1, 0);
-    
     const startStr = startDatum.toISOString().split('T')[0];
     const eindStr = eindDatum.toISOString().split('T')[0];
-    
+
     try {
         const { data, error } = await window.supabase
             .from('planningen')
@@ -69,12 +64,11 @@ async function laadAgenda() {
             .gte('datum', startStr)
             .lte('datum', eindStr)
             .order('datum');
-        
+
         if (error) throw error;
-        
+
         agendaData = data || [];
         toonAgenda();
-        
     } catch (err) {
         console.error('Fout bij laden agenda:', err);
         const rittenContainer = document.getElementById('agendaRitten');
@@ -88,49 +82,47 @@ function toonAgenda() {
     const titel = document.getElementById('agendaTitel');
     const dagenContainer = document.getElementById('agendaDagen');
     const rittenContainer = document.getElementById('agendaRitten');
-    
+
     if (!titel || !dagenContainer) return;
-    
+
     const jaar = huidigeAgendaDatum.getFullYear();
     const maand = huidigeAgendaDatum.getMonth();
     const maandNamen = ['Januari', 'Februari', 'Maart', 'April', 'Mei', 'Juni', 'Juli', 'Augustus', 'September', 'Oktober', 'November', 'December'];
-    
     titel.textContent = `${maandNamen[maand]} ${jaar}`;
-    
+
     const eersteDag = new Date(jaar, maand, 1).getDay();
     const dagenInMaand = new Date(jaar, maand + 1, 0).getDate();
     const vandaag = new Date();
     const vandaagStr = vandaag.toISOString().split('T')[0];
-    
+
     let startOffset = (eersteDag === 0) ? 6 : eersteDag - 1;
-    
     let html = '';
-    
+
     for (let i = 0; i < startOffset; i++) {
         html += `<div class="agenda-dag leeg"></div>`;
     }
-    
+
     for (let dag = 1; dag <= dagenInMaand; dag++) {
         const datumStr = `${jaar}-${String(maand + 1).padStart(2, '0')}-${String(dag).padStart(2, '0')}`;
         const rittenOpDag = agendaData.filter(r => r.datum === datumStr);
         const heeftRitten = rittenOpDag.length > 0;
         const isVandaag = datumStr === vandaagStr;
-        
+
         let classNames = 'agenda-dag';
         if (heeftRitten) classNames += ' heeft-ritten';
         if (isVandaag) classNames += ' vandaag';
-        
+
         let badge = '';
         if (heeftRitten) {
             badge = `<span class="agenda-badge">${rittenOpDag.length}</span>`;
         }
-        
+
         let tooltipData = '';
         if (heeftRitten) {
             const namen = rittenOpDag.map(r => r.adres?.instelling_naam || 'Onbekend').join(', ');
             tooltipData = ` data-tooltip="${escapeHtml(namen)}"`;
         }
-        
+
         html += `
             <div class="${classNames}" data-datum="${datumStr}"${tooltipData}>
                 ${dag}
@@ -138,9 +130,9 @@ function toonAgenda() {
             </div>
         `;
     }
-    
+
     dagenContainer.innerHTML = html;
-    
+
     document.querySelectorAll('.agenda-dag:not(.leeg)').forEach(el => {
         el.addEventListener('mouseenter', function(e) {
             toonTooltip(this, e);
@@ -157,7 +149,7 @@ function toonAgenda() {
             toonRittenVoorDag(datum);
         });
     });
-    
+
     const vandaagEl = document.querySelector(`.agenda-dag[data-datum="${vandaagStr}"]`);
     if (vandaagEl && rittenContainer) {
         vandaagEl.classList.add('geselecteerd');
@@ -177,13 +169,12 @@ function toonAgenda() {
 function toonTooltip(element, event) {
     const tooltip = document.getElementById('agendaTooltip');
     const tooltipText = element.dataset.tooltip;
-    
     if (!tooltip || !tooltipText) return;
-    
+
     if (agendaTooltipTimeout) {
         clearTimeout(agendaTooltipTimeout);
     }
-    
+
     agendaTooltipTimeout = setTimeout(() => {
         tooltip.textContent = tooltipText;
         tooltip.style.display = 'block';
@@ -194,18 +185,17 @@ function toonTooltip(element, event) {
 function verplaatsTooltip(event) {
     const tooltip = document.getElementById('agendaTooltip');
     if (!tooltip || tooltip.style.display === 'none') return;
-    
+
     const x = event.clientX + 15;
     const y = event.clientY - 10;
-    
     const tooltipWidth = tooltip.offsetWidth || 200;
     const tooltipHeight = tooltip.offsetHeight || 50;
     const windowWidth = window.innerWidth;
     const windowHeight = window.innerHeight;
-    
+
     let left = Math.min(x, windowWidth - tooltipWidth - 10);
     let top = Math.min(y, windowHeight - tooltipHeight - 10);
-    
+
     tooltip.style.left = left + 'px';
     tooltip.style.top = top + 'px';
 }
@@ -222,20 +212,19 @@ function verbergTooltip() {
 }
 
 // ===== DAG OVERZICHT FUNCTIES =====
-
 function toonRittenVoorDag(datumStr) {
     const rittenContainer = document.getElementById('agendaRitten');
     const ritten = agendaData.filter(r => r.datum === datumStr);
-    
+
     if (!rittenContainer) return;
-    
+
     document.querySelectorAll('.agenda-dag').forEach(el => {
         el.classList.remove('geselecteerd');
     });
     document.querySelectorAll(`.agenda-dag[data-datum="${datumStr}"]`).forEach(el => {
         el.classList.add('geselecteerd');
     });
-    
+
     if (ritten.length === 0) {
         rittenContainer.innerHTML = `
             <div class="agenda-geen-ritten">
@@ -245,16 +234,16 @@ function toonRittenVoorDag(datumStr) {
         `;
         return;
     }
-    
+
     const adresIds = ritten.map(r => r.adres_id).filter(id => id);
     let adressenMap = {};
-    
+
     ritten.forEach(rit => {
         if (rit.adres) {
             adressenMap[rit.adres_id] = rit.adres;
         }
     });
-    
+
     const ontbrekendeIds = adresIds.filter(id => !adressenMap[id]);
     if (ontbrekendeIds.length > 0) {
         window.supabase
@@ -277,11 +266,11 @@ function toonRittenVoorDag(datumStr) {
 function renderRittenOverzicht(ritten, adressenMap, datumStr) {
     const rittenContainer = document.getElementById('agendaRitten');
     if (!rittenContainer) return;
-    
+
     const datumObj = new Date(datumStr + 'T00:00:00');
     const dagVanWeek = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][datumObj.getDay()];
     const datumDisplay = `${dagVanWeek} ${datumObj.getDate()} ${datumObj.toLocaleString('nl-NL', { month: 'long' })} ${datumObj.getFullYear()}`;
-    
+
     let html = `
         <div class="agenda-overzicht-header">
             <h4>📋 ${datumDisplay}</h4>
@@ -289,26 +278,26 @@ function renderRittenOverzicht(ritten, adressenMap, datumStr) {
         </div>
         <ul class="agenda-ritten-lijst">
     `;
-    
+
     ritten.sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
-    
+
     ritten.forEach(rit => {
         const adres = adressenMap[rit.adres_id];
         const typeIcon = rit.type === 'ophaling' ? '📦' : '🚚';
         const typeLabel = rit.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
         const volgorde = rit.dag_volgorde || '-';
         const statusClass = rit.status === 'gepland' ? 'status-gepland' : 
-                           (rit.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
+                          (rit.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
         const statusLabel = rit.status === 'gepland' ? 'Gepland' : 
-                           (rit.status === 'uitgevoerd' ? 'Uitgevoerd' : 'Geannuleerd');
-        
+                          (rit.status === 'uitgevoerd' ? 'Uitgevoerd' : 'Geannuleerd');
+
         let extraInfo = '';
         if (rit.type === 'ophaling' && rit.aantal_tonnen) {
             extraInfo = `${rit.aantal_tonnen} ton(nen)`;
         } else if (rit.type === 'plaatsing' && rit.aantal_lege_tonnen) {
             extraInfo = `${rit.aantal_lege_tonnen} lege ton(nen)`;
         }
-        
+
         html += `
             <li class="agenda-rit-item">
                 <span class="agenda-rit-volgorde">#${volgorde}</span>
@@ -320,7 +309,7 @@ function renderRittenOverzicht(ritten, adressenMap, datumStr) {
             </li>
         `;
     });
-    
+
     html += `</ul>`;
     rittenContainer.innerHTML = html;
 }
@@ -331,47 +320,47 @@ document.addEventListener('DOMContentLoaded', function() {
     const nextBtn = document.getElementById('nextMonthBtn');
     const todayBtn = document.getElementById('todayBtn');
     const statsBtn = document.getElementById('statsBtn');
-    
+
     if (prevBtn) {
         prevBtn.addEventListener('click', function() {
             huidigeAgendaDatum.setMonth(huidigeAgendaDatum.getMonth() - 1);
             laadAgenda();
         });
     }
-    
+
     if (nextBtn) {
         nextBtn.addEventListener('click', function() {
             huidigeAgendaDatum.setMonth(huidigeAgendaDatum.getMonth() + 1);
             laadAgenda();
         });
     }
-    
+
     if (todayBtn) {
         todayBtn.addEventListener('click', function() {
             huidigeAgendaDatum = new Date();
             laadAgenda();
         });
     }
-    
+
     if (statsBtn) {
         statsBtn.addEventListener('click', async function() {
             if (typeof window.supabase === 'undefined') {
                 alert('Supabase is niet beschikbaar');
                 return;
             }
-            
+
             const { count: adresCount } = await window.supabase
                 .from('adressen')
                 .select('*', { count: 'exact', head: true });
-            
+
             const { count: planningCount } = await window.supabase
                 .from('planningen')
                 .select('*', { count: 'exact', head: true });
-            
+
             alert(`📊 Statistieken\n\n📍 Aantal adressen: ${adresCount || 0}\n📅 Aantal planningen: ${planningCount || 0}`);
         });
     }
-    
+
     // Filter event listener
     const filterSelect = document.getElementById('voorspellingFilter');
     if (filterSelect) {
@@ -381,8 +370,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-
-// ===== OPHALING ANALYSE =====
 
 // ===== OPHALING ANALYSE (BIJGEWERKT MET CORRECTE STATUSLOGICA) =====
 async function laadOphalingAnalyse() {
@@ -581,8 +568,14 @@ async function laadOphalingAnalyse() {
     }
 }
 
-// ===== INITIALISATIE =====
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
+// ===== INITIALISATIE =====
 document.addEventListener('DOMContentLoaded', function() {
     checkDashboardAuth();
 });
