@@ -1,0 +1,7 @@
+# Maak een leeg .nojekyll bestand
+touch .nojekyll
+
+# Voeg toe en push
+git add .nojekyll
+git commit -m "Voeg .nojekyll toe om Jekyll build te voorkomen"
+git push
