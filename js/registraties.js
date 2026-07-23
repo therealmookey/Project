@@ -121,6 +121,21 @@ async function laadCombinaties() {
     }
 }
 
+// ===== HULPFUNCTIE: Huidige gefilterde data ophalen =====
+function getHuidigeGefilterdeData() {
+    let filteredData = alleRegistraties;
+    
+    // Filter op ziekenhuis naam
+    if (searchZiekenhuis && searchZiekenhuis.value) {
+        const term = searchZiekenhuis.value.toLowerCase();
+        filteredData = filteredData.filter(reg => 
+            reg.ziekenhuis?.instelling_naam?.toLowerCase().includes(term)
+        );
+    }
+    
+    return filteredData;
+}
+
 // ===== REGISTRATIES LADEN =====
 async function laadRegistraties() {
     if (!registratiesLijst) return;
@@ -128,7 +143,6 @@ async function laadRegistraties() {
     registratiesLijst.innerHTML = '<p>Bezig met laden...</p>';
     
     try {
-        // Bouw de query
         let query = supabase
             .from('ophaalregistraties')
             .select(`
@@ -158,16 +172,7 @@ async function laadRegistraties() {
         alleRegistraties = data || [];
         console.log('📋 Registraties geladen:', alleRegistraties.length);
         
-        // Filter op ziekenhuis naam (client-side)
-        let filteredData = alleRegistraties;
-        if (searchZiekenhuis && searchZiekenhuis.value) {
-            const term = searchZiekenhuis.value.toLowerCase();
-            filteredData = alleRegistraties.filter(reg => 
-                reg.ziekenhuis?.instelling_naam?.toLowerCase().includes(term)
-            );
-        }
-        
-        toonRegistraties(filteredData);
+        toonRegistraties(alleRegistraties);
     } catch (err) {
         console.error('Fout bij laden registraties:', err);
         registratiesLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
@@ -178,7 +183,16 @@ async function laadRegistraties() {
 function toonRegistraties(registraties) {
     if (!registratiesLijst) return;
     
-    if (!registraties || registraties.length === 0) {
+    // Pas client-side filtering toe voor de weergave
+    let filteredData = registraties;
+    if (searchZiekenhuis && searchZiekenhuis.value) {
+        const term = searchZiekenhuis.value.toLowerCase();
+        filteredData = registraties.filter(reg => 
+            reg.ziekenhuis?.instelling_naam?.toLowerCase().includes(term)
+        );
+    }
+    
+    if (!filteredData || filteredData.length === 0) {
         registratiesLijst.innerHTML = '<p>Geen registraties gevonden.</p>';
         return;
     }
@@ -201,7 +215,7 @@ function toonRegistraties(registraties) {
                 <tbody>
     `;
     
-    registraties.forEach(reg => {
+    filteredData.forEach(reg => {
         const typeLabel = reg.type === 'ophaling' ? '📦 Ophaling' : '🔄 Opstart';
         const gewichtDisplay = reg.gewicht ? `${reg.gewicht} kg` : '-';
         const combinatieDisplay = reg.combinatie ? `${reg.combinatie.item_code} - ${reg.combinatie.omschrijving}` : '-';
@@ -231,7 +245,7 @@ function toonRegistraties(registraties) {
     `;
     
     registratiesLijst.innerHTML = html;
-    console.log('✅ Registraties weergegeven:', registraties.length);
+    console.log('✅ Registraties weergegeven:', filteredData.length);
     
     // Event listeners
     document.querySelectorAll('.edit-btn').forEach(btn => {
@@ -355,18 +369,19 @@ function resetFilters() {
     laadRegistraties();
 }
 
-// ===== EXCEL EXPORT =====
+// ===== EXCEL EXPORT (MET FILTER) =====
 async function exportExcel() {
-    if (!alleRegistraties || alleRegistraties.length === 0) {
-        showToast('⚠️ Geen data om te exporteren', 'error');
+    const huidigeData = getHuidigeGefilterdeData();
+    
+    if (!huidigeData || huidigeData.length === 0) {
+        showToast('⚠️ Geen data om te exporteren (filter is leeg)', 'error');
         return;
     }
     
     try {
-        showToast('📊 Excel wordt voorbereid...', 'info');
+        showToast(`📊 ${huidigeData.length} registraties worden geëxporteerd...`, 'info');
         
-        // Bouw de data voor Excel
-        const excelData = alleRegistraties.map(reg => ({
+        const excelData = huidigeData.map(reg => ({
             'Datum': formatDate(reg.registratiedatum),
             'Ziekenhuis': reg.ziekenhuis?.instelling_naam || 'Onbekend',
             'Type': reg.type === 'ophaling' ? 'Ophaling' : 'Opstart',
@@ -376,17 +391,14 @@ async function exportExcel() {
             'Opmerkingen': reg.opmerkingen || ''
         }));
         
-        // Maak een werkboek
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(excelData);
         XLSX.utils.book_append_sheet(wb, ws, 'Registraties');
         
-        // Genereer bestand
         const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbout], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
         
-        // Download
         const link = document.createElement('a');
         link.href = url;
         link.download = `registraties_${new Date().toISOString().split('T')[0]}.xlsx`;
@@ -395,24 +407,25 @@ async function exportExcel() {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        showToast('✅ Excel export succesvol!', 'success');
+        showToast(`✅ ${excelData.length} registraties geëxporteerd!`, 'success');
     } catch (err) {
         console.error('Fout bij Excel export:', err);
         showToast('❌ Fout bij Excel export: ' + err.message, 'error');
     }
 }
 
-// ===== PDF EXPORT =====
+// ===== PDF EXPORT (MET FILTER) =====
 async function exportPdf() {
-    if (!alleRegistraties || alleRegistraties.length === 0) {
-        showToast('⚠️ Geen data om te exporteren', 'error');
+    const huidigeData = getHuidigeGefilterdeData();
+    
+    if (!huidigeData || huidigeData.length === 0) {
+        showToast('⚠️ Geen data om te exporteren (filter is leeg)', 'error');
         return;
     }
     
     try {
-        showToast('📄 PDF wordt voorbereid...', 'info');
+        showToast(`📄 ${huidigeData.length} registraties worden geëxporteerd...`, 'info');
         
-        // Bouw HTML voor PDF
         let html = `
             <html>
             <head>
@@ -420,16 +433,26 @@ async function exportPdf() {
                 <title>Ophaalregistraties</title>
                 <style>
                     body { font-family: Arial, sans-serif; padding: 20px; }
-                    h1 { color: #2c7da0; text-align: center; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 11px; }
-                    th { background: #2c7da0; color: white; padding: 8px; text-align: left; }
-                    td { padding: 6px 8px; border-bottom: 1px solid #ddd; }
-                    .footer { text-align: center; color: #999; margin-top: 30px; font-size: 10px; }
+                    h1 { color: #2c7da0; text-align: center; font-size: 20px; }
+                    .subtitle { text-align: center; color: #666; font-size: 12px; margin-bottom: 20px; }
+                    .filter-info { background: #f8f9fa; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 11px; color: #495057; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 10px; }
+                    th { background: #2c7da0; color: white; padding: 6px 8px; text-align: left; }
+                    td { padding: 5px 8px; border-bottom: 1px solid #ddd; }
+                    .footer { text-align: center; color: #999; margin-top: 20px; font-size: 9px; }
+                    .count { font-weight: bold; color: #2c7da0; }
                 </style>
             </head>
             <body>
                 <h1>📋 Ophaalregistraties</h1>
-                <p style="text-align: center; color: #666;">Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
+                <p class="subtitle">Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
+                <div class="filter-info">
+                    <span>📊 Aantal registraties: <span class="count">${huidigeData.length}</span></span>
+                    ${searchZiekenhuis?.value ? ` | 🔍 Ziekenhuis: ${searchZiekenhuis.value}` : ''}
+                    ${filterDatumVanaf?.value ? ` | 📅 Vanaf: ${filterDatumVanaf.value}` : ''}
+                    ${filterDatumTot?.value ? ` | 📅 Tot: ${filterDatumTot.value}` : ''}
+                    ${typeFilter?.value && typeFilter.value !== 'alles' ? ` | 📋 Type: ${typeFilter.value === 'ophaling' ? 'Ophaling' : 'Opstart'}` : ''}
+                </div>
                 <table>
                     <thead>
                         <tr>
@@ -445,7 +468,7 @@ async function exportPdf() {
                     <tbody>
         `;
         
-        alleRegistraties.forEach(reg => {
+        huidigeData.forEach(reg => {
             html += `
                 <tr>
                     <td>${formatDate(reg.registratiedatum)}</td>
@@ -467,7 +490,6 @@ async function exportPdf() {
             </html>
         `;
         
-        // Open print venster
         const printWindow = window.open('', '_blank', 'width=900,height=700');
         if (!printWindow) {
             showToast('⚠️ Pop-up blocker geblokkeerd', 'error');
@@ -480,7 +502,7 @@ async function exportPdf() {
             setTimeout(() => {
                 printWindow.focus();
                 printWindow.print();
-                showToast('✅ PDF geopend voor afdrukken!', 'success');
+                showToast(`✅ ${huidigeData.length} registraties geëxporteerd!`, 'success');
             }, 500);
         };
     } catch (err) {
@@ -489,12 +511,62 @@ async function exportPdf() {
     }
 }
 
+// ===== EXCEL IMPORT =====
+function openImportPopup() {
+    if (importPopup) {
+        importPopup.style.display = 'flex';
+        if (importPreview) importPreview.innerHTML = '';
+        if (fileInput) fileInput.value = '';
+    }
+}
+
+function closeImportPopupFunc() {
+    if (importPopup) importPopup.style.display = 'none';
+}
+
+// ===== DOWNLOAD TEMPLATE =====
+function downloadTemplate() {
+    const templateData = [
+        {
+            'Ziekenhuis': 'Ziekenhuis A',
+            'Datum': '2024-01-01',
+            'Gewicht': '15.5',
+            'Type': 'ophaling',
+            'Opmerkingen': 'Voorbeeld ophaling'
+        },
+        {
+            'Ziekenhuis': 'Ziekenhuis B',
+            'Datum': '2024-01-02',
+            'Gewicht': '',
+            'Type': 'opstart',
+            'Opmerkingen': 'Voorbeeld opstart'
+        }
+    ];
+    
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    XLSX.utils.book_append_sheet(wb, ws, 'Template');
+    
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'registraties_template.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    showToast('✅ Template gedownload!', 'success');
+}
+
 // ===== INITIALISATIE =====
 
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔄 Registraties pagina initialiseren...');
     
-    // Auth check
     const auth = await requireAuth('index.html');
     if (!auth.isAuthenticated) {
         console.warn('⚠️ Niet ingelogd, redirect...');
@@ -502,14 +574,12 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     console.log('✅ Ingelogd als:', auth.user?.email);
     
-    // Laad data
     await laadAdressen();
     await laadCombinaties();
     await laadRegistraties();
     
     // ===== EVENT LISTENERS =====
     
-    // Type select toon/verberg velden
     if (registratieType) {
         registratieType.addEventListener('change', function() {
             ophalingVeldenReg.style.display = this.value === 'ophaling' ? 'block' : 'none';
@@ -517,7 +587,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
-    // Nieuwe registratie knop
     if (addRegistratieBtn) {
         addRegistratieBtn.addEventListener('click', () => {
             currentRegistratieId = null;
@@ -535,43 +604,48 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
-    // Opslaan knop
     if (saveRegistratieBtn) {
         saveRegistratieBtn.addEventListener('click', saveRegistratie);
     }
     
-    // Sluiten popup
     if (closeRegistratiePopup) {
         closeRegistratiePopup.addEventListener('click', () => {
             registratiePopup.style.display = 'none';
         });
     }
     
-    // Sluiten bij klik buiten popup
     window.addEventListener('click', (e) => {
         if (e.target === registratiePopup) {
             registratiePopup.style.display = 'none';
         }
     });
     
-    // Filter knop
     if (filterBtn) {
         filterBtn.addEventListener('click', laadRegistraties);
     }
     
-    // Reset filter knop
     if (resetFilterBtn) {
         resetFilterBtn.addEventListener('click', resetFilters);
     }
     
-    // Excel export
     if (exportExcelBtn) {
         exportExcelBtn.addEventListener('click', exportExcel);
     }
     
-    // PDF export
     if (exportPdfBtn) {
         exportPdfBtn.addEventListener('click', exportPdf);
+    }
+    
+    if (importExcelBtn) {
+        importExcelBtn.addEventListener('click', openImportPopup);
+    }
+    
+    if (closeImportPopup) {
+        closeImportPopup.addEventListener('click', closeImportPopupFunc);
+    }
+    
+    if (downloadTemplateBtn) {
+        downloadTemplateBtn.addEventListener('click', downloadTemplate);
     }
     
     console.log('✅ Registraties pagina geïnitialiseerd!');
