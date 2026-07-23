@@ -23,7 +23,7 @@ export function getCurrentTheme() {
 }
 
 /**
- * Pas het thema toe op de pagina (zonder console.log)
+ * Pas het thema toe op de pagina
  * @param {string} theme - 'dark' of 'light'
  */
 export function applyTheme(theme) {
@@ -44,6 +44,8 @@ export function applyTheme(theme) {
     } catch (e) {
         // Negeer storage fouten
     }
+    
+    console.log(`🎨 Thema toegepast: ${theme}`);
 }
 
 /**
@@ -72,7 +74,7 @@ export function initTheme() {
     const savedTheme = getCurrentTheme();
     applyTheme(savedTheme);
     
-    // Event listener toevoegen aan checkbox
+    // Event listener toevoegen aan checkbox (als die bestaat)
     const checkbox = document.getElementById('themeCheckbox');
     if (checkbox) {
         // Verwijder oude listeners om dubbel te voorkomen
@@ -80,6 +82,8 @@ export function initTheme() {
         checkbox.parentNode.replaceChild(newCheckbox, checkbox);
         newCheckbox.addEventListener('change', toggleTheme);
     }
+    
+    console.log('✅ Thema geïnitialiseerd');
 }
 
 /**

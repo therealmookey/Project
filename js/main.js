@@ -2,35 +2,53 @@
 // MAIN - Hoofdbestand (wordt op alle pagina's geladen)
 // ============================================================
 
-import { laadNavigatie } from './core/navigation.js';
+// Importeer core modules
+import { laadNavigatie, checkPageAuth } from './core/navigation.js';
 import { initTheme } from './core/theme.js';
 import { addVersionBadge } from './core/version.js';
-import { requireAuth } from './core/auth.js';
 
-console.log('main.js geladen');
+console.log('📦 main.js geladen');
 
-// ===== INITIALISATIE =====
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Alleen auth check voor beschermde pagina's (wordt ook in dashboard.js gedaan)
-    // We laten de navigatie wel laden, ongeacht auth status
+// ===== FUNCTIE: Alles initialiseren =====
+function initializeApp() {
+    console.log('🔄 Applicatie initialiseren...');
     
+    // 1. Thema initialiseren (ALTIJD, ongeacht auth status)
+    initTheme();
+    console.log('✅ Thema geïnitialiseerd');
+    
+    // 2. Versie badge toevoegen
+    addVersionBadge();
+    console.log('✅ Versie badge toegevoegd');
+    
+    // 3. Navigatie laden (als die bestaat)
     if (document.getElementById('navigatie-placeholder')) {
         laadNavigatie();
+        console.log('✅ Navigatie geladen');
     }
     
-    // Thema initialiseren
-    initTheme();
-    
-    // Versie badge
-    addVersionBadge();
+    // 4. Auth check (alleen voor beschermde pagina's)
+    checkPageAuth();
+    console.log('✅ Auth check uitgevoerd');
+}
+
+// ===== INITIALISATIE BIJ PAGINA LADEN =====
+
+// Wacht tot de DOM klaar is
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    // DOM is al geladen
+    initializeApp();
+}
+
+// Ook bij volledige pagina load (voor de zekerheid)
+window.addEventListener('load', function() {
+    // Controleer of alles is geïnitialiseerd
+    if (!document.documentElement.hasAttribute('data-theme')) {
+        console.warn('⚠️ Thema niet geïnitialiseerd bij load, opnieuw proberen...');
+        initTheme();
+    }
 });
 
-// Als de DOM al geladen is
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    if (document.getElementById('navigatie-placeholder')) {
-        laadNavigatie();
-    }
-    initTheme();
-    addVersionBadge();
-}
+console.log('✅ main.js geladen en klaar voor gebruik');
