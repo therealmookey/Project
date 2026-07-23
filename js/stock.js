@@ -169,7 +169,6 @@ async function laadStockItems() {
     }
 }
 
-// ===== STOCK ITEMS TONEN =====
 // ===== STOCK ITEMS TONEN (MET COMPONENTEN OVERZICHT) =====
 function toonStockItems(items) {
     if (!stockLijst) return;
@@ -248,8 +247,7 @@ function toonStockItems(items) {
                 <td>${escapeHtml(item.locatie || '-')}</td>
                 <td>
                     <button class="btn btn-secondary mutatie-btn" data-id="${item.id}" title="Voorraad aanpassen">📦</button>
-                    ${!isCombinatie ? `<button class="btn btn-secondary edit-item-btn" data-id="${item.id}">✏️</button>` : 
-                                     `<button class="btn btn-secondary edit-combinatie-btn" data-id="${item.id}">✏️</button>`}
+                    ${!isCombinatie ? `<button class="btn btn-secondary edit-item-btn" data-id="${item.id}">✏️</button>` : `<button class="btn btn-secondary edit-combinatie-btn" data-id="${item.id}">✏️</button>`}
                     <button class="btn btn-danger delete-btn" data-id="${item.id}">🗑️</button>
                     ${isCombinatie ? `<button class="btn btn-info toggle-components-btn" data-id="${item.id}" title="Toon/verberg componenten">📋</button>` : ''}
                 </td>
@@ -259,7 +257,6 @@ function toonStockItems(items) {
         // Als het een combinatie is, toon de componenten in een extra rij
         if (isCombinatie && item.componenten && item.componenten.length > 0) {
             const componentNames = item.componenten.map(comp => {
-                // Zoek de component details in alleItems
                 const componentItem = alleItems.find(i => i.id === comp.component_id);
                 return componentItem ? `${componentItem.item_code} (${comp.aantal}x)` : `ID ${comp.component_id} (${comp.aantal}x)`;
             }).join(', ');
@@ -275,7 +272,6 @@ function toonStockItems(items) {
                 </tr>
             `;
         } else if (isCombinatie) {
-            // Combinatie zonder componenten
             html += `
                 <tr class="componenten-row" id="components-${item.id}" style="display: none; background: #f8f9fa;">
                     <td colspan="8" style="padding: 8px 16px;">
@@ -320,7 +316,7 @@ function toonStockItems(items) {
     document.querySelectorAll('.toggle-components-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const id = this.dataset.id;
-            const row = document.getElementById(`components-${id}`);
+            const row = document.getElementById('components-' + id);
             if (row) {
                 if (row.style.display === 'none') {
                     row.style.display = 'table-row';
@@ -335,6 +331,7 @@ function toonStockItems(items) {
         });
     });
 }
+
 // ===== ITEM FUNCTIES =====
 
 async function bewerkItem(id) {
@@ -849,7 +846,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     if (resetFilterBtn) {
         resetFilterBtn.addEventListener('click', resetFilters);
-    }
     }
     
     // Enter-toets op zoekveld
