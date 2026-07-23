@@ -65,15 +65,40 @@ function toonModules(modules) {
     }
     
     // Tel hoeveel gebruikers per module rechten hebben
+    // Dit moet rekening houden met:
+    // 1. Expliciete rechten in gebruikers_module_rechten
+    // 2. Standaard rechten (standaard_aan = true)
+    // 3. Admin gebruikers hebben alle rechten
+    
     const moduleCounts = {};
     modules.forEach(module => {
         moduleCounts[module.module_sleutel] = 0;
     });
     
-    alleRechten.forEach(recht => {
-        if (moduleCounts[recht.module_sleutel] !== undefined) {
-            moduleCounts[recht.module_sleutel]++;
+    // Loop door alle gebruikers
+    alleGebruikers.forEach(user => {
+        // Admin heeft altijd alle rechten
+        if (user.rol === 'admin') {
+            modules.forEach(module => {
+                moduleCounts[module.module_sleutel]++;
+            });
+            return;
         }
+        
+        // Haal de rechten voor deze gebruiker op
+        const userRechten = alleRechten.filter(r => r.user_id === user.user_id);
+        
+        // Check per module of de gebruiker toegang heeft
+        modules.forEach(module => {
+            const recht = userRechten.find(r => r.module_sleutel === module.module_sleutel);
+            // Heeft toegang als:
+            // - Er een expliciet recht is met actief = true
+            // - Of er is geen expliciet recht en standaard_aan = true
+            const heeftToegang = recht ? recht.actief : module.standaard_aan;
+            if (heeftToegang) {
+                moduleCounts[module.module_sleutel]++;
+            }
+        });
     });
     
     let html = `
@@ -109,7 +134,7 @@ function toonModules(modules) {
                 </tbody>
             </table>
             <div style="margin-top: 10px; font-size: 0.85rem; color: #6c757d;">
-                Totaal: ${modules.length} modules
+                Totaal: ${modules.length} modules | ${alleGebruikers.filter(u => u.status === 'goedgekeurd').length} actieve gebruikers
             </div>
         </div>
     `;
