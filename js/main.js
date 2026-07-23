@@ -325,3 +325,16 @@ document.addEventListener('DOMContentLoaded', function() {
 if (document.getElementById('dashboardAdresCount') || document.getElementById('dashboardPlanningCount')) {
     document.addEventListener('DOMContentLoaded', laadDashboardStatistieken);
 }
+
+// Importeer de versie-badge functie
+import { addVersionBadge } from './core/version.js';
+
+// Voeg de badge toe als de pagina klaar is
+document.addEventListener('DOMContentLoaded', function() {
+    addVersionBadge();
+});
+
+// Voor het geval de DOM al geladen is
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    addVersionBadge();
+}
