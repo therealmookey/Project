@@ -3804,3 +3804,28 @@ hr {
 [data-theme="dark"] .scroll-btn {
     box-shadow: 0 4px 16px rgba(0,0,0,0.5);
 }
+/* ===== STOCK COMPONENTEN RIJ ===== */
+.componenten-row td {
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.componenten-row .btn {
+    padding: 2px 8px;
+    font-size: 0.75rem;
+}
+
+/* Dark mode */
+[data-theme="dark"] .componenten-row td {
+    background: #1a1a2e;
+    border-bottom-color: #2a2a4e;
+}
+
+[data-theme="dark"] .componenten-row .btn {
+    background: #2a2a4e;
+    color: #d0d0d0;
+}
+
+[data-theme="dark"] .componenten-row .btn:hover {
+    background: #3a3a5e;
+}

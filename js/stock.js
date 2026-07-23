@@ -170,6 +170,7 @@ async function laadStockItems() {
 }
 
 // ===== STOCK ITEMS TONEN =====
+// ===== STOCK ITEMS TONEN (MET COMPONENTEN OVERZICHT) =====
 function toonStockItems(items) {
     if (!stockLijst) return;
     
@@ -250,9 +251,41 @@ function toonStockItems(items) {
                     ${!isCombinatie ? `<button class="btn btn-secondary edit-item-btn" data-id="${item.id}">✏️</button>` : 
                                      `<button class="btn btn-secondary edit-combinatie-btn" data-id="${item.id}">✏️</button>`}
                     <button class="btn btn-danger delete-btn" data-id="${item.id}">🗑️</button>
+                    ${isCombinatie ? `<button class="btn btn-info toggle-components-btn" data-id="${item.id}" title="Toon/verberg componenten">📋</button>` : ''}
                 </td>
             </tr>
         `;
+        
+        // Als het een combinatie is, toon de componenten in een extra rij
+        if (isCombinatie && item.componenten && item.componenten.length > 0) {
+            const componentNames = item.componenten.map(comp => {
+                // Zoek de component details in alleItems
+                const componentItem = alleItems.find(i => i.id === comp.component_id);
+                return componentItem ? `${componentItem.item_code} (${comp.aantal}x)` : `ID ${comp.component_id} (${comp.aantal}x)`;
+            }).join(', ');
+            
+            html += `
+                <tr class="componenten-row" id="components-${item.id}" style="display: none; background: #f8f9fa;">
+                    <td colspan="8" style="padding: 8px 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span style="font-weight: 600; color: #2c7da0; font-size: 0.85rem;">📦 Componenten:</span>
+                            <span style="font-size: 0.9rem;">${componentNames}</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        } else if (isCombinatie) {
+            // Combinatie zonder componenten
+            html += `
+                <tr class="componenten-row" id="components-${item.id}" style="display: none; background: #f8f9fa;">
+                    <td colspan="8" style="padding: 8px 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <span style="font-weight: 600; color: #6c757d; font-size: 0.85rem;">📦 Geen componenten toegevoegd</span>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
     });
     
     html += `
@@ -263,24 +296,45 @@ function toonStockItems(items) {
     
     stockLijst.innerHTML = html;
     
-    // Event listeners
+    // Event listeners voor mutatie knop
     document.querySelectorAll('.mutatie-btn').forEach(btn => {
         btn.addEventListener('click', () => openMutatiePopup(btn.dataset.id));
     });
     
+    // Event listeners voor item bewerken
     document.querySelectorAll('.edit-item-btn').forEach(btn => {
         btn.addEventListener('click', () => bewerkItem(btn.dataset.id));
     });
     
+    // Event listeners voor combinatie bewerken
     document.querySelectorAll('.edit-combinatie-btn').forEach(btn => {
         btn.addEventListener('click', () => bewerkCombinatie(btn.dataset.id));
     });
     
+    // Event listeners voor verwijderen
     document.querySelectorAll('.delete-btn').forEach(btn => {
         btn.addEventListener('click', () => verwijderItem(btn.dataset.id));
     });
+    
+    // Event listeners voor componenten toggle
+    document.querySelectorAll('.toggle-components-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const id = this.dataset.id;
+            const row = document.getElementById(`components-${id}`);
+            if (row) {
+                if (row.style.display === 'none') {
+                    row.style.display = 'table-row';
+                    this.textContent = '🔽';
+                    this.title = 'Verberg componenten';
+                } else {
+                    row.style.display = 'none';
+                    this.textContent = '📋';
+                    this.title = 'Toon componenten';
+                }
+            }
+        });
+    });
 }
-
 // ===== ITEM FUNCTIES =====
 
 async function bewerkItem(id) {
@@ -795,6 +849,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     
     if (resetFilterBtn) {
         resetFilterBtn.addEventListener('click', resetFilters);
+    }
     }
     
     // Enter-toets op zoekveld
