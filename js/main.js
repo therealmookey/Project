@@ -58,7 +58,9 @@ async function checkPageAuth() {
     }
 }
 
-// ===== DARK MODE FUNCTIES (MET SLIDER) =====
+// ===== DARK MODE FUNCTIES (VIA THEME.JS) =====
+// Deze functies worden nu aangeroepen via de globale theme module
+// We gebruiken window.theme als interface
 
 // Laad de opgeslagen thema voorkeur
 function loadThemePreference() {
@@ -81,6 +83,11 @@ function toggleTheme(event) {
     
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
+    
+    // Roep ook de module aan als die geladen is
+    if (window.theme && window.theme.applyTheme) {
+        window.theme.applyTheme(newTheme);
+    }
 }
 
 // ===== NAVIGATIE FUNCTIES =====
@@ -310,10 +317,13 @@ async function laadDashboardStatistieken() {
     }
 }
 
-// ===== VERSIE BADGE (zonder import) =====
+// ===== VERSIE BADGE =====
 function addVersionBadgeDirect() {
     // Controleer of de badge al bestaat
     if (document.getElementById('version-badge')) return;
+    
+    // Controleer of de gebruiker hem heeft verborgen
+    if (localStorage.getItem('hideVersionBadge') === 'true') return;
 
     const badge = document.createElement('div');
     badge.id = 'version-badge';
@@ -346,8 +356,46 @@ function addVersionBadgeDirect() {
         </span>
     `;
 
-    if (!localStorage.getItem('hideVersionBadge')) {
-        document.body.appendChild(badge);
+    document.body.appendChild(badge);
+    console.log('✅ Versie-badge toegevoegd!');
+}
+
+// ===== BADGE INITIALISATIE =====
+function initBadge() {
+    // Probeer direct
+    addVersionBadgeDirect();
+    
+    // Fallback: probeer opnieuw na 500ms
+    setTimeout(function() {
+        if (!document.getElementById('version-badge')) {
+            addVersionBadgeDirect();
+        }
+    }, 500);
+    
+    // Fallback: probeer opnieuw na 2 seconden
+    setTimeout(function() {
+        if (!document.getElementById('version-badge')) {
+            addVersionBadgeDirect();
+        }
+    }, 2000);
+}
+
+// ===== THEME MODULE LOADER =====
+// Laad de theme module als die beschikbaar is
+async function loadThemeModule() {
+    try {
+        const themeModule = await import('./core/theme.js');
+        window.theme = themeModule;
+        console.log('✅ Theme module geladen!');
+        
+        // Initialiseer het thema
+        if (themeModule.initTheme) {
+            themeModule.initTheme();
+        }
+    } catch (err) {
+        // Theme module is niet beschikbaar, gebruik de fallback
+        console.log('ℹ️ Theme module niet gevonden, gebruik fallback');
+        loadThemePreference();
     }
 }
 
@@ -360,6 +408,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('navigatie-placeholder')) {
         laadNavigatie();
     }
+    
+    // Laad theme module
+    loadThemeModule();
+    
+    // Voeg badge toe
+    initBadge();
 });
 
 // Dashboard statistieken
@@ -367,12 +421,11 @@ if (document.getElementById('dashboardAdresCount') || document.getElementById('d
     document.addEventListener('DOMContentLoaded', laadDashboardStatistieken);
 }
 
-// Voeg de versie-badge toe
-document.addEventListener('DOMContentLoaded', function() {
-    addVersionBadgeDirect();
-});
-
-// Voor het geval de DOM al geladen is
+// Als de DOM al geladen is, voer dan direct uit
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    addVersionBadgeDirect();
+    // Laad theme module
+    loadThemeModule();
+    
+    // Voeg badge toe
+    initBadge();
 }
