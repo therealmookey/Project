@@ -52,8 +52,8 @@ export async function getCurrentSession() {
 export async function login(email, password) {
     try {
         const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password
+            email: email,
+            password: password
         });
         if (error) throw error;
         return { user: data.user, error: null };
@@ -73,8 +73,8 @@ export async function register(email, password, gebruikersnaam) {
     try {
         // Stap 1: Maak auth account aan
         const { data: authData, error: authError } = await supabase.auth.signUp({
-            email,
-            password
+            email: email,
+            password: password
         });
 
         if (authError) throw authError;
@@ -196,8 +196,8 @@ export async function getUsername(userId) {
  * @returns {Promise<boolean>}
  */
 export async function isAdmin(userId) {
-    const { rol } = await getUserRole(userId);
-    return rol === 'admin';
+    const result = await getUserRole(userId);
+    return result.rol === 'admin';
 }
 
 // ===== DATABASE FUNCTIES =====
@@ -205,21 +205,24 @@ export async function isAdmin(userId) {
 /**
  * Voer een generieke SELECT query uit
  * @param {string} table - Tabel naam
- * @param {Object} options - { select, eq, order, limit, single }
+ * @param {Object} options - { select, filters, order, limit, single }
  * @returns {Promise<Object>} { data, error }
  */
 export async function dbSelect(table, options = {}) {
     try {
         let query = supabase.from(table).select(options.select || '*');
 
-        if (options.eq) {
-            Object.entries(options.eq).forEach(([key, value]) => {
+        // Filters toepassen (object van { column: value })
+        if (options.filters) {
+            Object.entries(options.filters).forEach(([key, value]) => {
                 query = query.eq(key, value);
             });
         }
 
+        // Order toepassen (array van [column, ascending])
         if (options.order) {
-            query = query.order(options.order.column, { ascending: options.order.ascending !== false });
+            const [column, ascending = true] = options.order;
+            query = query.order(column, { ascending: ascending });
         }
 
         if (options.limit) {
