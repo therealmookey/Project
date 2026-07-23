@@ -128,6 +128,11 @@ function toonPlanning(planningen) {
                 extraInfo = `${planning.aantal_lege_tonnen} lege ton(nen)`;
             }
             
+            // Adres extra info (route, parkeren, laadperron, etc.)
+            const adresExtraInfo = adres?.extra_info ? escapeHtml(adres.extra_info) : '';
+            const adresTelefoon = adres?.telefoon ? escapeHtml(adres.telefoon) : '';
+            const adresContact = adres?.contactpersoon_naam ? escapeHtml(adres.contactpersoon_naam) : '';
+            
             html += `
                 <div class="planning-item sortable-item" data-id="${planning.id}" data-datum="${planning.datum}">
                     <div class="planning-info">
@@ -138,8 +143,11 @@ function toonPlanning(planningen) {
                             <span class="planning-status ${statusClass}">${statusLabel}</span>
                         </div>
                         <p>📍 ${adres ? escapeHtml(adres.straat) : ''}, ${adres ? escapeHtml(adres.plaats) : ''}</p>
+                        ${adresTelefoon ? `<p>📞 ${adresTelefoon}</p>` : ''}
+                        ${adresContact ? `<p>👤 ${adresContact}</p>` : ''}
+                        ${adresExtraInfo ? `<p class="adres-extra-info">📝 ${adresExtraInfo}</p>` : ''}
                         <p>${typeIcon} ${typeLabel} ${extraInfo ? `- ${extraInfo}` : ''}</p>
-                        ${planning.opmerkingen ? `<p><em>📝 ${escapeHtml(planning.opmerkingen)}</em></p>` : ''}
+                        ${planning.opmerkingen ? `<p class="planning-opmerking">📝 ${escapeHtml(planning.opmerkingen)}</p>` : ''}
                     </div>
                     <div class="planning-buttons">
                         <select class="status-select" data-id="${planning.id}">
@@ -385,7 +393,7 @@ async function savePlanning() {
     }
 }
 
-// ===== PDF GENEREREN (WERKENDE VERSIE) =====
+// ===== PDF GENEREREN =====
 function genereerPdfVoorDag(datum) {
     console.log('📄 PDF genereren voor datum:', datum);
     
@@ -420,7 +428,7 @@ function buildPdfHtml(datum, planningen) {
     
     gesorteerd.forEach((planning, index) => {
         const adres = alleAdressen.find(a => a.id === planning.adres_id);
-        const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
+        const typeLabel = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
         const statusLabel = planning.status === 'gepland' ? 'Gepland' : 
                           (planning.status === 'uitgevoerd' ? 'Uitgevoerd' : 'Geannuleerd');
         
@@ -434,19 +442,32 @@ function buildPdfHtml(datum, planningen) {
         const adresNaam = adres ? escapeHtml(adres.instelling_naam) : 'Onbekend';
         const adresStraat = adres ? escapeHtml(adres.straat) : '';
         const adresPlaats = adres ? escapeHtml(adres.postcode) + ' ' + escapeHtml(adres.plaats) : '';
+        const adresTelefoon = adres?.telefoon ? escapeHtml(adres.telefoon) : '';
+        const adresContact = adres?.contactpersoon_naam ? escapeHtml(adres.contactpersoon_naam) : '';
+        const adresExtraInfo = adres?.extra_info ? escapeHtml(adres.extra_info) : '';
         
         tableRows += `
             <tr>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center;">${index + 1}</td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef;">${typeLabel}</td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef;"><strong>${adresNaam}</strong></td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef;">${adresStraat}</td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef;">${adresPlaats}</td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center;">${details || '-'}</td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center;">${statusLabel}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center; vertical-align: top;">${index + 1}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;">${typeLabel}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;">
+                    <strong>${adresNaam}</strong>
+                    ${adresExtraInfo ? `<br><span style="font-size: 10px; color: #6c757d;">📝 ${adresExtraInfo}</span>` : ''}
+                </td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;">
+                    ${adresStraat}
+                    ${adresTelefoon ? `<br><span style="font-size: 11px; color: #2c7da0;">📞 ${adresTelefoon}</span>` : ''}
+                </td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;">
+                    ${adresPlaats}
+                    ${adresContact ? `<br><span style="font-size: 11px;">👤 ${adresContact}</span>` : ''}
+                </td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center; vertical-align: top;">${details || '-'}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center; vertical-align: top;">${statusLabel}</td>
             </tr>
         `;
         
+        // Planning opmerkingen
         if (planning.opmerkingen) {
             opmerkingenHtml += `
                 <p style="margin: 4px 0;"><strong>${adresNaam}:</strong> ${escapeHtml(planning.opmerkingen)}</p>
@@ -465,13 +486,14 @@ function buildPdfHtml(datum, planningen) {
                 h1 { color: #2c7da0; text-align: center; font-size: 22px; margin-bottom: 5px; }
                 .subtitle { text-align: center; color: #6c757d; font-size: 14px; margin-bottom: 20px; }
                 .header-info { display: flex; justify-content: space-between; font-size: 12px; color: #6c757d; margin-bottom: 15px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-                th { background-color: #2c7da0; color: white; padding: 8px 10px; text-align: left; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+                th { background-color: #2c7da0; color: white; padding: 8px 10px; text-align: left; font-size: 11px; }
                 td { padding: 6px 8px; }
                 .footer { text-align: center; color: #adb5bd; font-size: 10px; margin-top: 30px; border-top: 1px solid #e9ecef; padding-top: 15px; }
                 .opmerkingen { margin-top: 20px; padding: 10px 15px; background: #f8f9fa; border-radius: 6px; }
                 .opmerkingen h3 { color: #2c7da0; font-size: 14px; margin-top: 0; margin-bottom: 8px; }
                 hr { border: none; border-top: 1px solid #e9ecef; margin: 15px 0; }
+                .route-info { font-size: 10px; color: #6c757d; margin-top: 2px; }
             </style>
         </head>
         <body>
@@ -485,13 +507,13 @@ function buildPdfHtml(datum, planningen) {
             <table>
                 <thead>
                     <tr>
-                        <th style="text-align: center; width: 30px;">#</th>
-                        <th style="width: 80px;">Type</th>
-                        <th style="min-width: 120px;">Ziekenhuis</th>
-                        <th>Straat</th>
-                        <th>Plaats</th>
-                        <th style="text-align: center; width: 70px;">Details</th>
-                        <th style="text-align: center; width: 80px;">Status</th>
+                        <th style="text-align: center; width: 25px;">#</th>
+                        <th style="width: 70px;">Type</th>
+                        <th style="min-width: 120px;">Ziekenhuis<br><span style="font-weight: normal; font-size: 9px;">(incl. route info)</span></th>
+                        <th style="min-width: 100px;">Adres<br><span style="font-weight: normal; font-size: 9px;">(incl. telefoon)</span></th>
+                        <th style="min-width: 100px;">Plaats<br><span style="font-weight: normal; font-size: 9px;">(incl. contact)</span></th>
+                        <th style="text-align: center; width: 60px;">Details</th>
+                        <th style="text-align: center; width: 70px;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -500,7 +522,7 @@ function buildPdfHtml(datum, planningen) {
             </table>
             ${opmerkingenHtml ? `
                 <div class="opmerkingen">
-                    <h3>📝 Opmerkingen</h3>
+                    <h3>📝 Opmerkingen bij ritten</h3>
                     ${opmerkingenHtml}
                 </div>
             ` : ''}
@@ -512,7 +534,7 @@ function buildPdfHtml(datum, planningen) {
     `;
 }
 
-// ===== PDF PRINT (WERKT ALTIJD) =====
+// ===== PDF PRINT =====
 function printPdf(html, datum) {
     console.log('📄 PDF afdrukken...');
     
