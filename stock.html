@@ -7,12 +7,10 @@
     
     <!-- ===== VOORKOM FLITS VAN LIGHT MODE ===== -->
     <script>
-        // Dit script wordt direct uitgevoerd voordat de CSS wordt geladen
         (function() {
             const theme = localStorage.getItem('theme');
             if (theme === 'dark') {
                 document.documentElement.setAttribute('data-theme', 'dark');
-                // Voorkom nog meer flits
                 document.documentElement.style.backgroundColor = '#0f0f1a';
                 document.documentElement.style.color = '#f0f0f0';
             }
@@ -96,6 +94,23 @@
             <label>Locatie</label>
             <input type="text" id="itemLocatie" placeholder="Bijv. Magazijn A">
             
+            <!-- ===== COMBINATIE VELDEN ===== -->
+            <div class="combinatie-velden" style="display: none;">
+                <hr>
+                <h4>📦 Componenten</h4>
+                <p style="font-size:0.85rem;color:#6c757d;">Selecteer de items die in deze combinatie zitten.</p>
+                <div class="componenten-lijst" id="componentenLijst">
+                    <p>Geen componenten toegevoegd.</p>
+                </div>
+                <div class="component-toevoegen">
+                    <select id="componentSelect" class="form-input">
+                        <option value="">Kies een component...</option>
+                    </select>
+                    <input type="number" id="componentAantal" min="1" value="1" step="1" style="width:80px;display:inline-block;">
+                    <button id="addComponentBtn" class="btn btn-secondary">➕ Toevoegen</button>
+                </div>
+            </div>
+            
             <div style="display: flex; gap: 10px; margin-top: 1rem;">
                 <button id="saveItemBtn" class="btn btn-primary">Opslaan</button>
                 <button id="closeItemPopup" class="btn btn-secondary">Annuleren</button>
@@ -123,16 +138,16 @@
             <h4>📦 Componenten</h4>
             <p style="font-size:0.85rem;color:#6c757d;">Selecteer de items die in deze combinatie zitten en het aantal dat nodig is.</p>
             
-            <div id="componentenLijst" class="componenten-lijst">
+            <div class="componenten-lijst" id="combinatieComponentenLijst">
                 <p>Geen componenten toegevoegd.</p>
             </div>
             
             <div class="component-toevoegen">
-                <select id="componentSelect" class="form-input">
+                <select id="combinatieComponentSelect" class="form-input">
                     <option value="">Kies een component...</option>
                 </select>
-                <input type="number" id="componentAantal" min="1" value="1" step="1" style="width:80px;display:inline-block;">
-                <button id="addComponentBtn" class="btn btn-secondary">➕ Toevoegen</button>
+                <input type="number" id="combinatieComponentAantal" min="1" value="1" step="1" style="width:80px;display:inline-block;">
+                <button id="addCombinatieComponentBtn" class="btn btn-secondary">➕ Toevoegen</button>
             </div>
             
             <div style="display: flex; gap: 10px; margin-top: 1rem;">
@@ -146,6 +161,7 @@
     <div id="mutatiePopup" class="popup">
         <div class="popup-content">
             <h3 id="mutatieTitle">Voorraad aanpassen</h3>
+            
             <p><strong>Item:</strong> <span id="mutatieItemName"></span></p>
             <p><strong>Huidige voorraad:</strong> <span id="mutatieHuidigAantal">0</span> stuks</p>
             
@@ -176,17 +192,10 @@
         </div>
     </div>
     
-       <!-- ===== SCRIPTS ===== -->
-<!-- 1. Supabase CDN -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<!-- 2. Configuratie -->
-<script src="js/config.js"></script>
-
-<!-- 3. MAIN (als module) - laadt navigatie, thema, versie -->
-<script type="module" src="js/main.js"></script>
-
-<!-- 4. Admin specifiek (als module) -->
-<script type="module" src="js/admin.js"></script>
+    <!-- ===== SCRIPTS ===== -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/config.js"></script>
+    <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/stock.js"></script>
 </body>
 </html>
