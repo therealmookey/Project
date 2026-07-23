@@ -2,13 +2,22 @@
 // MODULE - AGENDA (Dashboard agenda functionaliteit)
 // ============================================================
 
-import { supabase } from '../../core/supabase.js';
-import { escapeHtml } from '../../core/utils.js';
+// Gebruik de globale supabase in plaats van import
+// omdat de module niet altijd correct wordt geladen
+const supabase = window.supabase;
 
 // ===== STATE =====
 let agendaData = [];
 let huidigeAgendaDatum = new Date();
 let agendaTooltipTimeout = null;
+
+// ===== HULPFUNCTIE (fallback) =====
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
 
 // ===== AGENDA FUNCTIES =====
 
@@ -16,6 +25,11 @@ let agendaTooltipTimeout = null;
  * Laad de agenda voor de huidige maand
  */
 export async function laadAgenda() {
+    if (!supabase) {
+        console.error('Supabase niet beschikbaar voor agenda');
+        return;
+    }
+
     const startDatum = new Date(huidigeAgendaDatum.getFullYear(), huidigeAgendaDatum.getMonth(), 1);
     const eindDatum = new Date(huidigeAgendaDatum.getFullYear(), huidigeAgendaDatum.getMonth() + 1, 0);
     const startStr = startDatum.toISOString().split('T')[0];
@@ -103,6 +117,7 @@ export function toonAgenda() {
 
     dagenContainer.innerHTML = html;
 
+    // Event listeners toevoegen
     document.querySelectorAll('.agenda-dag:not(.leeg)').forEach(el => {
         el.addEventListener('mouseenter', function(e) {
             toonTooltip(this, e);
@@ -120,6 +135,7 @@ export function toonAgenda() {
         });
     });
 
+    // Selecteer vandaag standaard
     const vandaagEl = document.querySelector(`.agenda-dag[data-datum="${vandaagStr}"]`);
     if (vandaagEl && rittenContainer) {
         vandaagEl.classList.add('geselecteerd');

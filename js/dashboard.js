@@ -2,9 +2,6 @@
 
 // Importeer agenda module
 import { laadAgenda, vorigeMaand, volgendeMaand, gaNaarVandaag } from './modules/dashboard/agenda.js';
-import { laadOphalingAnalyse } from './modules/dashboard/voorspelling.js';
-import { getCurrentUser } from '../core/supabase.js';
-import { escapeHtml } from '../core/utils.js';
 
 // ===== DASHBOARD AUTH =====
 
@@ -22,8 +19,7 @@ async function checkDashboardAuth() {
     } else {
         console.log('Sessie is geldig voor:', session.user.email);
         toonGebruikersnaam(session.user.id);
-        laadAgenda();
-        laadOphalingAnalyse();
+        laadAgenda(); // Dit roept nu de agenda module aan
     }
 }
 
@@ -90,16 +86,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 .select('*', { count: 'exact', head: true });
 
             alert(`📊 Statistieken\n\n📍 Aantal adressen: ${adresCount || 0}\n📅 Aantal planningen: ${planningCount || 0}`);
-        });
-    }
-
-    // Filter event listener voor voorspellingen
-    const filterSelect = document.getElementById('voorspellingFilter');
-    if (filterSelect) {
-        filterSelect.addEventListener('change', function() {
-            // De voorspelling module heeft zijn eigen state
-            // We herladen de analyse met de nieuwe cutoff
-            laadOphalingAnalyse();
         });
     }
 });
