@@ -55,6 +55,7 @@ export function applyTheme(theme) {
 export function toggleTheme(event) {
     const isChecked = event.target.checked;
     const newTheme = isChecked ? DARK_CLASS : LIGHT_CLASS;
+    console.log(`🔄 Thema wisselen naar: ${newTheme}`);
     applyTheme(newTheme);
 }
 
@@ -77,10 +78,23 @@ export function initTheme() {
     // Event listener toevoegen aan checkbox (als die bestaat)
     const checkbox = document.getElementById('themeCheckbox');
     if (checkbox) {
-        // Verwijder oude listeners om dubbel te voorkomen
+        // Verwijder oude listeners
         const newCheckbox = checkbox.cloneNode(true);
         checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+        
+        // Voeg nieuwe listener toe
         newCheckbox.addEventListener('change', toggleTheme);
+        console.log('✅ Theme toggle event listener toegevoegd');
+    } else {
+        console.warn('⚠️ Geen theme checkbox gevonden, probeer later...');
+        // Probeer opnieuw na een seconde
+        setTimeout(() => {
+            const retryCheckbox = document.getElementById('themeCheckbox');
+            if (retryCheckbox) {
+                retryCheckbox.addEventListener('change', toggleTheme);
+                console.log('✅ Theme toggle event listener toegevoegd (retry)');
+            }
+        }, 1000);
     }
     
     console.log('✅ Thema geïnitialiseerd');

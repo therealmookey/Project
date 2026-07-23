@@ -13,19 +13,21 @@ console.log('📦 main.js geladen');
 function initializeApp() {
     console.log('🔄 Applicatie initialiseren...');
     
-    // 1. Thema initialiseren (ALTIJD, ongeacht auth status)
-    initTheme();
-    console.log('✅ Thema geïnitialiseerd');
-    
-    // 2. Versie badge toevoegen
-    addVersionBadge();
-    console.log('✅ Versie badge toegevoegd');
-    
-    // 3. Navigatie laden (als die bestaat)
+    // 1. Navigatie laden (eerst, zodat de checkbox bestaat)
     if (document.getElementById('navigatie-placeholder')) {
         laadNavigatie();
         console.log('✅ Navigatie geladen');
     }
+    
+    // 2. Thema initialiseren (na navigatie, zodat checkbox bestaat)
+    setTimeout(() => {
+        initTheme();
+        console.log('✅ Thema geïnitialiseerd');
+    }, 100);
+    
+    // 3. Versie badge toevoegen
+    addVersionBadge();
+    console.log('✅ Versie badge toegevoegd');
     
     // 4. Auth check (alleen voor beschermde pagina's)
     checkPageAuth();
