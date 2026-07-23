@@ -79,8 +79,8 @@ function toonPlanning(planningen) {
         return;
     }
     
-    // Sorteer op datum
-    const gesorteerd = [...planningen].sort((a, b) => new Date(a.datum) - new Date(b.datum));
+    // Sorteer op datum (NIEUWSTE EERST)
+    const gesorteerd = [...planningen].sort((a, b) => new Date(b.datum) - new Date(a.datum));
     
     let html = '';
     
@@ -91,7 +91,11 @@ function toonPlanning(planningen) {
         grouped[p.datum].push(p);
     });
     
-    for (const [datum, items] of Object.entries(grouped)) {
+    // Sorteer datums (nieuwste eerst)
+    const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+    
+    for (const datum of sortedDates) {
+        const items = grouped[datum];
         const datumObj = new Date(datum + 'T00:00:00');
         const dagVanWeek = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][datumObj.getDay()];
         const datumDisplay = `${dagVanWeek} ${datumObj.getDate()} ${datumObj.toLocaleString('nl-NL', { month: 'long' })} ${datumObj.getFullYear()}`;
