@@ -115,10 +115,6 @@ export function addThemeToggle() {
     initTheme();
 }
 
-// Update de versie naar stap 3
-import { updateVersion } from './version.js';
-updateVersion(3, 'Theme Module', '2.1.0');
-
 // ===== EXPORT =====
 export default {
     getCurrentTheme,

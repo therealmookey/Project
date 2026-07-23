@@ -4,11 +4,11 @@
 
 // ===== VERSIE INFORMATIE =====
 export const VERSION = {
-    number: '2.1.0',
+    number: '2.2.0',
     buildDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
-    moduleStep: 3,
+    moduleStep: 4,
     totalSteps: 8,
-    currentStepName: 'Theme Module',
+    currentStepName: 'Navigation Module',
     branch: 'main'
 };
 
@@ -29,9 +29,9 @@ export function showVersion() {
 }
 
 /**
- * Update de versie naar een nieuwe stap
+ * Update de versie naar een nieuwe stap (alleen vanuit version.js)
  */
-export function updateVersion(step, stepName, versionNumber = null) {
+export function setVersion(step, stepName, versionNumber = null) {
     VERSION.moduleStep = step;
     VERSION.currentStepName = stepName;
     if (versionNumber) {
@@ -133,5 +133,5 @@ export function addVersionBadge() {
 // Toon de versie bij het laden van deze module
 showVersion();
 
-// Exporteer alles
+// ===== EXPORT =====
 export default VERSION;

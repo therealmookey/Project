@@ -3,10 +3,6 @@
 // ============================================================
 
 import { supabase, getCurrentUser } from './supabase.js';
-import { updateVersion } from './version.js';
-
-// Update versie naar stap 4
-updateVersion(4, 'Navigation Module', '2.2.0');
 
 // ===== CONSTANTEN =====
 const BESCHERMDE_PAGINAS = [

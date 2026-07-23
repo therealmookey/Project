@@ -2,28 +2,22 @@
 // CORE - SUPABASE (Centrale databaseverbinding)
 // ============================================================
 
-// Importeer versiebeheer
-import { updateVersion } from './version.js';
-
-// Update de versie naar stap 2
-updateVersion(2, 'Supabase Core', '2.0.0');
+// Geen updateVersion meer hier
 
 // ===== CONFIGURATIE =====
 const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
 
 // ===== SUPABASE CLIENT =====
-// Gebruik de bestaande window.supabase van de CDN script tag
-// Deze wordt geladen via <script src="..."> in de HTML
 export const supabase = window.supabase;
 
-// Controleer of Supabase beschikbaar is
 if (!supabase) {
-    console.error('❌ Supabase niet gevonden! Zorg dat de script tag in je HTML staat.');
+    console.error('❌ Supabase niet gevonden!');
     throw new Error('Supabase client niet beschikbaar');
 }
 
 console.log('✅ Supabase client geladen via window.supabase');
+
 
 // ===== AUTHENTICATIE FUNCTIES =====
 
