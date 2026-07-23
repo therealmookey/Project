@@ -41,7 +41,7 @@ async function laadModules() {
         if (error) throw error;
         
         alleModules = data || [];
-        console.log('📋 Modules geladen:', alleModules.length);
+        console.log('📋 Alle modules geladen:', alleModules.length);
         
         toonModules(alleModules);
     } catch (err) {
@@ -50,7 +50,7 @@ async function laadModules() {
     }
 }
 
-// ===== MODULES TONEN =====
+// ===== MODULES TONEN (ALLE MODULES OVERZICHT) =====
 function toonModules(modules) {
     if (!modulesLijst) return;
     
@@ -58,6 +58,18 @@ function toonModules(modules) {
         modulesLijst.innerHTML = '<p>Geen modules gevonden.</p>';
         return;
     }
+    
+    // Tel hoeveel gebruikers per module rechten hebben
+    const moduleCounts = {};
+    modules.forEach(module => {
+        moduleCounts[module.module_sleutel] = 0;
+    });
+    
+    alleRechten.forEach(recht => {
+        if (moduleCounts[recht.module_sleutel] !== undefined) {
+            moduleCounts[recht.module_sleutel]++;
+        }
+    });
     
     let html = `
         <div style="overflow-x: auto;">
@@ -68,6 +80,7 @@ function toonModules(modules) {
                         <th>Sleutel</th>
                         <th>Beschrijving</th>
                         <th>Standaard aan</th>
+                        <th>Gebruikers met recht</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -75,12 +88,14 @@ function toonModules(modules) {
     
     modules.forEach(module => {
         const standaardStatus = module.standaard_aan ? '✅ Ja' : '❌ Nee';
+        const count = moduleCounts[module.module_sleutel] || 0;
         html += `
             <tr>
                 <td><strong>${escapeHtml(module.module_naam)}</strong></td>
                 <td><code>${escapeHtml(module.module_sleutel)}</code></td>
                 <td>${escapeHtml(module.beschrijving || '-')}</td>
                 <td>${standaardStatus}</td>
+                <td style="text-align: center;">${count}</td>
             </tr>
         `;
     });
@@ -88,6 +103,9 @@ function toonModules(modules) {
     html += `
                 </tbody>
             </table>
+            <div style="margin-top: 10px; font-size: 0.85rem; color: #6c757d;">
+                Totaal: ${modules.length} modules
+            </div>
         </div>
     `;
     
@@ -323,10 +341,13 @@ async function saveModuleRights() {
         }));
         alleRechten = [...existingRechten, ...newRechtenData];
         
+        // Herlaad ook de modules lijst om de aantallen bij te werken
+        toonModules(alleModules);
+        
         showToast('✅ Module rechten opgeslagen!', 'success');
         modulePopup.style.display = 'none';
         
-        // Herlaad de lijst
+        // Herlaad de gebruikerslijst
         laadGebruikersMetRechten();
         
     } catch (err) {
