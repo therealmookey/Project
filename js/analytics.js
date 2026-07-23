@@ -351,7 +351,7 @@ async function laadVoorraadWaarschuwingen() {
     }
 }
 
-// ===== MODULE 5: FREQUENTIE CHART (STATISTISCH, GEEN KLEURCODERING) =====
+// ===== MODULE 5: FREQUENTIE CHART (STATISTISCH, GROTE TEKST) =====
 async function laadFrequentieChart() {
     console.log('📊 Frequentie chart laden...');
     
@@ -379,15 +379,8 @@ async function laadFrequentieChart() {
             countEl.textContent = `${data.length} ziekenhuizen`;
         }
 
-        // Verkort lange namen voor de weergave
-        const labels = data.map(item => {
-            let naam = item.instelling_naam || 'Onbekend';
-            if (naam.length > 30) {
-                naam = naam.substring(0, 27) + '...';
-            }
-            return naam;
-        });
-        
+        // Labels met volledige naam (niet afkorten)
+        const labels = data.map(item => item.instelling_naam || 'Onbekend');
         const intervals = data.map(item => item.gemiddeld_interval || 0);
 
         // Alle balken krijgen dezelfde kleur (blauw)
@@ -400,6 +393,13 @@ async function laadFrequentieChart() {
         
         if (frequentieChartInstance) {
             frequentieChartInstance.destroy();
+        }
+
+        // Maak de container groter
+        const container = frequentieChartCanvas.parentElement;
+        if (container) {
+            container.style.height = Math.max(400, data.length * 35) + 'px';
+            container.style.minHeight = '400px';
         }
 
         frequentieChartInstance = new Chart(ctx, {
@@ -431,6 +431,8 @@ async function laadFrequentieChart() {
                         bodyColor: '#e0e0e0',
                         cornerRadius: 6,
                         padding: 12,
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 13 },
                         callbacks: {
                             afterBody: function(tooltipItems) {
                                 const index = tooltipItems[0].dataIndex;
@@ -453,10 +455,10 @@ async function laadFrequentieChart() {
                         title: {
                             display: true,
                             text: 'Dagen',
-                            font: { size: 12 }
+                            font: { size: 14, weight: 'bold' }
                         },
                         ticks: {
-                            font: { size: 10 },
+                            font: { size: 13 },
                             stepSize: 7,
                             maxTicksLimit: 15
                         }
@@ -467,7 +469,7 @@ async function laadFrequentieChart() {
                         },
                         ticks: {
                             font: { 
-                                size: 10,
+                                size: 13,
                                 weight: '400'
                             },
                             maxRotation: 0,
@@ -478,8 +480,10 @@ async function laadFrequentieChart() {
                 },
                 layout: {
                     padding: {
-                        top: 10,
-                        bottom: 10
+                        top: 15,
+                        bottom: 15,
+                        left: 10,
+                        right: 10
                     }
                 }
             }
