@@ -611,6 +611,115 @@ function downloadTemplate() {
     showToast('✅ Template gedownload!', 'success');
 }
 
+// ===== SCROLL KNOMMEN =====
+function initScrollButtons() {
+    const scrollBtn = document.getElementById('scrollBtn');
+    if (!scrollBtn) return;
+    
+    let isScrolling = false;
+    let scrollTimeout = null;
+    
+    // Functie om de knop te tonen/verbergen
+    function updateScrollButton() {
+        const scrollY = window.scrollY;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        const maxScroll = documentHeight - windowHeight;
+        
+        if (maxScroll <= 100) {
+            // Geen scroll nodig, verberg knop
+            scrollBtn.style.display = 'none';
+            return;
+        }
+        
+        // Toon knop
+        scrollBtn.style.display = 'flex';
+        
+        // Bepaal of we naar boven of beneden moeten
+        if (scrollY < 100) {
+            // Bovenin: toon pijltje naar beneden
+            scrollBtn.className = 'scroll-btn scroll-down';
+            scrollBtn.innerHTML = '<span class="scroll-icon">▼</span>';
+            scrollBtn.title = 'Scroll naar beneden';
+        } else if (scrollY > maxScroll - 100) {
+            // Beneden: toon pijltje naar boven
+            scrollBtn.className = 'scroll-btn scroll-up';
+            scrollBtn.innerHTML = '<span class="scroll-icon">▲</span>';
+            scrollBtn.title = 'Scroll naar boven';
+        } else {
+            // In het midden: toon beide pijltjes
+            scrollBtn.className = 'scroll-btn scroll-both';
+            scrollBtn.innerHTML = '<span class="scroll-icon">▲▼</span>';
+            scrollBtn.title = 'Scroll naar boven of beneden';
+        }
+    }
+    
+    // Scroll naar boven of beneden
+    function handleScrollClick() {
+        if (isScrolling) return;
+        isScrolling = true;
+        
+        const scrollY = window.scrollY;
+        const windowHeight = window.innerHeight;
+        const documentHeight = document.documentElement.scrollHeight;
+        const maxScroll = documentHeight - windowHeight;
+        
+        let targetY;
+        const isAtTop = scrollY < 100;
+        const isAtBottom = scrollY > maxScroll - 100;
+        
+        if (isAtTop) {
+            // Bovenin: scroll naar beneden
+            targetY = maxScroll;
+        } else if (isAtBottom) {
+            // Beneden: scroll naar boven
+            targetY = 0;
+        } else {
+            // In het midden: scroll naar boven of beneden (kies de dichtstbijzijnde)
+            const distanceToTop = scrollY;
+            const distanceToBottom = maxScroll - scrollY;
+            if (distanceToTop < distanceToBottom) {
+                targetY = 0;
+            } else {
+                targetY = maxScroll;
+            }
+        }
+        
+        // Vloeiend scrollen
+        window.scrollTo({
+            top: targetY,
+            behavior: 'smooth'
+        });
+        
+        // Reset na 1 seconde
+        setTimeout(() => {
+            isScrolling = false;
+        }, 1000);
+    }
+    
+    // Event listeners
+    scrollBtn.addEventListener('click', handleScrollClick);
+    
+    // Update knop bij scrollen
+    window.addEventListener('scroll', function() {
+        if (scrollTimeout) {
+            cancelAnimationFrame(scrollTimeout);
+        }
+        scrollTimeout = requestAnimationFrame(updateScrollButton);
+    });
+    
+    // Update knop bij resize
+    window.addEventListener('resize', function() {
+        if (scrollTimeout) {
+            cancelAnimationFrame(scrollTimeout);
+        }
+        scrollTimeout = requestAnimationFrame(updateScrollButton);
+    });
+    
+    // Initialiseer
+    setTimeout(updateScrollButton, 500);
+}
+
 // ===== INITIALISATIE =====
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -696,6 +805,37 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (downloadTemplateBtn) {
         downloadTemplateBtn.addEventListener('click', downloadTemplate);
     }
+    
+    // ===== ENTER-TOETS ACTIVEERT FILTER =====
+    if (searchZiekenhuis) {
+        searchZiekenhuis.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (filterBtn) filterBtn.click();
+            }
+        });
+    }
+
+    if (filterDatumVanaf) {
+        filterDatumVanaf.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (filterBtn) filterBtn.click();
+            }
+        });
+    }
+
+    if (filterDatumTot) {
+        filterDatumTot.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (filterBtn) filterBtn.click();
+            }
+        });
+    }
+    
+    // ===== SCROLL KNOMMEN INITIALISEREN =====
+    initScrollButtons();
     
     console.log('✅ Registraties pagina geïnitialiseerd!');
 });

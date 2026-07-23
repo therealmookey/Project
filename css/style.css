@@ -3723,3 +3723,84 @@ hr {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+/* ===== SCROLL KNO ===== */
+.scroll-btn {
+    position: fixed;
+    right: 30px;
+    bottom: 30px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: #2c7da0;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(44,125,160,0.3);
+    transition: all 0.3s ease;
+    z-index: 999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.9;
+}
+
+.scroll-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 24px rgba(44,125,160,0.4);
+    opacity: 1;
+}
+
+.scroll-btn:active {
+    transform: scale(0.95);
+}
+
+.scroll-btn .scroll-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    font-size: 1.4rem;
+    font-weight: bold;
+}
+
+.scroll-btn.scroll-down {
+    background: #2c7da0;
+    animation: pulse-down 2s infinite;
+}
+
+.scroll-btn.scroll-up {
+    background: #e63946;
+    animation: pulse-up 2s infinite;
+}
+
+.scroll-btn.scroll-both {
+    background: #6c757d;
+    animation: pulse-both 2s infinite;
+}
+
+.scroll-btn.scroll-both .scroll-icon {
+    font-size: 1rem;
+    flex-direction: column;
+    gap: 2px;
+}
+
+@keyframes pulse-down {
+    0%, 100% { box-shadow: 0 4px 16px rgba(44,125,160,0.3); }
+    50% { box-shadow: 0 4px 30px rgba(44,125,160,0.6); transform: translateY(4px); }
+}
+
+@keyframes pulse-up {
+    0%, 100% { box-shadow: 0 4px 16px rgba(230,57,70,0.3); }
+    50% { box-shadow: 0 4px 30px rgba(230,57,70,0.6); transform: translateY(-4px); }
+}
+
+@keyframes pulse-both {
+    0%, 100% { box-shadow: 0 4px 16px rgba(108,117,125,0.3); }
+    50% { box-shadow: 0 4px 30px rgba(108,117,125,0.6); transform: scale(1.05); }
+}
+
+/* Dark mode */
+[data-theme="dark"] .scroll-btn {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
