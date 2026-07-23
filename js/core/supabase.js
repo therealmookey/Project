@@ -2,6 +2,12 @@
 // CORE - SUPABASE (Centrale databaseverbinding)
 // ============================================================
 
+// Importeer versiebeheer
+import { updateVersion } from './version.js';
+
+// Update de versie naar stap 2
+updateVersion(2, 'Supabase Core', '2.0.0');
+
 // ===== CONFIGURATIE =====
 const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
