@@ -58,12 +58,17 @@ async function checkPageAuth() {
     }
 }
 
-// ===== DARK MODE FUNCTIES (VIA THEME.JS) =====
-// Deze functies worden nu aangeroepen via de globale theme module
-// We gebruiken window.theme als interface
+// ===== DARK MODE FUNCTIES (FALLBACK) =====
+// Deze functies worden alleen gebruikt als de theme module niet beschikbaar is
+// Ze worden NIET aangeroepen als de theme module succesvol is geladen
 
-// Laad de opgeslagen thema voorkeur
-function loadThemePreference() {
+let themeModuleLoaded = false;
+
+// Laad de opgeslagen thema voorkeur (fallback)
+function loadThemePreferenceFallback() {
+    // Alleen gebruiken als de theme module niet is geladen
+    if (themeModuleLoaded) return;
+    
     const savedTheme = localStorage.getItem('theme');
     const checkbox = document.getElementById('themeCheckbox');
     
@@ -76,18 +81,16 @@ function loadThemePreference() {
     }
 }
 
-// Wissel tussen dark en light mode (via slider)
-function toggleTheme(event) {
+// Wissel tussen dark en light mode (fallback)
+function toggleThemeFallback(event) {
+    // Alleen gebruiken als de theme module niet is geladen
+    if (themeModuleLoaded) return;
+    
     const isChecked = event.target.checked;
     const newTheme = isChecked ? 'dark' : 'light';
     
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
-    
-    // Roep ook de module aan als die geladen is
-    if (window.theme && window.theme.applyTheme) {
-        window.theme.applyTheme(newTheme);
-    }
 }
 
 // ===== NAVIGATIE FUNCTIES =====
@@ -107,11 +110,20 @@ async function laadNavigatie() {
         // Dark mode slider event listener
         const themeCheckbox = document.getElementById('themeCheckbox');
         if (themeCheckbox) {
-            themeCheckbox.addEventListener('change', toggleTheme);
+            // Gebruik de fallback toggle als de module niet is geladen
+            themeCheckbox.addEventListener('change', function(e) {
+                if (window.theme && window.theme.toggleTheme) {
+                    // Gebruik de module
+                    window.theme.toggleTheme(e);
+                } else {
+                    // Gebruik fallback
+                    toggleThemeFallback(e);
+                }
+            });
         }
         
-        // Laad de opgeslagen thema voorkeur
-        loadThemePreference();
+        // Laad de opgeslagen thema voorkeur (fallback)
+        loadThemePreferenceFallback();
         
         const logoutBtn = document.getElementById('logoutBtnNav');
         if (logoutBtn) {
@@ -381,21 +393,22 @@ function initBadge() {
 }
 
 // ===== THEME MODULE LOADER =====
-// Laad de theme module als die beschikbaar is
 async function loadThemeModule() {
     try {
         const themeModule = await import('./core/theme.js');
         window.theme = themeModule;
+        themeModuleLoaded = true;
         console.log('✅ Theme module geladen!');
         
-        // Initialiseer het thema
+        // Initialiseer het thema via de module
         if (themeModule.initTheme) {
             themeModule.initTheme();
         }
     } catch (err) {
         // Theme module is niet beschikbaar, gebruik de fallback
         console.log('ℹ️ Theme module niet gevonden, gebruik fallback');
-        loadThemePreference();
+        themeModuleLoaded = false;
+        loadThemePreferenceFallback();
     }
 }
 
@@ -409,8 +422,10 @@ document.addEventListener('DOMContentLoaded', function() {
         laadNavigatie();
     }
     
-    // Laad theme module
-    loadThemeModule();
+    // Laad theme module (alleen als die nog niet is geladen)
+    if (!themeModuleLoaded) {
+        loadThemeModule();
+    }
     
     // Voeg badge toe
     initBadge();
@@ -423,8 +438,10 @@ if (document.getElementById('dashboardAdresCount') || document.getElementById('d
 
 // Als de DOM al geladen is, voer dan direct uit
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    // Laad theme module
-    loadThemeModule();
+    // Laad theme module (alleen als die nog niet is geladen)
+    if (!themeModuleLoaded) {
+        loadThemeModule();
+    }
     
     // Voeg badge toe
     initBadge();
