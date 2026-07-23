@@ -3552,3 +3552,36 @@ hr {
     background: #1a1a2e;
     border-left-color: #adb5bd;
 }
+/* ===== PLANNING EXTRA INFO ===== */
+.planning-item .adres-extra-info {
+    background: #fff8e1;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #6d5d00;
+    border-left: 3px solid #ffc107;
+    margin: 4px 0;
+}
+
+.planning-item .planning-opmerking {
+    background: #e3f2fd;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    color: #0d47a1;
+    border-left: 3px solid #2196f3;
+    margin: 4px 0;
+}
+
+/* Dark mode */
+[data-theme="dark"] .planning-item .adres-extra-info {
+    background: #2a2a1e;
+    color: #d4a040;
+    border-left-color: #ffc107;
+}
+
+[data-theme="dark"] .planning-item .planning-opmerking {
+    background: #1a2a3e;
+    color: #80b0d0;
+    border-left-color: #2196f3;
+}
