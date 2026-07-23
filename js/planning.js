@@ -385,12 +385,9 @@ async function savePlanning() {
     }
 }
 
-// ===== PDF GENEREREN =====
+// ===== PDF GENEREREN (WERKENDE VERSIE) =====
 function genereerPdfVoorDag(datum) {
     console.log('📄 PDF genereren voor datum:', datum);
-    
-    // Toon een laadmelding
-    showToast('📄 PDF wordt gegenereerd...', 'info');
     
     // Haal alle planningen voor deze datum op
     const planningenVoorDag = allePlanningen.filter(p => p.datum === datum);
@@ -402,16 +399,25 @@ function genereerPdfVoorDag(datum) {
     
     console.log(`📋 ${planningenVoorDag.length} planningen gevonden voor PDF`);
     
-    // Bouw de HTML voor de PDF
+    // Bouw de HTML
+    const pdfHtml = buildPdfHtml(datum, planningenVoorDag);
+    
+    // Open in nieuw venster en print
+    printPdf(pdfHtml, datum);
+}
+
+// ===== PDF HTML BUILDER =====
+function buildPdfHtml(datum, planningen) {
     const datumObj = new Date(datum + 'T00:00:00');
     const dagVanWeek = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][datumObj.getDay()];
     const datumDisplay = `${dagVanWeek} ${datumObj.getDate()} ${datumObj.toLocaleString('nl-NL', { month: 'long' })} ${datumObj.getFullYear()}`;
     
     // Sorteer op dag_volgorde
-    const gesorteerd = [...planningenVoorDag].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
+    const gesorteerd = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
     
-    // Bouw een simpele HTML tabel
     let tableRows = '';
+    let opmerkingenHtml = '';
+    
     gesorteerd.forEach((planning, index) => {
         const adres = alleAdressen.find(a => a.id === planning.adres_id);
         const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
@@ -425,148 +431,113 @@ function genereerPdfVoorDag(datum) {
             details = `${planning.aantal_lege_tonnen} lege ton`;
         }
         
+        const adresNaam = adres ? escapeHtml(adres.instelling_naam) : 'Onbekend';
+        const adresStraat = adres ? escapeHtml(adres.straat) : '';
+        const adresPlaats = adres ? escapeHtml(adres.postcode) + ' ' + escapeHtml(adres.plaats) : '';
+        
         tableRows += `
             <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${index + 1}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${typeLabel}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;"><strong>${adres ? escapeHtml(adres.instelling_naam) : 'Onbekend'}</strong></td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${adres ? escapeHtml(adres.straat) : ''}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${adres ? escapeHtml(adres.postcode) + ' ' + escapeHtml(adres.plaats) : ''}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${details || '-'}</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: center;">${statusLabel}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center;">${index + 1}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef;">${typeLabel}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef;"><strong>${adresNaam}</strong></td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef;">${adresStraat}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef;">${adresPlaats}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center;">${details || '-'}</td>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center;">${statusLabel}</td>
             </tr>
         `;
+        
+        if (planning.opmerkingen) {
+            opmerkingenHtml += `
+                <p style="margin: 4px 0;"><strong>${adresNaam}:</strong> ${escapeHtml(planning.opmerkingen)}</p>
+            `;
+        }
     });
     
-    // Volledige HTML voor de PDF
-    const pdfHtml = `
+    return `
         <!DOCTYPE html>
         <html>
         <head>
             <meta charset="UTF-8">
             <title>Dagplanning ${datum}</title>
             <style>
-                body { font-family: Arial, sans-serif; padding: 20px; }
-                h1 { color: #2c7da0; text-align: center; font-size: 24px; }
-                .subtitle { text-align: center; color: #666; margin-bottom: 20px; font-size: 16px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
-                th { background-color: #2c7da0; color: white; padding: 10px; text-align: left; }
-                td { padding: 8px; border-bottom: 1px solid #ddd; }
-                .footer { text-align: center; color: #999; font-size: 11px; margin-top: 30px; }
-                .header-info { display: flex; justify-content: space-between; font-size: 12px; color: #666; margin-bottom: 10px; }
-                .opmerkingen { margin-top: 20px; }
-                .opmerkingen h3 { color: #2c7da0; }
-                .opmerkingen p { margin: 4px 0; }
-                hr { border: 1px solid #eee; margin: 15px 0; }
+                body { font-family: Arial, Helvetica, sans-serif; padding: 30px; color: #333; }
+                h1 { color: #2c7da0; text-align: center; font-size: 22px; margin-bottom: 5px; }
+                .subtitle { text-align: center; color: #6c757d; font-size: 14px; margin-bottom: 20px; }
+                .header-info { display: flex; justify-content: space-between; font-size: 12px; color: #6c757d; margin-bottom: 15px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+                th { background-color: #2c7da0; color: white; padding: 8px 10px; text-align: left; }
+                td { padding: 6px 8px; }
+                .footer { text-align: center; color: #adb5bd; font-size: 10px; margin-top: 30px; border-top: 1px solid #e9ecef; padding-top: 15px; }
+                .opmerkingen { margin-top: 20px; padding: 10px 15px; background: #f8f9fa; border-radius: 6px; }
+                .opmerkingen h3 { color: #2c7da0; font-size: 14px; margin-top: 0; margin-bottom: 8px; }
+                hr { border: none; border-top: 1px solid #e9ecef; margin: 15px 0; }
             </style>
         </head>
         <body>
             <h1>📋 Dagplanning</h1>
             <p class="subtitle">${datumDisplay}</p>
             <div class="header-info">
-                <span>Aantal ritten: ${gesorteerd.length}</span>
-                <span>Gegenereerd: ${new Date().toLocaleString('nl-NL')}</span>
+                <span>📊 Aantal ritten: ${gesorteerd.length}</span>
+                <span>🕐 Gegenereerd: ${new Date().toLocaleString('nl-NL')}</span>
             </div>
             <hr>
             <table>
                 <thead>
                     <tr>
-                        <th style="text-align: center;">#</th>
-                        <th>Type</th>
-                        <th>Ziekenhuis</th>
+                        <th style="text-align: center; width: 30px;">#</th>
+                        <th style="width: 80px;">Type</th>
+                        <th style="min-width: 120px;">Ziekenhuis</th>
                         <th>Straat</th>
                         <th>Plaats</th>
-                        <th style="text-align: center;">Details</th>
-                        <th style="text-align: center;">Status</th>
+                        <th style="text-align: center; width: 70px;">Details</th>
+                        <th style="text-align: center; width: 80px;">Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${tableRows}
                 </tbody>
             </table>
-            ${gesorteerd.some(p => p.opmerkingen) ? `
+            ${opmerkingenHtml ? `
                 <div class="opmerkingen">
-                    <hr>
                     <h3>📝 Opmerkingen</h3>
-                    ${gesorteerd.filter(p => p.opmerkingen).map(p => {
-                        const adres = alleAdressen.find(a => a.id === p.adres_id);
-                        return `<p><strong>${adres ? escapeHtml(adres.instelling_naam) : 'Onbekend'}:</strong> ${escapeHtml(p.opmerkingen)}</p>`;
-                    }).join('')}
+                    ${opmerkingenHtml}
                 </div>
             ` : ''}
             <div class="footer">
-                <hr>
-                <p>Automatisch gegenereerde dagplanning - Project</p>
+                Automatisch gegenereerde dagplanning
             </div>
         </body>
         </html>
     `;
-    
-    console.log('📄 PDF HTML gegenereerd, lengte:', pdfHtml.length);
-    
-    // Probeer html2pdf
-    if (typeof html2pdf !== 'undefined') {
-        try {
-            // Maak een tijdelijk element
-            const tempDiv = document.createElement('div');
-            tempDiv.style.position = 'fixed';
-            tempDiv.style.left = '-9999px';
-            tempDiv.style.top = '0';
-            tempDiv.style.width = '210mm';
-            tempDiv.style.background = 'white';
-            tempDiv.style.padding = '20px';
-            tempDiv.style.zIndex = '-1';
-            tempDiv.innerHTML = pdfHtml;
-            document.body.appendChild(tempDiv);
-            
-            const opt = {
-                margin: 10,
-                filename: `dagplanning_${datum}.pdf`,
-                html2canvas: { scale: 2, useCORS: true, logging: false },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-            
-            html2pdf().set(opt).from(tempDiv).save().then(function() {
-                document.body.removeChild(tempDiv);
-                showToast('✅ PDF succesvol gegenereerd!', 'success');
-            }).catch(function(err) {
-                document.body.removeChild(tempDiv);
-                console.error('PDF fout:', err);
-                printPdfFallback(pdfHtml, datum);
-            });
-        } catch (err) {
-            console.error('PDF error:', err);
-            printPdfFallback(pdfHtml, datum);
-        }
-    } else {
-        // Fallback: print
-        console.warn('html2pdf niet gevonden, gebruik print fallback');
-        printPdfFallback(pdfHtml, datum);
-    }
 }
 
-// ===== PDF FALLBACK (Print methode) =====
-function printPdfFallback(html, datum) {
-    console.log('📄 Gebruik print fallback voor PDF');
+// ===== PDF PRINT (WERKT ALTIJD) =====
+function printPdf(html, datum) {
+    console.log('📄 PDF afdrukken...');
     
     try {
-        const printWindow = window.open('', '_blank', 'width=800,height=600');
+        // Open nieuw venster
+        const printWindow = window.open('', '_blank', 'width=900,height=700');
         if (!printWindow) {
             showToast('⚠️ Pop-up blocker geblokkeerd. Sta pop-ups toe voor deze site.', 'error');
             return;
         }
         
+        // Schrijf HTML naar venster
         printWindow.document.write(html);
         printWindow.document.close();
         
-        // Wacht tot de pagina geladen is en print dan
-        setTimeout(function() {
-            printWindow.focus();
-            printWindow.print();
-            showToast('✅ PDF geopend voor afdrukken!', 'success');
-        }, 500);
+        // Wacht en print
+        printWindow.onload = function() {
+            setTimeout(function() {
+                printWindow.focus();
+                printWindow.print();
+                showToast('✅ PDF geopend voor afdrukken!', 'success');
+            }, 500);
+        };
     } catch (err) {
-        console.error('Print fallback error:', err);
+        console.error('PDF error:', err);
         showToast('❌ Fout bij genereren PDF: ' + err.message, 'error');
     }
 }
