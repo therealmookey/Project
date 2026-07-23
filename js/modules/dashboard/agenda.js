@@ -2,7 +2,7 @@
 // MODULE - AGENDA (Dashboard agenda functionaliteit)
 // ============================================================
 
-// Gebruik de globale supabase (aangemaakt door config.js)
+// Gebruik de globale supabase
 const supabase = window.supabase;
 
 // ===== STATE =====
@@ -26,6 +26,8 @@ export async function laadAgenda() {
         return;
     }
 
+    console.log('📅 Agenda wordt geladen...');
+
     const startDatum = new Date(huidigeAgendaDatum.getFullYear(), huidigeAgendaDatum.getMonth(), 1);
     const eindDatum = new Date(huidigeAgendaDatum.getFullYear(), huidigeAgendaDatum.getMonth() + 1, 0);
     const startStr = startDatum.toISOString().split('T')[0];
@@ -45,6 +47,7 @@ export async function laadAgenda() {
         if (error) throw error;
 
         agendaData = data || [];
+        console.log(`📅 ${agendaData.length} ritten geladen`);
         toonAgenda();
     } catch (err) {
         console.error('Fout bij laden agenda:', err);
@@ -60,7 +63,10 @@ export function toonAgenda() {
     const dagenContainer = document.getElementById('agendaDagen');
     const rittenContainer = document.getElementById('agendaRitten');
 
-    if (!titel || !dagenContainer) return;
+    if (!titel || !dagenContainer) {
+        console.warn('Agenda elementen niet gevonden in de DOM');
+        return;
+    }
 
     const jaar = huidigeAgendaDatum.getFullYear();
     const maand = huidigeAgendaDatum.getMonth();
@@ -304,6 +310,8 @@ export function gaNaarVandaag() {
     huidigeAgendaDatum = new Date();
     laadAgenda();
 }
+
+console.log('✅ Agenda module geladen!');
 
 // ===== EXPORT =====
 export default {

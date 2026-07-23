@@ -2,9 +2,9 @@
 // DASHBOARD - Hoofdscript voor dashboard pagina
 // ============================================================
 
-// Importeer modules
-import { laadAgenda, vorigeMaand, volgendeMaand, gaNaarVandaag } from './modules/dashboard/agenda.js';
-import { laadOphalingAnalyse, setCutoff } from './modules/dashboard/voorspelling.js';
+// Importeer modules met absolute paden (vanuit de root)
+import { laadAgenda, vorigeMaand, volgendeMaand, gaNaarVandaag } from '/js/modules/dashboard/agenda.js';
+import { laadOphalingAnalyse, setCutoff } from '/js/modules/dashboard/voorspelling.js';
 
 // ===== DASHBOARD AUTH =====
 
@@ -23,7 +23,7 @@ async function checkDashboardAuth() {
         console.log('Sessie is geldig voor:', session.user.email);
         toonGebruikersnaam(session.user.id);
         laadAgenda();
-        laadOphalingAnalyse(); // Voorspelling laden
+        laadOphalingAnalyse();
     }
 }
 

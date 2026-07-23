@@ -2,11 +2,11 @@
 // MODULE - VOORSPELLING (Ophaling analyse voor dashboard)
 // ============================================================
 
-// Gebruik de globale supabase (aangemaakt door config.js)
+// Gebruik de globale supabase
 const supabase = window.supabase;
 
 // ===== STATE =====
-let huidigeVoorspellingCutoff = 7; // Standaard 7 dagen
+let huidigeVoorspellingCutoff = 7;
 
 // ===== HULPFUNCTIE =====
 function escapeHtml(text) {
@@ -18,12 +18,14 @@ function escapeHtml(text) {
 
 // ===== VOORSPELLING FUNCTIES =====
 
-/**
- * Laad de ophaling analyse met de huidige cutoff
- */
 export async function laadOphalingAnalyse() {
     const analyseLijst = document.getElementById('analyseLijst');
-    if (!analyseLijst) return;
+    if (!analyseLijst) {
+        console.warn('analyseLijst element niet gevonden');
+        return;
+    }
+
+    console.log('📊 Voorspelling wordt geladen...');
 
     analyseLijst.innerHTML = '<p>Bezig met laden...</p>';
 
@@ -43,6 +45,8 @@ export async function laadOphalingAnalyse() {
             return;
         }
 
+        console.log(`📊 ${data.length} ziekenhuizen gevonden in analyse`);
+
         const vandaag = new Date();
         vandaag.setHours(0, 0, 0, 0);
 
@@ -53,13 +57,11 @@ export async function laadOphalingAnalyse() {
             let dagenTotVerwachte = null;
             let verwachteDatum = null;
 
-            // Onvoldoende data (minder dan 2 ophalingen)
             if (!item.aantal_ophalingen || item.aantal_ophalingen < 2) {
                 status = 'Onvoldoende data';
                 return { ...item, status, dagenSindsLaatste, dagenTotVerwachte, verwachteDatum };
             }
 
-            // Geen laatste ophaling
             if (!item.laatste_ophaling) {
                 status = 'Geen data';
                 return { ...item, status, dagenSindsLaatste, dagenTotVerwachte, verwachteDatum };
@@ -68,19 +70,13 @@ export async function laadOphalingAnalyse() {
             const laatsteDatum = new Date(item.laatste_ophaling);
             laatsteDatum.setHours(0, 0, 0, 0);
 
-            const gemiddeldInterval = item.gemiddeld_interval || 14; // Fallback naar 14 dagen
+            const gemiddeldInterval = item.gemiddeld_interval || 14;
             const verwachte = new Date(laatsteDatum);
             verwachte.setDate(verwachte.getDate() + gemiddeldInterval);
             verwachte.setHours(0, 0, 0, 0);
             verwachteDatum = verwachte;
 
-            // Bereken dagen sinds verwachte datum
             const dagenSindsVerwachte = Math.floor((vandaag - verwachte) / (1000 * 60 * 60 * 24));
-
-            // Status logica:
-            // - Te laat: dagenSindsVerwachte > 0 (elke dag na verwachte datum)
-            // - Bijna te laat: dagenSindsVerwachte >= -3 (binnen 3 dagen)
-            // - Op schema: dagenSindsVerwachte < -3 (meer dan 3 dagen)
 
             if (dagenSindsVerwachte > 0) {
                 status = 'Te laat';
@@ -96,12 +92,11 @@ export async function laadOphalingAnalyse() {
             return { ...item, status, dagenSindsLaatste, dagenTotVerwachte, verwachteDatum };
         });
 
-        // ===== FILTER: ALTIJD TE LAAT EN BIJNA TE LAAT TONEN =====
+        // ===== FILTER =====
         const altijdTonen = dataMetStatus.filter(item => 
             item.status === 'Te laat' || item.status === 'Bijna te laat'
         );
 
-        // Binnen de cutoff: Op schema
         const cutoff = huidigeVoorspellingCutoff || 7;
         const binnenkort = dataMetStatus.filter(item => {
             if (item.status === 'Te laat' || item.status === 'Bijna te laat') return false;
@@ -112,7 +107,6 @@ export async function laadOphalingAnalyse() {
             return dagenVerschil >= 0 && dagenVerschil <= cutoff;
         });
 
-        // Combineer en verwijder dubbelen
         const altijdIds = new Set(altijdTonen.map(i => i.ziekenhuis_id));
         const filteredData = [...altijdTonen];
         for (const item of binnenkort) {
@@ -121,7 +115,6 @@ export async function laadOphalingAnalyse() {
             }
         }
 
-        // Sorteer op urgentie
         filteredData.sort((a, b) => {
             const statusOrder = {
                 'Te laat': 1,
@@ -207,6 +200,7 @@ export async function laadOphalingAnalyse() {
         }
 
         analyseLijst.innerHTML = html;
+        console.log('✅ Voorspelling geladen!');
 
     } catch (err) {
         console.error('Fout bij laden analyse:', err);
@@ -214,22 +208,16 @@ export async function laadOphalingAnalyse() {
     }
 }
 
-/**
- * Update de cutoff waarde en herlaad de analyse
- * @param {number} days - Aantal dagen vooruit kijken
- */
 export function setCutoff(days) {
     huidigeVoorspellingCutoff = days;
     laadOphalingAnalyse();
 }
 
-/**
- * Haal de huidige cutoff waarde op
- * @returns {number}
- */
 export function getCutoff() {
     return huidigeVoorspellingCutoff;
 }
+
+console.log('✅ Voorspelling module geladen!');
 
 // ===== EXPORT =====
 export default {
