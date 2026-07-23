@@ -2,8 +2,7 @@
 // MODULE - AGENDA (Dashboard agenda functionaliteit)
 // ============================================================
 
-// Gebruik de globale supabase in plaats van import
-// omdat de module niet altijd correct wordt geladen
+// Gebruik de globale supabase (aangemaakt door config.js)
 const supabase = window.supabase;
 
 // ===== STATE =====
@@ -11,7 +10,7 @@ let agendaData = [];
 let huidigeAgendaDatum = new Date();
 let agendaTooltipTimeout = null;
 
-// ===== HULPFUNCTIE (fallback) =====
+// ===== HULPFUNCTIE =====
 function escapeHtml(text) {
     if (!text) return '';
     const div = document.createElement('div');
@@ -21,9 +20,6 @@ function escapeHtml(text) {
 
 // ===== AGENDA FUNCTIES =====
 
-/**
- * Laad de agenda voor de huidige maand
- */
 export async function laadAgenda() {
     if (!supabase) {
         console.error('Supabase niet beschikbaar voor agenda');
@@ -59,9 +55,6 @@ export async function laadAgenda() {
     }
 }
 
-/**
- * Toon de agenda in de UI
- */
 export function toonAgenda() {
     const titel = document.getElementById('agendaTitel');
     const dagenContainer = document.getElementById('agendaDagen');
@@ -117,7 +110,6 @@ export function toonAgenda() {
 
     dagenContainer.innerHTML = html;
 
-    // Event listeners toevoegen
     document.querySelectorAll('.agenda-dag:not(.leeg)').forEach(el => {
         el.addEventListener('mouseenter', function(e) {
             toonTooltip(this, e);
@@ -135,7 +127,6 @@ export function toonAgenda() {
         });
     });
 
-    // Selecteer vandaag standaard
     const vandaagEl = document.querySelector(`.agenda-dag[data-datum="${vandaagStr}"]`);
     if (vandaagEl && rittenContainer) {
         vandaagEl.classList.add('geselecteerd');
@@ -152,9 +143,6 @@ export function toonAgenda() {
     }
 }
 
-/**
- * Toon tooltip bij hover over een dag
- */
 function toonTooltip(element, event) {
     const tooltip = document.getElementById('agendaTooltip');
     const tooltipText = element.dataset.tooltip;
@@ -171,9 +159,6 @@ function toonTooltip(element, event) {
     }, 400);
 }
 
-/**
- * Verplaats tooltip met muis
- */
 function verplaatsTooltip(event) {
     const tooltip = document.getElementById('agendaTooltip');
     if (!tooltip || tooltip.style.display === 'none') return;
@@ -192,9 +177,6 @@ function verplaatsTooltip(event) {
     tooltip.style.top = top + 'px';
 }
 
-/**
- * Verberg tooltip
- */
 function verbergTooltip() {
     if (agendaTooltipTimeout) {
         clearTimeout(agendaTooltipTimeout);
@@ -206,9 +188,6 @@ function verbergTooltip() {
     }
 }
 
-/**
- * Toon ritten voor een specifieke dag
- */
 function toonRittenVoorDag(datumStr) {
     const rittenContainer = document.getElementById('agendaRitten');
     const ritten = agendaData.filter(r => r.datum === datumStr);
@@ -260,9 +239,6 @@ function toonRittenVoorDag(datumStr) {
     }
 }
 
-/**
- * Render het ritten overzicht voor een dag
- */
 function renderRittenOverzicht(ritten, adressenMap, datumStr) {
     const rittenContainer = document.getElementById('agendaRitten');
     if (!rittenContainer) return;
@@ -314,25 +290,16 @@ function renderRittenOverzicht(ritten, adressenMap, datumStr) {
     rittenContainer.innerHTML = html;
 }
 
-/**
- * Ga naar de vorige maand
- */
 export function vorigeMaand() {
     huidigeAgendaDatum.setMonth(huidigeAgendaDatum.getMonth() - 1);
     laadAgenda();
 }
 
-/**
- * Ga naar de volgende maand
- */
 export function volgendeMaand() {
     huidigeAgendaDatum.setMonth(huidigeAgendaDatum.getMonth() + 1);
     laadAgenda();
 }
 
-/**
- * Ga naar vandaag
- */
 export function gaNaarVandaag() {
     huidigeAgendaDatum = new Date();
     laadAgenda();

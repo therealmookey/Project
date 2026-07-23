@@ -1,6 +1,8 @@
-// ===== DASHBOARD FUNCTIES =====
+// ============================================================
+// DASHBOARD - Hoofdscript voor dashboard pagina
+// ============================================================
 
-// Importeer agenda module
+// Importeer de agenda module (die we straks maken)
 import { laadAgenda, vorigeMaand, volgendeMaand, gaNaarVandaag } from './modules/dashboard/agenda.js';
 
 // ===== DASHBOARD AUTH =====
@@ -19,7 +21,7 @@ async function checkDashboardAuth() {
     } else {
         console.log('Sessie is geldig voor:', session.user.email);
         toonGebruikersnaam(session.user.id);
-        laadAgenda(); // Dit roept nu de agenda module aan
+        laadAgenda(); // Roep de agenda module aan
     }
 }
 
@@ -27,24 +29,19 @@ function toonGebruikersnaam(userId) {
     const userEmailSpan = document.getElementById('userEmail');
     if (!userEmailSpan) return;
 
-    try {
-        window.supabase
-            .from('gebruikers_rollen')
-            .select('gebruikersnaam')
-            .eq('user_id', userId)
-            .single()
-            .then(({ data, error }) => {
-                if (error) {
-                    console.error('Fout bij ophalen gebruikersnaam:', error);
-                    userEmailSpan.textContent = 'Gebruiker';
-                    return;
-                }
-                userEmailSpan.textContent = data?.gebruikersnaam || 'Gebruiker';
-            });
-    } catch (err) {
-        console.error('Fout:', err);
-        userEmailSpan.textContent = 'Gebruiker';
-    }
+    window.supabase
+        .from('gebruikers_rollen')
+        .select('gebruikersnaam')
+        .eq('user_id', userId)
+        .single()
+        .then(({ data, error }) => {
+            if (error) {
+                console.error('Fout bij ophalen gebruikersnaam:', error);
+                userEmailSpan.textContent = 'Gebruiker';
+                return;
+            }
+            userEmailSpan.textContent = data?.gebruikersnaam || 'Gebruiker';
+        });
 }
 
 // ===== INITIALISATIE =====
