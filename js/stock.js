@@ -87,7 +87,7 @@ async function laadStockItems() {
     stockLijst.innerHTML = '<p>Bezig met laden...</p>';
     
     try {
-        // Haal alle items op (incl. combinatie status)
+        // 1. Haal alle items op
         const { data: items, error: itemsError } = await supabase
             .from('stock_items')
             .select('*')
@@ -95,37 +95,72 @@ async function laadStockItems() {
         
         if (itemsError) throw itemsError;
         
-        // Haal alle combinaties op
-        const { data: combinaties, error: combError } = await supabase
-            .from('stock_items')
-            .select('*')
-            .eq('is_combinatie', true)
-            .order('item_code');
-        
-        if (combError) throw combError;
-        
-        // Haal componenten voor combinaties
-        const { data: components, error: compError } = await supabase
+        // 2. Haal alle combinatie_componenten op
+        const { data: combinatieComponenten, error: compError } = await supabase
             .from('combinatie_componenten')
             .select('*');
         
-        if (compError) throw compError;
+        // Bepaal welke items combinaties zijn
+        let combinatieIds = new Set();
+        let componentIds = new Set();
+        
+        if (compError) {
+            console.warn('⚠️ Kon combinatie_componenten niet laden:', compError);
+            // Fallback: herken combinaties op basis van code prefix
+            items.forEach(item => {
+                item.is_combinatie = item.item_code && 
+                    (item.item_code.startsWith('SET-') || 
+                     item.item_code.startsWith('COMBI-') ||
+                     item.item_code.includes('KIT') ||
+                     item.item_code.includes('PAK'));
+            });
+        } else {
+            // Verzamel alle combinatie_ids en component_ids uit combinatie_componenten
+            combinatieComponenten.forEach(cc => {
+                if (cc.combinatie_id) combinatieIds.add(cc.combinatie_id);
+                if (cc.component_id) componentIds.add(cc.component_id);
+            });
+            
+            // Markeer items
+            items.forEach(item => {
+                item.is_combinatie = combinatieIds.has(item.id);
+                item.is_component = componentIds.has(item.id);
+            });
+            
+            console.log(`📋 ${combinatieIds.size} combinaties en ${componentIds.size} componenten gevonden`);
+        }
         
         alleItems = items || [];
-        alleCombinaties = combinaties || [];
         
-        // Voeg component info toe aan combinaties
+        // 3. Haal componenten per combinatie op
+        const { data: components, error: compsError } = await supabase
+            .from('combinatie_componenten')
+            .select('*');
+        
+        if (compsError) {
+            console.warn('⚠️ Kon componenten niet laden:', compsError);
+        }
+        
+        // Groepeer componenten per combinatie
         const componentMap = {};
-        components.forEach(c => {
-            if (!componentMap[c.combinatie_id]) {
-                componentMap[c.combinatie_id] = [];
+        if (components) {
+            components.forEach(c => {
+                if (!componentMap[c.combinatie_id]) {
+                    componentMap[c.combinatie_id] = [];
+                }
+                componentMap[c.combinatie_id].push(c);
+            });
+        }
+        
+        alleItems.forEach(item => {
+            if (item.is_combinatie) {
+                item.componenten = componentMap[item.id] || [];
             }
-            componentMap[c.combinatie_id].push(c);
         });
         
-        alleCombinaties.forEach(comb => {
-            comb.componenten = componentMap[comb.id] || [];
-        });
+        alleCombinaties = alleItems.filter(item => item.is_combinatie);
+        
+        console.log(`📋 ${alleItems.length} items geladen, waarvan ${alleCombinaties.length} combinaties`);
         
         toonStockItems(alleItems);
     } catch (err) {
@@ -195,7 +230,7 @@ function toonStockItems(items) {
     
     filteredData.forEach(item => {
         const isCombinatie = item.is_combinatie || false;
-        const typeLabel = isCombinatie ? '📦 Combinatie' : '📦 Item';
+        const typeLabel = isCombinatie ? '📦 Combinatie' : '📄 Item';
         const statusClass = item.aantal === 0 ? 'status-op' : 
                           (item.aantal <= item.minimum_stock ? 'status-laag' : 'status-voldoende');
         const statusLabel = item.aantal === 0 ? 'Op' : 
@@ -267,7 +302,8 @@ async function bewerkItem(id) {
         setValue('itemLocatie', data.locatie || '');
         
         // Verberg combinatie specifieke velden
-        document.querySelector('.combinatie-velden').style.display = 'none';
+        const combiVelden = document.querySelector('.combinatie-velden');
+        if (combiVelden) combiVelden.style.display = 'none';
         
         itemPopup.style.display = 'flex';
     } catch (err) {
@@ -310,8 +346,7 @@ async function saveItem() {
         omschrijving: omschrijving,
         aantal: aantal,
         minimum_stock: minimum,
-        locatie: locatie,
-        is_combinatie: false
+        locatie: locatie
     };
     
     try {
@@ -387,10 +422,9 @@ async function saveCombinatie() {
     const combinatieData = {
         item_code: code,
         omschrijving: omschrijving,
-        aantal: 0, // Combinaties hebben geen eigen voorraad
+        aantal: 0,
         minimum_stock: 0,
-        locatie: locatie,
-        is_combinatie: true
+        locatie: locatie
     };
     
     try {
@@ -442,10 +476,11 @@ async function saveCombinatie() {
 }
 
 function toonComponenten() {
-    if (!componentenLijst) return;
+    const container = document.getElementById('componentenLijst');
+    if (!container) return;
     
     if (!selectedComponents || selectedComponents.length === 0) {
-        componentenLijst.innerHTML = '<p>Geen componenten toegevoegd.</p>';
+        container.innerHTML = '<p>Geen componenten toegevoegd.</p>';
         return;
     }
     
@@ -460,39 +495,43 @@ function toonComponenten() {
         `;
     });
     
-    componentenLijst.innerHTML = html;
+    container.innerHTML = html;
     
     document.querySelectorAll('.remove-component-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const index = parseInt(btn.dataset.index);
             selectedComponents.splice(index, 1);
             toonComponenten();
+            laadComponentenSelect();
         });
     });
 }
 
 async function laadComponentenSelect() {
-    if (!componentSelect) return;
+    const select = document.getElementById('componentSelect');
+    if (!select) return;
     
     try {
         const { data, error } = await supabase
             .from('stock_items')
             .select('id, item_code, omschrijving')
-            .eq('is_combinatie', false)
             .order('item_code');
         
         if (error) throw error;
         
         const items = data || [];
-        componentSelect.innerHTML = '<option value="">Kies een component...</option>';
+        select.innerHTML = '<option value="">Kies een component...</option>';
+        
+        // Filter items die al geselecteerd zijn
+        const selectedIds = selectedComponents.map(c => c.component_id);
         items.forEach(item => {
-            // Controleer of dit item al geselecteerd is
-            const isSelected = selectedComponents.some(c => c.component_id === item.id);
-            if (!isSelected) {
+            // Een component kan geen combinatie zijn
+            const isCombinatie = alleItems.find(i => i.id === item.id)?.is_combinatie || false;
+            if (!selectedIds.includes(item.id) && !isCombinatie) {
                 const option = document.createElement('option');
                 option.value = item.id;
                 option.textContent = `${item.item_code} - ${item.omschrijving}`;
-                componentSelect.appendChild(option);
+                select.appendChild(option);
             }
         });
     } catch (err) {
@@ -631,7 +670,8 @@ document.addEventListener('DOMContentLoaded', async function() {
             setValue('itemAantal', '0');
             setValue('itemMinimum', '5');
             setValue('itemLocatie', '');
-            document.querySelector('.combinatie-velden').style.display = 'none';
+            const combiVelden = document.querySelector('.combinatie-velden');
+            if (combiVelden) combiVelden.style.display = 'none';
             itemPopup.style.display = 'flex';
         });
     }
@@ -675,6 +715,13 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             if (!componentId) {
                 showToast('Kies een component', 'error');
+                return;
+            }
+            
+            // Controleer of het geselecteerde item een combinatie is
+            const isCombinatie = alleItems.find(i => i.id === componentId)?.is_combinatie || false;
+            if (isCombinatie) {
+                showToast('Een combinatie kan geen component zijn van een andere combinatie', 'error');
                 return;
             }
             
