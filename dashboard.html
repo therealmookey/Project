@@ -84,20 +84,18 @@
                 </div>
             </div>
         </div>
-              
+
         <div class="dashboard-grid">
             <div class="dashboard-card">
                 <h2>📍 Adressen</h2>
                 <p>Bekijk en beheer alle adressen</p>
                 <button class="btn btn-primary" onclick="window.location.href='adressen.html'">Adressen beheren</button>
             </div>
-            
             <div class="dashboard-card">
                 <h2>📅 Ophalingen & Afhalingen</h2>
                 <p>Plan nieuwe ophalingen of bekijk bestaande</p>
                 <button class="btn btn-primary" onclick="window.location.href='planning.html'">Planning beheren</button>
             </div>
-            
             <div class="dashboard-card">
                 <h2>📊 Statistieken</h2>
                 <p>Overzicht van alle geplande ophalingen</p>
@@ -105,10 +103,18 @@
             </div>
         </div>
     </main>
-    
+
+    <!-- ===== SCRIPTS ===== -->
+    <!-- 1. Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 2. Configuratie -->
     <script src="js/config.js"></script>
-    <script src="js/main.js"></script>
+    
+    <!-- 3. MAIN (als module) -->
+    <script type="module" src="js/main.js"></script>
+    
+    <!-- 4. Dashboard specifiek -->
     <script src="js/dashboard.js"></script>
 </body>
 </html>
