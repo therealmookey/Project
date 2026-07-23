@@ -450,63 +450,65 @@ function genereerPdfVoorDag(datum) {
     printPdf(pdfHtml, datum);
 }
 
-// ===== PDF HTML BUILDER =====
+// ===== PDF HTML BUILDER (MET ZELFDE OPMAAK ALS PLANNING) =====
 function buildPdfHtml(datum, planningen) {
     const datumObj = new Date(datum + 'T00:00:00');
     const dagVanWeek = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][datumObj.getDay()];
     const datumDisplay = `${dagVanWeek} ${datumObj.getDate()} ${datumObj.toLocaleString('nl-NL', { month: 'long' })} ${datumObj.getFullYear()}`;
     
+    // Sorteer op dag_volgorde
     const gesorteerd = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
     
-    let tableRows = '';
-    let opmerkingenHtml = '';
+    let itemsHtml = '';
     
     gesorteerd.forEach((planning, index) => {
         const adres = alleAdressen.find(a => a.id === planning.adres_id);
-        const typeLabel = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
-        const statusLabel = planning.status === 'gepland' ? 'Gepland' : 
-                          (planning.status === 'uitgevoerd' ? 'Uitgevoerd' : 'Geannuleerd');
+        const typeIcon = planning.type === 'ophaling' ? '📦' : '🚚';
+        const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
         
-        let details = '';
+        let extraInfo = '';
         if (planning.type === 'ophaling' && planning.aantal_tonnen) {
-            details = `${planning.aantal_tonnen} ton`;
+            extraInfo = `${planning.aantal_tonnen} ton(nen)`;
         } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
-            details = `${planning.aantal_lege_tonnen} lege ton`;
+            extraInfo = `${planning.aantal_lege_tonnen} lege ton(nen)`;
         }
         
         const adresNaam = adres ? escapeHtml(adres.instelling_naam) : 'Onbekend';
         const adresStraat = adres ? escapeHtml(adres.straat) : '';
-        const adresPlaats = adres ? escapeHtml(adres.postcode) + ' ' + escapeHtml(adres.plaats) : '';
+        const adresPlaats = adres ? escapeHtml(adres.plaats) : '';
         const adresTelefoon = adres?.telefoon ? escapeHtml(adres.telefoon) : '';
         const adresContact = adres?.contactpersoon_naam ? escapeHtml(adres.contactpersoon_naam) : '';
         const adresExtraInfo = adres?.extra_info ? escapeHtml(adres.extra_info) : '';
         
-        tableRows += `
-            <tr>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center; vertical-align: top;">${index + 1}</td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;">${typeLabel}</td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;">
-                    <strong>${adresNaam}</strong>
-                    ${adresExtraInfo ? `<br><span style="font-size: 10px; color: #6c757d;">📝 ${adresExtraInfo}</span>` : ''}
-                </td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;">
-                    ${adresStraat}
-                    ${adresTelefoon ? `<br><span style="font-size: 11px; color: #2c7da0;">📞 ${adresTelefoon}</span>` : ''}
-                </td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; vertical-align: top;">
-                    ${adresPlaats}
-                    ${adresContact ? `<br><span style="font-size: 11px;">👤 ${adresContact}</span>` : ''}
-                </td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center; vertical-align: top;">${details || '-'}</td>
-                <td style="padding: 6px 8px; border-bottom: 1px solid #e9ecef; text-align: center; vertical-align: top;">${statusLabel}</td>
-            </tr>
-        `;
-        
-        if (planning.opmerkingen) {
-            opmerkingenHtml += `
-                <p style="margin: 4px 0;"><strong>${adresNaam}:</strong> ${escapeHtml(planning.opmerkingen)}</p>
-            `;
+        // Bouw contact/telefoon regel
+        let contactRegel = '';
+        if (adresTelefoon && adresContact) {
+            contactRegel = `📞 ${adresTelefoon}  |  👤 ${adresContact}`;
+        } else if (adresTelefoon) {
+            contactRegel = `📞 ${adresTelefoon}`;
+        } else if (adresContact) {
+            contactRegel = `👤 ${adresContact}`;
         }
+        
+        itemsHtml += `
+            <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e9ecef;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="background: #2c7da0; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; min-width: 28px; text-align: center;">#${index + 1}</span>
+                        <strong style="color: #2c7da0; font-size: 16px;">${adresNaam}</strong>
+                    </div>
+                    <span style="background: #e9ecef; padding: 2px 12px; border-radius: 12px; font-size: 11px;">${typeIcon} ${typeLabel}</span>
+                </div>
+                
+                <div style="margin-left: 38px; font-size: 13px; line-height: 1.6; color: #333;">
+                    <div>📍 ${adresStraat}, ${adresPlaats}</div>
+                    ${contactRegel ? `<div>${contactRegel}</div>` : ''}
+                    ${extraInfo ? `<div>📦 ${extraInfo}</div>` : ''}
+                    ${adresExtraInfo ? `<div style="background: #fff8e1; padding: 6px 10px; border-radius: 4px; margin-top: 4px; font-size: 12px; color: #6d5d00; border-left: 3px solid #ffc107;">📝 ${adresExtraInfo}</div>` : ''}
+                    ${planning.opmerkingen ? `<div style="background: #e3f2fd; padding: 6px 10px; border-radius: 4px; margin-top: 4px; font-size: 12px; color: #0d47a1; border-left: 3px solid #2196f3;">📝 ${escapeHtml(planning.opmerkingen)}</div>` : ''}
+                </div>
+            </div>
+        `;
     });
     
     return `
@@ -516,17 +518,56 @@ function buildPdfHtml(datum, planningen) {
             <meta charset="UTF-8">
             <title>Dagplanning ${datum}</title>
             <style>
-                body { font-family: Arial, Helvetica, sans-serif; padding: 30px; color: #333; }
-                h1 { color: #2c7da0; text-align: center; font-size: 22px; margin-bottom: 5px; }
-                .subtitle { text-align: center; color: #6c757d; font-size: 14px; margin-bottom: 20px; }
-                .header-info { display: flex; justify-content: space-between; font-size: 12px; color: #6c757d; margin-bottom: 15px; }
-                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
-                th { background-color: #2c7da0; color: white; padding: 8px 10px; text-align: left; font-size: 11px; }
-                td { padding: 6px 8px; }
-                .footer { text-align: center; color: #adb5bd; font-size: 10px; margin-top: 30px; border-top: 1px solid #e9ecef; padding-top: 15px; }
-                .opmerkingen { margin-top: 20px; padding: 10px 15px; background: #f8f9fa; border-radius: 6px; }
-                .opmerkingen h3 { color: #2c7da0; font-size: 14px; margin-top: 0; margin-bottom: 8px; }
-                hr { border: none; border-top: 1px solid #e9ecef; margin: 15px 0; }
+                body { 
+                    font-family: Arial, Helvetica, sans-serif; 
+                    padding: 30px; 
+                    color: #333; 
+                    max-width: 900px; 
+                    margin: 0 auto;
+                }
+                h1 { 
+                    color: #2c7da0; 
+                    text-align: center; 
+                    font-size: 24px; 
+                    margin-bottom: 5px; 
+                }
+                .subtitle { 
+                    text-align: center; 
+                    color: #6c757d; 
+                    font-size: 14px; 
+                    margin-bottom: 20px; 
+                }
+                .header-info { 
+                    display: flex; 
+                    justify-content: space-between; 
+                    font-size: 12px; 
+                    color: #6c757d; 
+                    margin-bottom: 20px; 
+                    padding: 10px 0;
+                    border-top: 2px solid #2c7da0;
+                    border-bottom: 1px solid #e9ecef;
+                }
+                .footer { 
+                    text-align: center; 
+                    color: #adb5bd; 
+                    font-size: 10px; 
+                    margin-top: 30px; 
+                    border-top: 1px solid #e9ecef; 
+                    padding-top: 15px; 
+                }
+                hr { 
+                    border: none; 
+                    border-top: 1px solid #e9ecef; 
+                    margin: 15px 0; 
+                }
+                .no-print {
+                    display: none;
+                }
+                @media print {
+                    body { padding: 15px; }
+                    .no-print { display: none; }
+                    .planning-item { break-inside: avoid; }
+                }
             </style>
         </head>
         <body>
@@ -536,29 +577,9 @@ function buildPdfHtml(datum, planningen) {
                 <span>📊 Aantal ritten: ${gesorteerd.length}</span>
                 <span>🕐 Gegenereerd: ${new Date().toLocaleString('nl-NL')}</span>
             </div>
-            <hr>
-            <table>
-                <thead>
-                    <tr>
-                        <th style="text-align: center; width: 25px;">#</th>
-                        <th style="width: 70px;">Type</th>
-                        <th style="min-width: 120px;">Ziekenhuis</th>
-                        <th style="min-width: 100px;">Adres</th>
-                        <th style="min-width: 100px;">Plaats</th>
-                        <th style="text-align: center; width: 60px;">Details</th>
-                        <th style="text-align: center; width: 70px;">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRows}
-                </tbody>
-            </table>
-            ${opmerkingenHtml ? `
-                <div class="opmerkingen">
-                    <h3>📝 Opmerkingen bij ritten</h3>
-                    ${opmerkingenHtml}
-                </div>
-            ` : ''}
+            
+            ${itemsHtml}
+            
             <div class="footer">
                 Automatisch gegenereerde dagplanning
             </div>
