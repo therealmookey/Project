@@ -357,7 +357,6 @@ async function verwijderRegistratie(id) {
     }
 }
 
-// ===== REGISTRATIE OPSLAAN =====
 async function saveRegistratie() {
     const type = getValue('registratieType');
     const ziekenhuis_id = getValue('ziekenhuisSelect');
@@ -376,14 +375,52 @@ async function saveRegistratie() {
         opmerkingen: opmerkingen || null
     };
     
+    let combinatieId = null;
+    let opstartAantal = 1;
+    
     if (type === 'ophaling') {
         registratieData.gewicht = parseFloat(getValue('gewicht')) || null;
         registratieData.combinatie_id = null;
         registratieData.opstart_aantal = null;
     } else if (type === 'opstart') {
-        registratieData.combinatie_id = parseInt(getValue('combinatieSelect')) || null;
-        registratieData.opstart_aantal = parseInt(getValue('opstartAantal')) || 1;
+        combinatieId = parseInt(getValue('combinatieSelect')) || null;
+        opstartAantal = parseInt(getValue('opstartAantal')) || 1;
+        registratieData.combinatie_id = combinatieId;
+        registratieData.opstart_aantal = opstartAantal;
         registratieData.gewicht = null;
+        
+        // Check voorraad beschikbaar (optioneel)
+        if (combinatieId) {
+            const { data: componenten, error: checkError } = await supabase
+                .from('combinatie_componenten')
+                .select('*, component:component_id (id, item_code, omschrijving, aantal)')
+                .eq('combinatie_id', combinatieId);
+            
+            if (!checkError && componenten) {
+                let tekort = [];
+                for (const comp of componenten) {
+                    const nodig = comp.aantal * opstartAantal;
+                    const beschikbaar = comp.component?.aantal || 0;
+                    if (beschikbaar < nodig) {
+                        tekort.push({
+                            naam: comp.component?.omschrijving || 'Onbekend',
+                            nodig: nodig,
+                            beschikbaar: beschikbaar
+                        });
+                    }
+                }
+                if (tekort.length > 0) {
+                    let msg = '⚠️ Niet genoeg voorraad voor deze opstart:\n\n';
+                    tekort.forEach(t => {
+                        msg += `- ${t.naam}: ${t.nodig} nodig, ${t.beschikbaar} beschikbaar\n`;
+                    });
+                    msg += '\nWil je doorgaan? (De voorraad wordt dan op 0 gezet)';
+                    if (!confirm(msg)) {
+                        return;
+                    }
+                }
+            }
+        }
     }
     
     try {
@@ -401,11 +438,56 @@ async function saveRegistratie() {
         
         if (result.error) throw result.error;
         
+        // ===== VOORRAAD UPDATE BIJ OPSTART =====
+        if (type === 'opstart' && combinatieId) {
+            const { data: componenten, error: compError } = await supabase
+                .from('combinatie_componenten')
+                .select('*')
+                .eq('combinatie_id', combinatieId);
+            
+            if (compError) throw compError;
+            
+            if (componenten && componenten.length > 0) {
+                let updatedCount = 0;
+                for (const comp of componenten) {
+                    const { data: item, error: itemError } = await supabase
+                        .from('stock_items')
+                        .select('aantal')
+                        .eq('id', comp.component_id)
+                        .single();
+                    
+                    if (itemError) throw itemError;
+                    
+                    const teVerwijderen = comp.aantal * opstartAantal;
+                    const nieuwAantal = Math.max(0, item.aantal - teVerwijderen);
+                    
+                    await supabase
+                        .from('stock_items')
+                        .update({ aantal: nieuwAantal })
+                        .eq('id', comp.component_id);
+                    
+                    await supabase
+                        .from('stock_mutaties')
+                        .insert([{
+                            item_id: comp.component_id,
+                            type: 'afname',
+                            aantal: -teVerwijderen,
+                            reden: `Opstart combinatie ${combinatieId} - ${opstartAantal}x`
+                        }]);
+                    
+                    updatedCount++;
+                }
+                
+                showToast(`✅ Voorraad bijgewerkt: ${updatedCount} componenten verminderd!`, 'success');
+            }
+        }
+        
         showToast('✅ Registratie opgeslagen!', 'success');
         registratiePopup.style.display = 'none';
         await laadRegistraties();
     } catch (err) {
-        showToast('Fout: ' + err.message, 'error');
+        console.error('Fout bij opslaan registratie:', err);
+        showToast('❌ Fout bij opslaan registratie: ' + err.message, 'error');
     }
 }
 
