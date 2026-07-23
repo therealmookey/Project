@@ -372,7 +372,7 @@ async function savePlanning() {
     }
 }
 
-// ===== PDF GENEREREN =====
+// ===== PDF GENEREREN (GE-FIXED) =====
 function genereerPdfVoorDag(datum) {
     // Toon een laadmelding
     showToast('📄 PDF wordt gegenereerd...', 'info');
@@ -385,38 +385,129 @@ function genereerPdfVoorDag(datum) {
         return;
     }
     
-    // Bouw de HTML voor de PDF
+    // Bouw de HTML voor de PDF (in een aparte functie)
+    const pdfContent = buildPdfHtml(datum, planningenVoorDag);
+    
+    // Gebruik html2pdf om de PDF te genereren
+    if (typeof html2pdf !== 'undefined') {
+        const opt = {
+            margin: 10,
+            filename: `dagplanning_${datum}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, logging: false },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        // Maak een verborgen container voor de PDF inhoud
+        let container = document.getElementById('pdf-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'pdf-container';
+            container.style.cssText = `
+                position: fixed;
+                left: -9999px;
+                top: 0;
+                width: 210mm;
+                background: white;
+                padding: 20px;
+                z-index: -1;
+            `;
+            document.body.appendChild(container);
+        }
+        
+        // Zet de inhoud in de container
+        container.innerHTML = pdfContent;
+        
+        // Genereer de PDF
+        html2pdf()
+            .set(opt)
+            .from(container)
+            .save()
+            .then(function() {
+                showToast('✅ PDF succesvol gegenereerd!', 'success');
+                // Leeg de container na gebruik
+                container.innerHTML = '';
+            })
+            .catch(function(err) {
+                console.error('PDF fout:', err);
+                showToast('❌ Fout bij genereren PDF: ' + err.message, 'error');
+                container.innerHTML = '';
+            });
+    } else {
+        // Fallback: print de dagplanning
+        showToast('⚠️ html2pdf bibliotheek niet geladen. Gebruik print functie.', 'warning');
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+                <head><title>Dagplanning ${datum}</title></head>
+                <body>${pdfContent}</body>
+            </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+    }
+}
+
+// ===== PDF HTML BUILDER =====
+function buildPdfHtml(datum, planningen) {
     const datumObj = new Date(datum + 'T00:00:00');
     const dagVanWeek = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][datumObj.getDay()];
     const datumDisplay = `${dagVanWeek} ${datumObj.getDate()} ${datumObj.toLocaleString('nl-NL', { month: 'long' })} ${datumObj.getFullYear()}`;
     
     let html = `
-        <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h1 style="color: #2c7da0; text-align: center;">📋 Dagplanning - ${datumDisplay}</h1>
-            <p style="text-align: center; color: #6c757d;">Aantal ritten: ${planningenVoorDag.length}</p>
-            <hr style="border: 1px solid #e9ecef; margin: 20px 0;">
-            <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Dagplanning ${datum}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; color: #333; }
+                h1 { color: #2c7da0; text-align: center; font-size: 24px; }
+                .subtitle { text-align: center; color: #6c757d; font-size: 14px; margin-bottom: 20px; }
+                hr { border: 1px solid #e9ecef; margin: 20px 0; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+                th { background-color: #2c7da0; color: white; padding: 10px; text-align: left; }
+                td { padding: 10px; border-bottom: 1px solid #e9ecef; }
+                .status-gepland { color: #856404; }
+                .status-uitgevoerd { color: #155724; }
+                .status-geannuleerd { color: #721c24; }
+                .opmerkingen { margin-top: 20px; }
+                .opmerkingen h3 { color: #2c7da0; }
+                .footer { text-align: center; color: #6c757d; font-size: 10px; margin-top: 30px; }
+                .header-info { display: flex; justify-content: space-between; font-size: 12px; color: #6c757d; margin-bottom: 10px; }
+            </style>
+        </head>
+        <body>
+            <h1>📋 Dagplanning</h1>
+            <p class="subtitle">${datumDisplay}</p>
+            <div class="header-info">
+                <span>Aantal ritten: ${planningen.length}</span>
+                <span>Gegenereerd op: ${new Date().toLocaleString('nl-NL')}</span>
+            </div>
+            <hr>
+            <table>
                 <thead>
-                    <tr style="background-color: #2c7da0; color: white;">
-                        <th style="padding: 10px; text-align: left;">#</th>
-                        <th style="padding: 10px; text-align: left;">Type</th>
-                        <th style="padding: 10px; text-align: left;">Ziekenhuis</th>
-                        <th style="padding: 10px; text-align: left;">Adres</th>
-                        <th style="padding: 10px; text-align: left;">Details</th>
-                        <th style="padding: 10px; text-align: left;">Status</th>
+                    <tr>
+                        <th>#</th>
+                        <th>Type</th>
+                        <th>Ziekenhuis</th>
+                        <th>Adres</th>
+                        <th>Details</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
     `;
     
     // Sorteer op dag_volgorde of index
-    const gesorteerd = [...planningenVoorDag].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
+    const gesorteerd = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
     
     gesorteerd.forEach((planning, index) => {
         const adres = alleAdressen.find(a => a.id === planning.adres_id);
         const typeLabel = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
         const statusLabel = planning.status === 'gepland' ? 'Gepland' : 
                           (planning.status === 'uitgevoerd' ? 'Uitgevoerd' : 'Geannuleerd');
+        const statusClass = `status-${planning.status}`;
         
         let details = '';
         if (planning.type === 'ophaling' && planning.aantal_tonnen) {
@@ -426,13 +517,13 @@ function genereerPdfVoorDag(datum) {
         }
         
         html += `
-            <tr style="border-bottom: 1px solid #e9ecef;">
-                <td style="padding: 10px;"><strong>${index + 1}</strong></td>
-                <td style="padding: 10px;">${typeLabel}</td>
-                <td style="padding: 10px;"><strong>${adres ? escapeHtml(adres.instelling_naam) : 'Onbekend'}</strong></td>
-                <td style="padding: 10px;">${adres ? escapeHtml(adres.straat) : ''}<br>${adres ? escapeHtml(adres.postcode) + ' ' + escapeHtml(adres.plaats) : ''}</td>
-                <td style="padding: 10px;">${details}</td>
-                <td style="padding: 10px;">${statusLabel}</td>
+            <tr>
+                <td><strong>${index + 1}</strong></td>
+                <td>${typeLabel}</td>
+                <td><strong>${adres ? escapeHtml(adres.instelling_naam) : 'Onbekend'}</strong></td>
+                <td>${adres ? escapeHtml(adres.straat) : ''}<br>${adres ? escapeHtml(adres.postcode) + ' ' + escapeHtml(adres.plaats) : ''}</td>
+                <td>${details || '-'}</td>
+                <td class="${statusClass}">${statusLabel}</td>
             </tr>
         `;
     });
@@ -440,58 +531,35 @@ function genereerPdfVoorDag(datum) {
     html += `
                 </tbody>
             </table>
-            ${planningenVoorDag.some(p => p.opmerkingen) ? `
-                <hr style="border: 1px solid #e9ecef; margin: 20px 0;">
-                <h3 style="color: #2c7da0;">📝 Opmerkingen</h3>
-                ${planningenVoorDag.filter(p => p.opmerkingen).map(p => {
-                    const adres = alleAdressen.find(a => a.id === p.adres_id);
-                    return `<p><strong>${adres ? escapeHtml(adres.instelling_naam) : 'Onbekend'}:</strong> ${escapeHtml(p.opmerkingen)}</p>`;
-                }).join('')}
-            ` : ''}
-            <hr style="border: 1px solid #e9ecef; margin: 20px 0;">
-            <p style="text-align: center; color: #6c757d; font-size: 12px;">Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
-        </div>
     `;
     
-    // Gebruik html2pdf om de PDF te genereren
-    if (typeof html2pdf !== 'undefined') {
-        const opt = {
-            margin: 10,
-            filename: `dagplanning_${datum}.pdf`,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-        
-        // Maak een tijdelijk element voor de PDF
-        const tempDiv = document.createElement('div');
-        tempDiv.style.position = 'fixed';
-        tempDiv.style.left = '-9999px';
-        tempDiv.style.top = '0';
-        tempDiv.style.background = 'white';
-        tempDiv.style.padding = '20px';
-        tempDiv.style.width = '210mm';
-        tempDiv.innerHTML = html;
-        document.body.appendChild(tempDiv);
-        
-        html2pdf().set(opt).from(tempDiv).save().then(function() {
-            document.body.removeChild(tempDiv);
-            showToast('✅ PDF succesvol gegenereerd!', 'success');
-        }).catch(function(err) {
-            document.body.removeChild(tempDiv);
-            console.error('PDF fout:', err);
-            showToast('❌ Fout bij genereren PDF: ' + err.message, 'error');
+    // Opmerkingen toevoegen als die er zijn
+    const hasOpmerkingen = planningen.some(p => p.opmerkingen);
+    if (hasOpmerkingen) {
+        html += `
+            <div class="opmerkingen">
+                <hr>
+                <h3>📝 Opmerkingen</h3>
+        `;
+        planningen.filter(p => p.opmerkingen).forEach(p => {
+            const adres = alleAdressen.find(a => a.id === p.adres_id);
+            html += `
+                <p><strong>${adres ? escapeHtml(adres.instelling_naam) : 'Onbekend'}:</strong> ${escapeHtml(p.opmerkingen)}</p>
+            `;
         });
-    } else {
-        showToast('⚠️ html2pdf bibliotheek niet geladen. Controleer de script tags.', 'error');
-        console.warn('html2pdf niet gevonden, gebruik fallback...');
-        
-        // Fallback: print de dagplanning
-        const printWindow = window.open('', '_blank');
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.print();
+        html += `</div>`;
     }
+    
+    html += `
+            <div class="footer">
+                <hr>
+                <p>Dit is een automatisch gegenereerde dagplanning.</p>
+            </div>
+        </body>
+        </html>
+    `;
+    
+    return html;
 }
 
 // ===== INITIALISATIE =====
