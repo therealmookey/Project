@@ -134,4 +134,4 @@ export function addVersionBadge() {
 showVersion();
 
 // ===== EXPORT =====
-export default VERSION; 
+export default VERSION;
