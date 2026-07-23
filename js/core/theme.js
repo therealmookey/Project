@@ -2,27 +2,28 @@
 // CORE - THEME (Dark/Light mode beheer)
 // ============================================================
 
-import { getStorage, setStorage } from './utils.js';
-import { updateVersion } from './version.js';
-
-// Update versie naar stap 3
-updateVersion(3, 'Theme Module', '2.1.0');
-
 // ===== CONSTANTEN =====
 const THEME_KEY = 'theme';
 const DARK_CLASS = 'dark';
 const LIGHT_CLASS = 'light';
+
+// Voorkom dubbele initialisatie
+let isInitialized = false;
 
 /**
  * Haal de huidige thema voorkeur op
  * @returns {string} 'dark' of 'light'
  */
 export function getCurrentTheme() {
-    return getStorage(THEME_KEY, LIGHT_CLASS);
+    try {
+        return localStorage.getItem(THEME_KEY) || LIGHT_CLASS;
+    } catch {
+        return LIGHT_CLASS;
+    }
 }
 
 /**
- * Pas het thema toe op de pagina
+ * Pas het thema toe op de pagina (zonder console.log)
  * @param {string} theme - 'dark' of 'light'
  */
 export function applyTheme(theme) {
@@ -38,9 +39,11 @@ export function applyTheme(theme) {
     }
     
     // Opslaan in localStorage
-    setStorage(THEME_KEY, theme);
-    
-    console.log(`🎨 Thema gewijzigd naar: ${theme}`);
+    try {
+        localStorage.setItem(THEME_KEY, theme);
+    } catch (e) {
+        // Negeer storage fouten
+    }
 }
 
 /**
@@ -58,6 +61,14 @@ export function toggleTheme(event) {
  * Dit zorgt ervoor dat de voorkeur wordt toegepast
  */
 export function initTheme() {
+    // Voorkom dubbele initialisatie
+    if (isInitialized) {
+        console.log('ℹ️ Thema al geïnitialiseerd, sla over');
+        return;
+    }
+    
+    isInitialized = true;
+    
     const savedTheme = getCurrentTheme();
     applyTheme(savedTheme);
     
@@ -65,8 +76,9 @@ export function initTheme() {
     const checkbox = document.getElementById('themeCheckbox');
     if (checkbox) {
         // Verwijder oude listeners om dubbel te voorkomen
-        checkbox.removeEventListener('change', toggleTheme);
-        checkbox.addEventListener('change', toggleTheme);
+        const newCheckbox = checkbox.cloneNode(true);
+        checkbox.parentNode.replaceChild(newCheckbox, checkbox);
+        newCheckbox.addEventListener('change', toggleTheme);
     }
 }
 
@@ -102,6 +114,9 @@ export function addThemeToggle() {
     // Initialiseer
     initTheme();
 }
+
+// ===== GEEN updateVersion AANROEP MEER =====
+// We hebben de updateVersion verwijderd om dubbele meldingen te voorkomen
 
 // ===== EXPORT =====
 export default {
