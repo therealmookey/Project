@@ -5,7 +5,7 @@
 console.log('🚀 planning.js wordt geladen...');
 
 import { requireAuth } from './core/auth.js';
-import { showToast, escapeHtml, formatDate } from './core/utils.js';
+import { showToast, escapeHtml } from './core/utils.js';
 import { supabase } from './core/supabase.js';
 
 console.log('✅ Imports geladen!');
@@ -14,6 +14,20 @@ console.log('✅ Imports geladen!');
 let allePlanningen = [];
 let alleAdressen = [];
 let currentPlanningId = null;
+
+// ===== DEBUG FUNCTIE =====
+window.debugPlanning = function() {
+    console.log('📋 Alle adressen:', alleAdressen);
+    console.log('📋 Aantal adressen:', alleAdressen?.length || 0);
+    if (alleAdressen && alleAdressen.length > 0) {
+        console.log('📋 Eerste adres:', alleAdressen[0]);
+        console.log('📋 Extra info van eerste adres:', alleAdressen[0]?.extra_info || '(leeg)');
+        console.log('📋 Telefoon van eerste adres:', alleAdressen[0]?.telefoon || '(leeg)');
+        console.log('📋 Contact van eerste adres:', alleAdressen[0]?.contactpersoon_naam || '(leeg)');
+    }
+    console.log('📋 Alle planningen:', allePlanningen);
+    console.log('📋 Aantal planningen:', allePlanningen?.length || 0);
+};
 
 // ===== DOM ELEMENTEN =====
 const planningLijst = document.getElementById('planningLijst');
@@ -54,11 +68,10 @@ async function laadAdressenVoorSelect() {
         
         if (error) throw error;
         
-        alleAdressen = data || [];
-        
-        // Vul de select
+        // Vul de select (maar vervang alleAdressen niet, want die heeft al de volledige data)
+        const adressenVoorSelect = data || [];
         adresSelect.innerHTML = '<option value="">Kies een adres...</option>';
-        alleAdressen.forEach(adres => {
+        adressenVoorSelect.forEach(adres => {
             const option = document.createElement('option');
             option.value = adres.id;
             option.textContent = `${adres.instelling_naam} - ${adres.straat}, ${adres.plaats}`;
@@ -73,6 +86,9 @@ async function laadAdressenVoorSelect() {
 // ===== TOON PLANNING =====
 function toonPlanning(planningen) {
     if (!planningLijst) return;
+    
+    console.log('📋 toonPlanning aangeroepen met', planningen.length, 'planningen');
+    console.log('📋 Aantal adressen beschikbaar:', alleAdressen.length);
     
     if (!planningen || planningen.length === 0) {
         planningLijst.innerHTML = '<p>Geen planningen gevonden. Klik op "+ Nieuwe planning" om er een toe te voegen.</p>';
@@ -114,6 +130,19 @@ function toonPlanning(planningen) {
         
         items.forEach((planning, index) => {
             const adres = alleAdressen.find(a => a.id === planning.adres_id);
+            
+            // DEBUG: Log adres info
+            if (adres) {
+                console.log(`📍 Adres ${index + 1}:`, {
+                    naam: adres.instelling_naam,
+                    extra_info: adres.extra_info,
+                    telefoon: adres.telefoon,
+                    contact: adres.contactpersoon_naam
+                });
+            } else {
+                console.warn(`⚠️ Geen adres gevonden voor planning ${planning.id}, adres_id: ${planning.adres_id}`);
+            }
+            
             const typeIcon = planning.type === 'ophaling' ? '📦' : '🚚';
             const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
             const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
@@ -222,7 +251,6 @@ function initialiseerSortable() {
             filter: '.datum-header',
             preventOnFilter: false,
             onEnd: async function(evt) {
-                // Haal de nieuwe volgorde op
                 const items = container.querySelectorAll('.planning-item');
                 const updates = [];
                 
@@ -233,7 +261,6 @@ function initialiseerSortable() {
                     }
                 });
                 
-                // Update de volgorde in de database
                 try {
                     for (const update of updates) {
                         await supabase
@@ -261,6 +288,19 @@ async function laadPlanningen() {
     planningLijst.innerHTML = '<p>Bezig met laden...</p>';
     
     try {
+        // Eerst alle adressen ophalen (MET alle velden)
+        const { data: adressenData, error: adressenError } = await supabase
+            .from('adressen')
+            .select('*')
+            .order('instelling_naam');
+        
+        if (adressenError) throw adressenError;
+        
+        alleAdressen = adressenData || [];
+        console.log('📋 Adressen geladen:', alleAdressen.length);
+        console.log('📋 Eerste adres met extra info:', alleAdressen[0]?.instelling_naam, '→', alleAdressen[0]?.extra_info || '(geen extra info)');
+        
+        // Dan planningen ophalen
         const { data, error } = await supabase
             .from('planningen')
             .select('*')
@@ -269,6 +309,7 @@ async function laadPlanningen() {
         if (error) throw error;
         
         allePlanningen = data || [];
+        console.log('📋 Planningen geladen:', allePlanningen.length);
         toonPlanning(allePlanningen);
     } catch (err) {
         console.error('Fout bij laden planningen:', err);
@@ -313,7 +354,6 @@ async function bewerkPlanning(id) {
         setValue('aantalLegeTonnen', data.aantal_lege_tonnen || 1);
         setValue('opmerkingen', data.opmerkingen || '');
         
-        // Toon/verberg velden
         ophalingVelden.style.display = data.type === 'ophaling' ? 'block' : 'none';
         plaatsingVelden.style.display = data.type === 'plaatsing' ? 'block' : 'none';
         
@@ -397,7 +437,6 @@ async function savePlanning() {
 function genereerPdfVoorDag(datum) {
     console.log('📄 PDF genereren voor datum:', datum);
     
-    // Haal alle planningen voor deze datum op
     const planningenVoorDag = allePlanningen.filter(p => p.datum === datum);
     
     if (!planningenVoorDag || planningenVoorDag.length === 0) {
@@ -407,10 +446,7 @@ function genereerPdfVoorDag(datum) {
     
     console.log(`📋 ${planningenVoorDag.length} planningen gevonden voor PDF`);
     
-    // Bouw de HTML
     const pdfHtml = buildPdfHtml(datum, planningenVoorDag);
-    
-    // Open in nieuw venster en print
     printPdf(pdfHtml, datum);
 }
 
@@ -420,7 +456,6 @@ function buildPdfHtml(datum, planningen) {
     const dagVanWeek = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][datumObj.getDay()];
     const datumDisplay = `${dagVanWeek} ${datumObj.getDate()} ${datumObj.toLocaleString('nl-NL', { month: 'long' })} ${datumObj.getFullYear()}`;
     
-    // Sorteer op dag_volgorde
     const gesorteerd = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
     
     let tableRows = '';
@@ -467,7 +502,6 @@ function buildPdfHtml(datum, planningen) {
             </tr>
         `;
         
-        // Planning opmerkingen
         if (planning.opmerkingen) {
             opmerkingenHtml += `
                 <p style="margin: 4px 0;"><strong>${adresNaam}:</strong> ${escapeHtml(planning.opmerkingen)}</p>
@@ -493,7 +527,6 @@ function buildPdfHtml(datum, planningen) {
                 .opmerkingen { margin-top: 20px; padding: 10px 15px; background: #f8f9fa; border-radius: 6px; }
                 .opmerkingen h3 { color: #2c7da0; font-size: 14px; margin-top: 0; margin-bottom: 8px; }
                 hr { border: none; border-top: 1px solid #e9ecef; margin: 15px 0; }
-                .route-info { font-size: 10px; color: #6c757d; margin-top: 2px; }
             </style>
         </head>
         <body>
@@ -509,9 +542,9 @@ function buildPdfHtml(datum, planningen) {
                     <tr>
                         <th style="text-align: center; width: 25px;">#</th>
                         <th style="width: 70px;">Type</th>
-                        <th style="min-width: 120px;">Ziekenhuis<br><span style="font-weight: normal; font-size: 9px;">(incl. route info)</span></th>
-                        <th style="min-width: 100px;">Adres<br><span style="font-weight: normal; font-size: 9px;">(incl. telefoon)</span></th>
-                        <th style="min-width: 100px;">Plaats<br><span style="font-weight: normal; font-size: 9px;">(incl. contact)</span></th>
+                        <th style="min-width: 120px;">Ziekenhuis</th>
+                        <th style="min-width: 100px;">Adres</th>
+                        <th style="min-width: 100px;">Plaats</th>
                         <th style="text-align: center; width: 60px;">Details</th>
                         <th style="text-align: center; width: 70px;">Status</th>
                     </tr>
@@ -539,18 +572,15 @@ function printPdf(html, datum) {
     console.log('📄 PDF afdrukken...');
     
     try {
-        // Open nieuw venster
         const printWindow = window.open('', '_blank', 'width=900,height=700');
         if (!printWindow) {
             showToast('⚠️ Pop-up blocker geblokkeerd. Sta pop-ups toe voor deze site.', 'error');
             return;
         }
         
-        // Schrijf HTML naar venster
         printWindow.document.write(html);
         printWindow.document.close();
         
-        // Wacht en print
         printWindow.onload = function() {
             setTimeout(function() {
                 printWindow.focus();
@@ -569,19 +599,12 @@ function printPdf(html, datum) {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔄 Planning pagina initialiseren...');
     
-    // Auth check
     const auth = await requireAuth('index.html');
     if (!auth.isAuthenticated) return;
     
-    // Laad adressen voor select
+    await laadPlanningen();
     await laadAdressenVoorSelect();
     
-    // Laad planningen
-    await laadPlanningen();
-    
-    // ===== EVENT LISTENERS =====
-    
-    // Type select toon/verberg velden
     if (typeSelect) {
         typeSelect.addEventListener('change', function() {
             ophalingVelden.style.display = this.value === 'ophaling' ? 'block' : 'none';
@@ -589,7 +612,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
-    // Nieuwe planning knop
     if (newPlanningBtn) {
         newPlanningBtn.addEventListener('click', () => {
             currentPlanningId = null;
@@ -606,19 +628,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
-    // Opslaan knop
     if (savePlanningBtn) {
         savePlanningBtn.addEventListener('click', savePlanning);
     }
     
-    // Sluiten popup
     if (closePlanningPopup) {
         closePlanningPopup.addEventListener('click', () => {
             planningPopup.style.display = 'none';
         });
     }
     
-    // Sluiten bij klik buiten popup
     window.addEventListener('click', (e) => {
         if (e.target === planningPopup) {
             planningPopup.style.display = 'none';
