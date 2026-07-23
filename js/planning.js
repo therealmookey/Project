@@ -68,11 +68,12 @@ async function laadAdressenVoorSelect() {
     }
 }
 
-// ===== HULPFUNCTIE: Nummering per dag =====
+// ===== HULPFUNCTIE: Nummering per dag (op basis van huidige visuele volgorde) =====
 function updatePlanningNumbers() {
     const containers = document.querySelectorAll('.sortable-list');
     
     containers.forEach(container => {
+        // Haal alle items op in de huidige visuele volgorde
         const items = container.querySelectorAll('.planning-item');
         const groupedByDatum = {};
         
@@ -84,30 +85,29 @@ function updatePlanningNumbers() {
             groupedByDatum[datum].push(item);
         });
         
+        // Voor elke dag, nummer de items op basis van hun huidige positie
         for (const [datum, datumItems] of Object.entries(groupedByDatum)) {
-            datumItems.sort((a, b) => {
-                const orderA = parseInt(a.dataset.volgorde) || 0;
-                const orderB = parseInt(b.dataset.volgorde) || 0;
-                return orderA - orderB;
-            });
-            
+            // Gebruik de visuele volgorde (hoe ze in de DOM staan)
+            // Ze staan al in de juiste volgorde in de container
             datumItems.forEach((item, index) => {
                 const badge = item.querySelector('.stop-number-badge');
                 if (badge) {
                     badge.textContent = `#${index + 1}`;
                 }
+                // Update het data-attribuut met de nieuwe volgorde
                 item.dataset.volgorde = index;
             });
         }
     });
 }
 
-// ===== HULPFUNCTIE: Opslaan volgorde per dag =====
+// ===== HULPFUNCTIE: Opslaan volgorde per dag (op basis van huidige visuele volgorde) =====
 async function savePlanningOrder() {
     const containers = document.querySelectorAll('.sortable-list');
     const allUpdates = [];
     
     containers.forEach(container => {
+        // Haal alle items op in de huidige visuele volgorde
         const items = container.querySelectorAll('.planning-item');
         const groupedByDatum = {};
         
@@ -119,13 +119,8 @@ async function savePlanningOrder() {
             groupedByDatum[datum].push(item);
         });
         
+        // Voor elke dag, sla de visuele volgorde op
         for (const [datum, datumItems] of Object.entries(groupedByDatum)) {
-            datumItems.sort((a, b) => {
-                const orderA = parseInt(a.dataset.volgorde) || 0;
-                const orderB = parseInt(b.dataset.volgorde) || 0;
-                return orderA - orderB;
-            });
-            
             datumItems.forEach((item, index) => {
                 const id = parseInt(item.dataset.id);
                 if (id) {
@@ -144,6 +139,7 @@ async function savePlanningOrder() {
                 .update({ dag_volgorde: update.volgorde })
                 .eq('id', update.id);
             
+            // Update ook de lokale data
             const planning = allePlanningen.find(p => p.id === update.id);
             if (planning) {
                 planning.dag_volgorde = update.volgorde;
@@ -188,7 +184,11 @@ function initialiseerSortable() {
                 group: 'planning',
                 onEnd: async function(evt) {
                     console.log('🔄 Sorteren voltooid');
+                    
+                    // Update de nummering direct op basis van de nieuwe visuele volgorde
                     updatePlanningNumbers();
+                    
+                    // Sla de nieuwe volgorde op in de database
                     await savePlanningOrder();
                 }
             });
