@@ -333,105 +333,41 @@ function toonPlanning(planningen) {
  * AI optimalisatie voor een specifieke dag
  * @param {string} datum - De datum in YYYY-MM-DD formaat
  */
-async function aiOptimizeDag(datum) {
-    console.log('🤖 AI optimalisatie gestart voor:', datum);
-    showToast('🤖 AI berekent de optimale volgorde...', 'info');
-    
-    try {
-        // Haal alle planningen voor deze dag op
-        const planningenVoorDag = allePlanningen.filter(p => p.datum === datum);
-        
-        if (!planningenVoorDag || planningenVoorDag.length === 0) {
-            showToast('⚠️ Geen planningen gevonden voor deze dag.', 'error');
-            return;
-        }
-        
-        if (planningenVoorDag.length < 2) {
-            showToast('⚠️ Er zijn minstens 2 ritten nodig om te optimaliseren.', 'error');
-            return;
-        }
-        
-        // Verzamel adresgegevens voor elke planning
-        const rittenData = planningenVoorDag.map(planning => {
-            const adres = alleAdressen.find(a => a.id === planning.adres_id);
-            return {
-                id: planning.id,
-                adres_id: planning.adres_id,
-                instelling_naam: adres?.instelling_naam || 'Onbekend',
-                straat: adres?.straat || '',
-                postcode: adres?.postcode || '',
-                plaats: adres?.plaats || '',
-                type: planning.type,
-                datum: planning.datum,
-                extra_info: adres?.extra_info || '',
-                contactpersoon_naam: adres?.contactpersoon_naam || '',
-                telefoon: adres?.telefoon || ''
-            };
-        });
-        
-        console.log('📋 Data voor AI optimalisatie:', rittenData);
-        
-        // Roep de Edge Function aan voor route optimalisatie
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        
-        if (!token) {
-            showToast('⚠️ Je bent niet ingelogd. Log opnieuw in.', 'error');
-            return;
-        }
-        
-        const response = await fetch(
-            'https://jcdqcgviossmrvlgsiqd.supabase.co/functions/v1/route-optimizer',
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    ritten: rittenData,
-                    datum: datum,
-                    startpunt: localStorage.getItem('startpunt') || 'Schoonmansveld 48, 2870 Puurs'
-                })
-            }
-        );
-        
-        const result = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(result.error || 'Er ging iets mis bij de AI optimalisatie');
-        }
-        
-        console.log('✅ AI optimalisatie resultaat:', result);
-        
-        // Verwerk de nieuwe volgorde
-        if (result.optimalisatie && result.optimalisatie.length > 0) {
-            // Update de volgorde in de database
-            for (const rit of result.optimalisatie) {
-                await supabase
-                    .from('planningen')
-                    .update({ dag_volgorde: rit.volgorde })
-                    .eq('id', rit.id);
-                
-                // Update lokale data
-                const planning = allePlanningen.find(p => p.id === rit.id);
-                if (planning) {
-                    planning.dag_volgorde = rit.volgorde;
-                }
-            }
-            
-            // Herlaad de planning om de nieuwe volgorde te tonen
-            await laadPlanningen();
-            
-            showToast('✅ Route geoptimaliseerd! De AI heeft de beste volgorde gevonden.', 'success');
-        } else {
-            showToast('⚠️ Geen optimalisatie mogelijk. De huidige volgorde blijft behouden.', 'warning');
-        }
-        
-    } catch (err) {
-        console.error('Fout bij AI optimalisatie:', err);
-        showToast('❌ Fout bij AI optimalisatie: ' + err.message, 'error');
+// Vervang de fetch call met deze verbeterde versie
+const response = await fetch(
+    'https://jcdqcgviossmrvlgsiqd.supabase.co/functions/v1/route-optimizer',
+    {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            ritten: rittenData,
+            datum: datum,
+            startpunt: localStorage.getItem('startpunt') || 'Schoonmansveld 48, 2870 Puurs'
+        })
     }
+);
+
+// Log de response status en text voor debugging
+console.log('📡 Response status:', response.status);
+const responseText = await response.text();
+console.log('📡 Response text:', responseText);
+
+// Probeer te parsen als JSON
+let result;
+try {
+    result = JSON.parse(responseText);
+} catch (parseError) {
+    console.error('❌ Kon response niet parsen als JSON:', parseError);
+    showToast('❌ Fout: Ongeldige response van server', 'error');
+    return;
+}
+
+if (!response.ok) {
+    console.error('❌ Server error:', result);
+    throw new Error(result.error || `Server error: ${response.status}`);
 }
 
 // ===== PLANNINGEN LADEN =====
