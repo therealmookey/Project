@@ -2,9 +2,13 @@
 // DASHBOARD - Hoofdscript voor dashboard pagina
 // ============================================================
 
-// Importeer modules met absolute paden (vanuit de root)
-import { laadAgenda, vorigeMaand, volgendeMaand, gaNaarVandaag } from '/js/modules/dashboard/agenda.js';
-import { laadOphalingAnalyse, setCutoff } from '/js/modules/dashboard/voorspelling.js';
+console.log('🚀 dashboard.js is geladen!'); // <-- TEST
+
+// Importeer modules
+import { laadAgenda, vorigeMaand, volgendeMaand, gaNaarVandaag } from './modules/dashboard/agenda.js';
+import { laadOphalingAnalyse, setCutoff } from './modules/dashboard/voorspelling.js';
+
+console.log('✅ Modules geïmporteerd!'); // <-- TEST
 
 // ===== DASHBOARD AUTH =====
 
