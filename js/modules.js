@@ -415,3 +415,4 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 
 console.log('✅ modules.js geladen!');
+console.log('✅ Modules weergegeven in tabModules:', modules.length);
