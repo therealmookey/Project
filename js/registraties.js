@@ -179,7 +179,7 @@ async function laadRegistraties() {
     }
 }
 
-// ===== REGISTRATIES TONEN =====
+// ===== REGISTRATIES TONEN (MET TOTAALOVERZICHT) =====
 function toonRegistraties(registraties) {
     if (!registratiesLijst) return;
     
@@ -192,59 +192,108 @@ function toonRegistraties(registraties) {
         );
     }
     
-    if (!filteredData || filteredData.length === 0) {
-        registratiesLijst.innerHTML = '<p>Geen registraties gevonden.</p>';
-        return;
-    }
+    // ===== BEREKEN TOTAALOVERZICHT =====
+    const ophalingen = filteredData.filter(reg => reg.type === 'ophaling');
+    const opstarten = filteredData.filter(reg => reg.type === 'opstart');
     
-    let html = `
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Datum</th>
-                        <th>Ziekenhuis</th>
-                        <th>Type</th>
-                        <th>Gewicht (kg)</th>
-                        <th>Combinatie</th>
-                        <th>Aantal</th>
-                        <th>Opmerkingen</th>
-                        <th>Acties</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
+    const totaalAantal = filteredData.length;
+    const totaalOphalingen = ophalingen.length;
+    const totaalOpstarten = opstarten.length;
+    const totaalGewicht = ophalingen.reduce((sum, reg) => sum + (reg.gewicht || 0), 0);
+    const gemiddeldGewicht = totaalOphalingen > 0 ? totaalGewicht / totaalOphalingen : 0;
     
-    filteredData.forEach(reg => {
-        const typeLabel = reg.type === 'ophaling' ? '📦 Ophaling' : '🔄 Opstart';
-        const gewichtDisplay = reg.gewicht ? `${reg.gewicht} kg` : '-';
-        const combinatieDisplay = reg.combinatie ? `${reg.combinatie.item_code} - ${reg.combinatie.omschrijving}` : '-';
-        const aantalDisplay = reg.opstart_aantal || '-';
-        
-        html += `
-            <tr>
-                <td>${formatDate(reg.registratiedatum)}</td>
-                <td><strong>${escapeHtml(reg.ziekenhuis?.instelling_naam || 'Onbekend')}</strong></td>
-                <td>${typeLabel}</td>
-                <td>${gewichtDisplay}</td>
-                <td>${escapeHtml(combinatieDisplay)}</td>
-                <td>${aantalDisplay}</td>
-                <td>${escapeHtml(reg.opmerkingen || '-')}</td>
-                <td>
-                    <button class="btn btn-secondary edit-btn" data-id="${reg.id}">✏️</button>
-                    <button class="btn btn-danger delete-btn" data-id="${reg.id}">🗑️</button>
-                </td>
-            </tr>
-        `;
-    });
-    
-    html += `
-                </tbody>
-            </table>
+    // ===== TOTAALOVERZICHT HTML =====
+    let totaalHtml = `
+        <div class="registratie-totaal">
+            <div class="totaal-grid">
+                <div class="totaal-item">
+                    <span class="totaal-label">📋 Totaal registraties</span>
+                    <span class="totaal-value">${totaalAantal}</span>
+                </div>
+                <div class="totaal-item">
+                    <span class="totaal-label">📦 Ophalingen</span>
+                    <span class="totaal-value">${totaalOphalingen}</span>
+                </div>
+                <div class="totaal-item">
+                    <span class="totaal-label">⚖️ Totaal gewicht</span>
+                    <span class="totaal-value">${totaalGewicht.toFixed(1)} kg</span>
+                </div>
+                <div class="totaal-item">
+                    <span class="totaal-label">📊 Gemiddeld gewicht</span>
+                    <span class="totaal-value">${gemiddeldGewicht.toFixed(1)} kg</span>
+                </div>
+                <div class="totaal-item">
+                    <span class="totaal-label">🔄 Opstarten</span>
+                    <span class="totaal-value">${totaalOpstarten}</span>
+                </div>
+            </div>
+            ${searchZiekenhuis?.value || filterDatumVanaf?.value || filterDatumTot?.value || (typeFilter?.value && typeFilter.value !== 'alles') ? `
+                <div class="totaal-filter-info">
+                    🔍 Gefilterd: ${filteredData.length} van ${registraties.length} registraties
+                </div>
+            ` : ''}
         </div>
     `;
     
-    registratiesLijst.innerHTML = html;
+    // ===== TABEL HTML =====
+    let tabelHtml = '';
+    if (!filteredData || filteredData.length === 0) {
+        tabelHtml = '<p>Geen registraties gevonden.</p>';
+    } else {
+        tabelHtml = `
+            <div style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Ziekenhuis</th>
+                            <th>Type</th>
+                            <th>Gewicht (kg)</th>
+                            <th>Combinatie</th>
+                            <th>Aantal</th>
+                            <th>Opmerkingen</th>
+                            <th>Acties</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        filteredData.forEach(reg => {
+            const typeLabel = reg.type === 'ophaling' ? '📦 Ophaling' : '🔄 Opstart';
+            const gewichtDisplay = reg.gewicht ? `${reg.gewicht} kg` : '-';
+            const combinatieDisplay = reg.combinatie ? `${reg.combinatie.item_code} - ${reg.combinatie.omschrijving}` : '-';
+            const aantalDisplay = reg.opstart_aantal || '-';
+            
+            tabelHtml += `
+                <tr>
+                    <td>${formatDate(reg.registratiedatum)}</td>
+                    <td><strong>${escapeHtml(reg.ziekenhuis?.instelling_naam || 'Onbekend')}</strong></td>
+                    <td>${typeLabel}</td>
+                    <td>${gewichtDisplay}</td>
+                    <td>${escapeHtml(combinatieDisplay)}</td>
+                    <td>${aantalDisplay}</td>
+                    <td>${escapeHtml(reg.opmerkingen || '-')}</td>
+                    <td>
+                        <button class="btn btn-secondary edit-btn" data-id="${reg.id}">✏️</button>
+                        <button class="btn btn-danger delete-btn" data-id="${reg.id}">🗑️</button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        tabelHtml += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+    
+    // ===== COMBINEER TOTAAL + TABEL =====
+    registratiesLijst.innerHTML = `
+        ${tabelHtml}
+        ${filteredData.length > 0 ? totaalHtml : ''}
+    `;
+    
     console.log('✅ Registraties weergegeven:', filteredData.length);
     
     // Event listeners
