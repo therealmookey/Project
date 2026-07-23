@@ -228,59 +228,43 @@ function toonPlanning(planningen) {
     setTimeout(() => initialiseerSortable(), 300);
 }
 
-// ===== SORTABLE INITIALISATIE (WERKENDE VERSIE) =====
+// ===== SORTABLE INITIALISATIE (MET HERLADEN) =====
 function initialiseerSortable() {
-    // Controleer of Sortable beschikbaar is
     if (typeof Sortable === 'undefined') {
-        console.warn('⚠️ SortableJS niet geladen. Controleer de script tag in planning.html');
+        console.warn('⚠️ SortableJS niet geladen');
         return;
     }
     
-    // Zoek alle sortable containers
     const containers = document.querySelectorAll('.sortable-list');
     if (!containers || containers.length === 0) {
         console.warn('⚠️ Geen sortable containers gevonden');
         return;
     }
     
-    console.log(`🔄 ${containers.length} sortable containers gevonden`);
-    
     containers.forEach((container, index) => {
         try {
-            // Vernietig bestaande Sortable instantie als die er is
             if (container._sortable) {
                 container._sortable.destroy();
             }
             
             const sortable = new Sortable(container, {
-                // Alleen items met deze class zijn sleepbaar
                 draggable: '.planning-item',
-                // Alleen de drag-handle is het sleep-punt
                 handle: '.drag-handle',
-                // Animatie snelheid
                 animation: 150,
-                // Classes voor visuele feedback
                 ghostClass: 'sortable-ghost',
                 chosenClass: 'sortable-chosen',
                 dragClass: 'sortable-drag',
-                // Datum headers mogen niet worden verplaatst
                 filter: '.datum-header',
                 preventOnFilter: false,
-                // Zorg dat items binnen dezelfde container blijven
                 group: 'planning',
-                // Toon een vertraging om klikken te onderscheiden van slepen
                 delay: 0,
-                // Toon een placeholder
                 forceFallback: false,
-                // Callback wanneer sorteren start
                 onStart: function(evt) {
                     console.log('🔄 Sorteren gestart voor item:', evt.item.dataset.id);
                 },
-                // Callback wanneer sorteren eindigt
                 onEnd: async function(evt) {
                     console.log('🔄 Sorteren voltooid voor item:', evt.item.dataset.id);
                     
-                    // Haal alle items in de container op
                     const items = container.querySelectorAll('.planning-item');
                     const updates = [];
                     
@@ -291,7 +275,6 @@ function initialiseerSortable() {
                         }
                     });
                     
-                    // Update de volgorde in de database
                     try {
                         for (const update of updates) {
                             await supabase
@@ -300,6 +283,11 @@ function initialiseerSortable() {
                                 .eq('id', update.id);
                         }
                         showToast('✅ Volgorde opgeslagen!', 'success');
+                        
+                        // ===== HERLAAD DE PLANNINGEN =====
+                        // Dit zorgt ervoor dat allePlanningen wordt bijgewerkt
+                        await laadPlanningen();
+                        
                     } catch (err) {
                         console.error('Fout bij opslaan volgorde:', err);
                         showToast('❌ Fout bij opslaan volgorde: ' + err.message, 'error');
@@ -307,7 +295,6 @@ function initialiseerSortable() {
                 }
             });
             
-            // Bewaar de Sortable instantie voor later gebruik
             container._sortable = sortable;
             console.log(`✅ Sortable geïnitialiseerd voor container ${index + 1}`);
         } catch (err) {
