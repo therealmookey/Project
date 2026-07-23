@@ -98,7 +98,7 @@ function toonModules(modules) {
 async function laadGebruikersMetRechten() {
     if (!gebruikersModuleLijst) return;
     
-    gebuikersModuleLijst.innerHTML = '<p>Bezig met laden...</p>';
+    gebruikersModuleLijst.innerHTML = '<p>Bezig met laden...</p>';
     
     try {
         // Haal alle gebruikers op
