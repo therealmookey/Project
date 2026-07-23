@@ -228,7 +228,7 @@ function toonPlanning(planningen) {
     setTimeout(() => initialiseerSortable(), 300);
 }
 
-// ===== SORTABLE INITIALISATIE (MET HERLADEN) =====
+// ===== SORTABLE INITIALISATIE (VLOEIEND) =====
 function initialiseerSortable() {
     if (typeof Sortable === 'undefined') {
         console.warn('⚠️ SortableJS niet geladen');
@@ -257,40 +257,54 @@ function initialiseerSortable() {
                 filter: '.datum-header',
                 preventOnFilter: false,
                 group: 'planning',
-                delay: 0,
-                forceFallback: false,
-                onStart: function(evt) {
-                    console.log('🔄 Sorteren gestart voor item:', evt.item.dataset.id);
-                },
                 onEnd: async function(evt) {
-                    console.log('🔄 Sorteren voltooid voor item:', evt.item.dataset.id);
+                    console.log('🔄 Sorteren voltooid');
                     
+                    // Haal alle items op in de huidige volgorde
                     const items = container.querySelectorAll('.planning-item');
                     const updates = [];
+                    const updatedIds = [];
                     
                     items.forEach((item, index) => {
                         const id = parseInt(item.dataset.id);
                         if (id) {
                             updates.push({ id: id, volgorde: index });
+                            updatedIds.push(id);
                         }
                     });
                     
                     try {
+                        // Update de volgorde in de database
                         for (const update of updates) {
                             await supabase
                                 .from('planningen')
                                 .update({ dag_volgorde: update.volgorde })
                                 .eq('id', update.id);
                         }
-                        showToast('✅ Volgorde opgeslagen!', 'success');
                         
-                        // ===== HERLAAD DE PLANNINGEN =====
-                        // Dit zorgt ervoor dat allePlanningen wordt bijgewerkt
-                        await laadPlanningen();
+                        // Update de nummering in de UI zonder herladen
+                        items.forEach((item, index) => {
+                            const badge = item.querySelector('.stop-number-badge');
+                            if (badge) {
+                                badge.textContent = `#${index + 1}`;
+                            }
+                        });
+                        
+                        // Update de lokale data zonder herladen
+                        updates.forEach(update => {
+                            const planning = allePlanningen.find(p => p.id === update.id);
+                            if (planning) {
+                                planning.dag_volgorde = update.volgorde;
+                            }
+                        });
+                        
+                        showToast('✅ Volgorde opgeslagen!', 'success');
                         
                     } catch (err) {
                         console.error('Fout bij opslaan volgorde:', err);
                         showToast('❌ Fout bij opslaan volgorde: ' + err.message, 'error');
+                        // Als er een fout is, herlaad dan om de oude volgorde te herstellen
+                        await laadPlanningen();
                     }
                 }
             });
