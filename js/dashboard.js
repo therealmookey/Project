@@ -2,8 +2,9 @@
 // DASHBOARD - Hoofdscript voor dashboard pagina
 // ============================================================
 
-// Importeer de agenda module (die we straks maken)
+// Importeer modules
 import { laadAgenda, vorigeMaand, volgendeMaand, gaNaarVandaag } from './modules/dashboard/agenda.js';
+import { laadOphalingAnalyse, setCutoff } from './modules/dashboard/voorspelling.js';
 
 // ===== DASHBOARD AUTH =====
 
@@ -21,7 +22,8 @@ async function checkDashboardAuth() {
     } else {
         console.log('Sessie is geldig voor:', session.user.email);
         toonGebruikersnaam(session.user.id);
-        laadAgenda(); // Roep de agenda module aan
+        laadAgenda();
+        laadOphalingAnalyse(); // Voorspelling laden
     }
 }
 
@@ -83,6 +85,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 .select('*', { count: 'exact', head: true });
 
             alert(`📊 Statistieken\n\n📍 Aantal adressen: ${adresCount || 0}\n📅 Aantal planningen: ${planningCount || 0}`);
+        });
+    }
+
+    // Filter voor voorspellingen
+    const filterSelect = document.getElementById('voorspellingFilter');
+    if (filterSelect) {
+        filterSelect.addEventListener('change', function() {
+            const days = parseInt(this.value);
+            setCutoff(days);
         });
     }
 });
