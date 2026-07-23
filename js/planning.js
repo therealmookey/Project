@@ -15,20 +15,6 @@ let allePlanningen = [];
 let alleAdressen = [];
 let currentPlanningId = null;
 
-// ===== DEBUG FUNCTIE =====
-window.debugPlanning = function() {
-    console.log('📋 Alle adressen:', alleAdressen);
-    console.log('📋 Aantal adressen:', alleAdressen?.length || 0);
-    if (alleAdressen && alleAdressen.length > 0) {
-        console.log('📋 Eerste adres:', alleAdressen[0]);
-        console.log('📋 Extra info van eerste adres:', alleAdressen[0]?.extra_info || '(leeg)');
-        console.log('📋 Telefoon van eerste adres:', alleAdressen[0]?.telefoon || '(leeg)');
-        console.log('📋 Contact van eerste adres:', alleAdressen[0]?.contactpersoon_naam || '(leeg)');
-    }
-    console.log('📋 Alle planningen:', allePlanningen);
-    console.log('📋 Aantal planningen:', allePlanningen?.length || 0);
-};
-
 // ===== DOM ELEMENTEN =====
 const planningLijst = document.getElementById('planningLijst');
 const newPlanningBtn = document.getElementById('newPlanningBtn');
@@ -68,7 +54,6 @@ async function laadAdressenVoorSelect() {
         
         if (error) throw error;
         
-        // Vul de select (maar vervang alleAdressen niet, want die heeft al de volledige data)
         const adressenVoorSelect = data || [];
         adresSelect.innerHTML = '<option value="">Kies een adres...</option>';
         adressenVoorSelect.forEach(adres => {
@@ -83,152 +68,96 @@ async function laadAdressenVoorSelect() {
     }
 }
 
-// ===== TOON PLANNING =====
-function toonPlanning(planningen) {
-    if (!planningLijst) return;
+// ===== HULPFUNCTIE: Nummering per dag =====
+function updatePlanningNumbers() {
+    const containers = document.querySelectorAll('.sortable-list');
     
-    console.log('📋 toonPlanning aangeroepen met', planningen.length, 'planningen');
-    console.log('📋 Aantal adressen beschikbaar:', alleAdressen.length);
-    
-    if (!planningen || planningen.length === 0) {
-        planningLijst.innerHTML = '<p>Geen planningen gevonden. Klik op "+ Nieuwe planning" om er een toe te voegen.</p>';
-        return;
-    }
-    
-    // Sorteer op datum (NIEUWSTE EERST)
-    const gesorteerd = [...planningen].sort((a, b) => new Date(b.datum) - new Date(a.datum));
-    
-    let html = '<div class="sortable-list">';
-    
-    // Groepeer per datum
-    const grouped = {};
-    gesorteerd.forEach(p => {
-        if (!grouped[p.datum]) grouped[p.datum] = [];
-        grouped[p.datum].push(p);
-    });
-    
-    // Sorteer datums (nieuwste eerst)
-    const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
-    
-    for (const datum of sortedDates) {
-        const items = grouped[datum];
-        const datumObj = new Date(datum + 'T00:00:00');
-        const dagVanWeek = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][datumObj.getDay()];
-        const datumDisplay = `${dagVanWeek} ${datumObj.getDate()} ${datumObj.toLocaleString('nl-NL', { month: 'long' })} ${datumObj.getFullYear()}`;
+    containers.forEach(container => {
+        const items = container.querySelectorAll('.planning-item');
+        const groupedByDatum = {};
         
-        html += `
-            <div class="datum-header" data-datum="${datum}">
-                <div class="datum-header-content">
-                    <span class="datum-dag">📅 ${datumDisplay}</span>
-                    <span class="datum-count">${items.length} ritten</span>
-                </div>
-                <div class="datum-actions">
-                    <button class="btn btn-primary btn-small pdf-dag-btn" data-datum="${datum}">📄 PDF</button>
-                </div>
-            </div>
-        `;
+        items.forEach(item => {
+            const datum = item.dataset.datum;
+            if (!groupedByDatum[datum]) {
+                groupedByDatum[datum] = [];
+            }
+            groupedByDatum[datum].push(item);
+        });
         
-        items.forEach((planning, index) => {
-            const adres = alleAdressen.find(a => a.id === planning.adres_id);
+        for (const [datum, datumItems] of Object.entries(groupedByDatum)) {
+            datumItems.sort((a, b) => {
+                const orderA = parseInt(a.dataset.volgorde) || 0;
+                const orderB = parseInt(b.dataset.volgorde) || 0;
+                return orderA - orderB;
+            });
             
-            // DEBUG: Log adres info
-            if (adres) {
-                console.log(`📍 Adres ${index + 1}:`, {
-                    naam: adres.instelling_naam,
-                    extra_info: adres.extra_info,
-                    telefoon: adres.telefoon,
-                    contact: adres.contactpersoon_naam
-                });
-            } else {
-                console.warn(`⚠️ Geen adres gevonden voor planning ${planning.id}, adres_id: ${planning.adres_id}`);
-            }
-            
-            const typeIcon = planning.type === 'ophaling' ? '📦' : '🚚';
-            const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
-            const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
-                              (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
-            const statusLabel = planning.status === 'gepland' ? 'Gepland' : 
-                              (planning.status === 'uitgevoerd' ? 'Uitgevoerd' : 'Geannuleerd');
-            
-            let extraInfo = '';
-            if (planning.type === 'ophaling' && planning.aantal_tonnen) {
-                extraInfo = `${planning.aantal_tonnen} ton(nen)`;
-            } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
-                extraInfo = `${planning.aantal_lege_tonnen} lege ton(nen)`;
-            }
-            
-            // Adres extra info (route, parkeren, laadperron, etc.)
-            const adresExtraInfo = adres?.extra_info ? escapeHtml(adres.extra_info) : '';
-            const adresTelefoon = adres?.telefoon ? escapeHtml(adres.telefoon) : '';
-            const adresContact = adres?.contactpersoon_naam ? escapeHtml(adres.contactpersoon_naam) : '';
-            
-            html += `
-                <div class="planning-item sortable-item" data-id="${planning.id}" data-datum="${planning.datum}">
-                    <div class="planning-info">
-                        <div class="planning-header">
-                            <span class="drag-handle">⠿</span>
-                            <span class="stop-number-badge">#${index + 1}</span>
-                            <h4>${adres ? escapeHtml(adres.instelling_naam) : 'Onbekend'}</h4>
-                            <span class="planning-status ${statusClass}">${statusLabel}</span>
-                        </div>
-                        <p>📍 ${adres ? escapeHtml(adres.straat) : ''}, ${adres ? escapeHtml(adres.plaats) : ''}</p>
-                        ${adresTelefoon ? `<p>📞 ${adresTelefoon}</p>` : ''}
-                        ${adresContact ? `<p>👤 ${adresContact}</p>` : ''}
-                        ${adresExtraInfo ? `<p class="adres-extra-info">📝 ${adresExtraInfo}</p>` : ''}
-                        <p>${typeIcon} ${typeLabel} ${extraInfo ? `- ${extraInfo}` : ''}</p>
-                        ${planning.opmerkingen ? `<p class="planning-opmerking">📝 ${escapeHtml(planning.opmerkingen)}</p>` : ''}
-                    </div>
-                    <div class="planning-buttons">
-                        <select class="status-select" data-id="${planning.id}">
-                            <option value="gepland" ${planning.status === 'gepland' ? 'selected' : ''}>Gepland</option>
-                            <option value="uitgevoerd" ${planning.status === 'uitgevoerd' ? 'selected' : ''}>Uitgevoerd</option>
-                            <option value="geannuleerd" ${planning.status === 'geannuleerd' ? 'selected' : ''}>Geannuleerd</option>
-                        </select>
-                        <button class="btn btn-secondary edit-planning-btn" data-id="${planning.id}">✏️ Bewerken</button>
-                        <button class="btn btn-danger delete-planning-btn" data-id="${planning.id}">🗑️</button>
-                    </div>
-                </div>
-            `;
-        });
-    }
-    
-    html += '</div>';
-    planningLijst.innerHTML = html;
-    
-    // Event listeners voor status select
-    document.querySelectorAll('.status-select').forEach(select => {
-        select.addEventListener('change', async function() {
-            const id = this.dataset.id;
-            const status = this.value;
-            await updatePlanningStatus(id, status);
-        });
+            datumItems.forEach((item, index) => {
+                const badge = item.querySelector('.stop-number-badge');
+                if (badge) {
+                    badge.textContent = `#${index + 1}`;
+                }
+                item.dataset.volgorde = index;
+            });
+        }
     });
-    
-    // Event listeners voor bewerken
-    document.querySelectorAll('.edit-planning-btn').forEach(btn => {
-        btn.addEventListener('click', () => bewerkPlanning(btn.dataset.id));
-    });
-    
-    // Event listeners voor verwijderen
-    document.querySelectorAll('.delete-planning-btn').forEach(btn => {
-        btn.addEventListener('click', () => verwijderPlanning(btn.dataset.id));
-    });
-    
-    // Event listeners voor PDF
-    document.querySelectorAll('.pdf-dag-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const datum = this.dataset.datum;
-            console.log('📄 PDF knop geklikt voor datum:', datum);
-            genereerPdfVoorDag(datum);
-        });
-    });
-    
-    // Initialiseer sortable
-    setTimeout(() => initialiseerSortable(), 300);
 }
 
-// ===== SORTABLE INITIALISATIE (VLOEIEND) =====
+// ===== HULPFUNCTIE: Opslaan volgorde per dag =====
+async function savePlanningOrder() {
+    const containers = document.querySelectorAll('.sortable-list');
+    const allUpdates = [];
+    
+    containers.forEach(container => {
+        const items = container.querySelectorAll('.planning-item');
+        const groupedByDatum = {};
+        
+        items.forEach(item => {
+            const datum = item.dataset.datum;
+            if (!groupedByDatum[datum]) {
+                groupedByDatum[datum] = [];
+            }
+            groupedByDatum[datum].push(item);
+        });
+        
+        for (const [datum, datumItems] of Object.entries(groupedByDatum)) {
+            datumItems.sort((a, b) => {
+                const orderA = parseInt(a.dataset.volgorde) || 0;
+                const orderB = parseInt(b.dataset.volgorde) || 0;
+                return orderA - orderB;
+            });
+            
+            datumItems.forEach((item, index) => {
+                const id = parseInt(item.dataset.id);
+                if (id) {
+                    allUpdates.push({ id: id, volgorde: index });
+                }
+            });
+        }
+    });
+    
+    if (allUpdates.length === 0) return;
+    
+    try {
+        for (const update of allUpdates) {
+            await supabase
+                .from('planningen')
+                .update({ dag_volgorde: update.volgorde })
+                .eq('id', update.id);
+            
+            const planning = allePlanningen.find(p => p.id === update.id);
+            if (planning) {
+                planning.dag_volgorde = update.volgorde;
+            }
+        }
+        showToast('✅ Volgorde opgeslagen!', 'success');
+    } catch (err) {
+        console.error('Fout bij opslaan volgorde:', err);
+        showToast('❌ Fout bij opslaan volgorde: ' + err.message, 'error');
+        await laadPlanningen();
+    }
+}
+
+// ===== SORTABLE INITIALISATIE =====
 function initialiseerSortable() {
     if (typeof Sortable === 'undefined') {
         console.warn('⚠️ SortableJS niet geladen');
@@ -259,53 +188,8 @@ function initialiseerSortable() {
                 group: 'planning',
                 onEnd: async function(evt) {
                     console.log('🔄 Sorteren voltooid');
-                    
-                    // Haal alle items op in de huidige volgorde
-                    const items = container.querySelectorAll('.planning-item');
-                    const updates = [];
-                    const updatedIds = [];
-                    
-                    items.forEach((item, index) => {
-                        const id = parseInt(item.dataset.id);
-                        if (id) {
-                            updates.push({ id: id, volgorde: index });
-                            updatedIds.push(id);
-                        }
-                    });
-                    
-                    try {
-                        // Update de volgorde in de database
-                        for (const update of updates) {
-                            await supabase
-                                .from('planningen')
-                                .update({ dag_volgorde: update.volgorde })
-                                .eq('id', update.id);
-                        }
-                        
-                        // Update de nummering in de UI zonder herladen
-                        items.forEach((item, index) => {
-                            const badge = item.querySelector('.stop-number-badge');
-                            if (badge) {
-                                badge.textContent = `#${index + 1}`;
-                            }
-                        });
-                        
-                        // Update de lokale data zonder herladen
-                        updates.forEach(update => {
-                            const planning = allePlanningen.find(p => p.id === update.id);
-                            if (planning) {
-                                planning.dag_volgorde = update.volgorde;
-                            }
-                        });
-                        
-                        showToast('✅ Volgorde opgeslagen!', 'success');
-                        
-                    } catch (err) {
-                        console.error('Fout bij opslaan volgorde:', err);
-                        showToast('❌ Fout bij opslaan volgorde: ' + err.message, 'error');
-                        // Als er een fout is, herlaad dan om de oude volgorde te herstellen
-                        await laadPlanningen();
-                    }
+                    updatePlanningNumbers();
+                    await savePlanningOrder();
                 }
             });
             
@@ -317,25 +201,148 @@ function initialiseerSortable() {
     });
 }
 
+// ===== TOON PLANNING =====
+function toonPlanning(planningen) {
+    if (!planningLijst) return;
+    
+    if (!planningen || planningen.length === 0) {
+        planningLijst.innerHTML = '<p>Geen planningen gevonden. Klik op "+ Nieuwe planning" om er een toe te voegen.</p>';
+        return;
+    }
+    
+    const gesorteerd = [...planningen].sort((a, b) => new Date(b.datum) - new Date(a.datum));
+    
+    let html = '<div class="sortable-list">';
+    
+    const grouped = {};
+    gesorteerd.forEach(p => {
+        if (!grouped[p.datum]) grouped[p.datum] = [];
+        grouped[p.datum].push(p);
+    });
+    
+    const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+    
+    for (const datum of sortedDates) {
+        const items = grouped[datum];
+        // Sorteer items op dag_volgorde voor de initiële weergave
+        items.sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
+        
+        const datumObj = new Date(datum + 'T00:00:00');
+        const dagVanWeek = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][datumObj.getDay()];
+        const datumDisplay = `${dagVanWeek} ${datumObj.getDate()} ${datumObj.toLocaleString('nl-NL', { month: 'long' })} ${datumObj.getFullYear()}`;
+        
+        html += `
+            <div class="datum-header" data-datum="${datum}">
+                <div class="datum-header-content">
+                    <span class="datum-dag">📅 ${datumDisplay}</span>
+                    <span class="datum-count">${items.length} ritten</span>
+                </div>
+                <div class="datum-actions">
+                    <button class="btn btn-primary btn-small pdf-dag-btn" data-datum="${datum}">📄 PDF</button>
+                </div>
+            </div>
+        `;
+        
+        items.forEach((planning, index) => {
+            const adres = alleAdressen.find(a => a.id === planning.adres_id);
+            const typeIcon = planning.type === 'ophaling' ? '📦' : '🚚';
+            const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
+            const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
+                              (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
+            const statusLabel = planning.status === 'gepland' ? 'Gepland' : 
+                              (planning.status === 'uitgevoerd' ? 'Uitgevoerd' : 'Geannuleerd');
+            
+            let extraInfo = '';
+            if (planning.type === 'ophaling' && planning.aantal_tonnen) {
+                extraInfo = `${planning.aantal_tonnen} ton(nen)`;
+            } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
+                extraInfo = `${planning.aantal_lege_tonnen} lege ton(nen)`;
+            }
+            
+            const adresExtraInfo = adres?.extra_info ? escapeHtml(adres.extra_info) : '';
+            const adresTelefoon = adres?.telefoon ? escapeHtml(adres.telefoon) : '';
+            const adresContact = adres?.contactpersoon_naam ? escapeHtml(adres.contactpersoon_naam) : '';
+            
+            html += `
+                <div class="planning-item sortable-item" data-id="${planning.id}" data-datum="${planning.datum}" data-volgorde="${planning.dag_volgorde || index}">
+                    <div class="planning-info">
+                        <div class="planning-header">
+                            <span class="drag-handle" title="Sleep om te sorteren">⠿</span>
+                            <span class="stop-number-badge">#${index + 1}</span>
+                            <h4>${adres ? escapeHtml(adres.instelling_naam) : 'Onbekend'}</h4>
+                            <span class="planning-status ${statusClass}">${statusLabel}</span>
+                        </div>
+                        <p>📍 ${adres ? escapeHtml(adres.straat) : ''}, ${adres ? escapeHtml(adres.plaats) : ''}</p>
+                        ${adresTelefoon ? `<p>📞 ${adresTelefoon}</p>` : ''}
+                        ${adresContact ? `<p>👤 ${adresContact}</p>` : ''}
+                        ${adresExtraInfo ? `<p class="adres-extra-info">📝 ${adresExtraInfo}</p>` : ''}
+                        <p>${typeIcon} ${typeLabel} ${extraInfo ? `- ${extraInfo}` : ''}</p>
+                        ${planning.opmerkingen ? `<p class="planning-opmerking">📝 ${escapeHtml(planning.opmerkingen)}</p>` : ''}
+                    </div>
+                    <div class="planning-buttons">
+                        <select class="status-select" data-id="${planning.id}">
+                            <option value="gepland" ${planning.status === 'gepland' ? 'selected' : ''}>Gepland</option>
+                            <option value="uitgevoerd" ${planning.status === 'uitgevoerd' ? 'selected' : ''}>Uitgevoerd</option>
+                            <option value="geannuleerd" ${planning.status === 'geannuleerd' ? 'selected' : ''}>Geannuleerd</option>
+                        </select>
+                        <button class="btn btn-secondary edit-planning-btn" data-id="${planning.id}">✏️ Bewerken</button>
+                        <button class="btn btn-danger delete-planning-btn" data-id="${planning.id}">🗑️</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    planningLijst.innerHTML = html;
+    
+    // Event listeners
+    document.querySelectorAll('.status-select').forEach(select => {
+        select.addEventListener('change', async function() {
+            const id = this.dataset.id;
+            const status = this.value;
+            await updatePlanningStatus(id, status);
+        });
+    });
+    
+    document.querySelectorAll('.edit-planning-btn').forEach(btn => {
+        btn.addEventListener('click', () => bewerkPlanning(btn.dataset.id));
+    });
+    
+    document.querySelectorAll('.delete-planning-btn').forEach(btn => {
+        btn.addEventListener('click', () => verwijderPlanning(btn.dataset.id));
+    });
+    
+    document.querySelectorAll('.pdf-dag-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const datum = this.dataset.datum;
+            console.log('📄 PDF knop geklikt voor datum:', datum);
+            genereerPdfVoorDag(datum);
+        });
+    });
+    
+    // Initialiseer sortable en nummering
+    setTimeout(() => {
+        updatePlanningNumbers();
+        initialiseerSortable();
+    }, 300);
+}
+
 // ===== PLANNINGEN LADEN =====
 async function laadPlanningen() {
     if (!planningLijst) return;
     planningLijst.innerHTML = '<p>Bezig met laden...</p>';
     
     try {
-        // Eerst alle adressen ophalen (MET alle velden)
         const { data: adressenData, error: adressenError } = await supabase
             .from('adressen')
             .select('*')
             .order('instelling_naam');
         
         if (adressenError) throw adressenError;
-        
         alleAdressen = adressenData || [];
-        console.log('📋 Adressen geladen:', alleAdressen.length);
-        console.log('📋 Eerste adres met extra info:', alleAdressen[0]?.instelling_naam, '→', alleAdressen[0]?.extra_info || '(geen extra info)');
         
-        // Dan planningen ophalen
         const { data, error } = await supabase
             .from('planningen')
             .select('*')
@@ -344,7 +351,6 @@ async function laadPlanningen() {
         if (error) throw error;
         
         allePlanningen = data || [];
-        console.log('📋 Planningen geladen:', allePlanningen.length);
         toonPlanning(allePlanningen);
     } catch (err) {
         console.error('Fout bij laden planningen:', err);
@@ -479,19 +485,20 @@ function genereerPdfVoorDag(datum) {
         return;
     }
     
-    console.log(`📋 ${planningenVoorDag.length} planningen gevonden voor PDF`);
+    const gesorteerd = [...planningenVoorDag].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
     
-    const pdfHtml = buildPdfHtml(datum, planningenVoorDag);
+    console.log(`📋 ${gesorteerd.length} planningen voor PDF (gesorteerd op volgorde)`);
+    
+    const pdfHtml = buildPdfHtml(datum, gesorteerd);
     printPdf(pdfHtml, datum);
 }
 
-// ===== PDF HTML BUILDER (MET ZELFDE OPMAAK ALS PLANNING) =====
+// ===== PDF HTML BUILDER =====
 function buildPdfHtml(datum, planningen) {
     const datumObj = new Date(datum + 'T00:00:00');
     const dagVanWeek = ['Zondag', 'Maandag', 'Dinsdag', 'Woensdag', 'Donderdag', 'Vrijdag', 'Zaterdag'][datumObj.getDay()];
     const datumDisplay = `${dagVanWeek} ${datumObj.getDate()} ${datumObj.toLocaleString('nl-NL', { month: 'long' })} ${datumObj.getFullYear()}`;
     
-    // Sorteer op dag_volgorde
     const gesorteerd = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
     
     let itemsHtml = '';
@@ -515,7 +522,6 @@ function buildPdfHtml(datum, planningen) {
         const adresContact = adres?.contactpersoon_naam ? escapeHtml(adres.contactpersoon_naam) : '';
         const adresExtraInfo = adres?.extra_info ? escapeHtml(adres.extra_info) : '';
         
-        // Bouw contact/telefoon regel
         let contactRegel = '';
         if (adresTelefoon && adresContact) {
             contactRegel = `📞 ${adresTelefoon}  |  👤 ${adresContact}`;
@@ -594,14 +600,6 @@ function buildPdfHtml(datum, planningen) {
                     border: none; 
                     border-top: 1px solid #e9ecef; 
                     margin: 15px 0; 
-                }
-                .no-print {
-                    display: none;
-                }
-                @media print {
-                    body { padding: 15px; }
-                    .no-print { display: none; }
-                    .planning-item { break-inside: avoid; }
                 }
             </style>
         </head>
