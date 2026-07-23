@@ -2,26 +2,22 @@
 // CORE - SUPABASE (Centrale databaseverbinding)
 // ============================================================
 
-// ===== SUPABASE CDN LADEN (zonder import) =====
-// We gebruiken de script tag in de HTML, dus we gebruiken window.supabase
-// Deze module is alleen een wrapper rond de bestaande window.supabase
-
 // ===== CONFIGURATIE =====
 const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
 
 // ===== SUPABASE CLIENT =====
 // Gebruik de bestaande window.supabase van de CDN script tag
-export const supabase = window.supabase || supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Deze wordt geladen via <script src="..."> in de HTML
+export const supabase = window.supabase;
 
-// Als supabase niet bestaat via window, maak dan een nieuwe client
-if (!window.supabase) {
-    console.warn('Supabase niet gevonden via window, maak nieuwe client aan');
-    // We moeten de CDN versie op een andere manier laden
-    // Dit is een fallback: gebruik de globale supabase van de CDN
-    const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-    window.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Controleer of Supabase beschikbaar is
+if (!supabase) {
+    console.error('❌ Supabase niet gevonden! Zorg dat de script tag in je HTML staat.');
+    throw new Error('Supabase client niet beschikbaar');
 }
+
+console.log('✅ Supabase client geladen via window.supabase');
 
 // ===== AUTHENTICATIE FUNCTIES =====
 
