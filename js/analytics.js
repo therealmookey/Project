@@ -351,15 +351,15 @@ async function laadVoorraadWaarschuwingen() {
     }
 }
 
-// ===== MODULE 5: FREQUENTIE CHART =====
+// ===== MODULE 5: FREQUENTIE CHART (STATISTISCH, GEEN KLEURCODERING) =====
 async function laadFrequentieChart() {
     console.log('📊 Frequentie chart laden...');
     
     try {
         const { data, error } = await supabase
             .from('ophaling_analyse')
-            .select('instelling_naam, gemiddeld_interval, aantal_ophalingen, status')
-            .order('instelling_naam', { ascending: true });
+            .select('instelling_naam, gemiddeld_interval, aantal_ophalingen')
+            .order('gemiddeld_interval', { ascending: true });
         
         if (error) {
             console.error('❌ Fout bij frequentie chart:', error);
@@ -379,17 +379,21 @@ async function laadFrequentieChart() {
             countEl.textContent = `${data.length} ziekenhuizen`;
         }
 
-        const labels = data.map(item => item.instelling_naam);
-        const intervals = data.map(item => item.gemiddeld_interval || 0);
-        const statussen = data.map(item => item.status || 'Geen data');
-
-        const kleuren = statussen.map(status => {
-            if (status === 'Te laat') return '#dc3545';
-            if (status === 'Bijna te laat') return '#ffc107';
-            if (status === 'Onvoldoende data') return '#adb5bd';
-            if (status === 'Geen data') return '#e9ecef';
-            return '#28a745';
+        // Verkort lange namen voor de weergave
+        const labels = data.map(item => {
+            let naam = item.instelling_naam || 'Onbekend';
+            if (naam.length > 30) {
+                naam = naam.substring(0, 27) + '...';
+            }
+            return naam;
         });
+        
+        const intervals = data.map(item => item.gemiddeld_interval || 0);
+
+        // Alle balken krijgen dezelfde kleur (blauw)
+        const basisKleur = '#2c7da0';
+        const backgroundColor = intervals.map(() => basisKleur + 'CC');
+        const borderColor = intervals.map(() => basisKleur);
 
         if (!frequentieChartCanvas) return;
         const ctx = frequentieChartCanvas.getContext('2d');
@@ -405,8 +409,8 @@ async function laadFrequentieChart() {
                 datasets: [{
                     label: 'Gemiddeld interval (dagen)',
                     data: intervals,
-                    backgroundColor: kleuren.map(c => c + 'CC'),
-                    borderColor: kleuren,
+                    backgroundColor: backgroundColor,
+                    borderColor: borderColor,
                     borderWidth: 1,
                     borderRadius: 2,
                     barPercentage: 0.8,
@@ -432,8 +436,8 @@ async function laadFrequentieChart() {
                                 const index = tooltipItems[0].dataIndex;
                                 const item = data[index];
                                 return [
-                                    `Aantal ophalingen: ${item.aantal_ophalingen}`,
-                                    `Status: ${item.status || 'Geen data'}`
+                                    `Aantal ophalingen: ${item.aantal_ophalingen || 0}`,
+                                    `Gemiddeld interval: ${item.gemiddeld_interval || 0} dagen`
                                 ];
                             }
                         }
@@ -462,17 +466,13 @@ async function laadFrequentieChart() {
                             display: false
                         },
                         ticks: {
-                            font: { size: 8 },
+                            font: { 
+                                size: 10,
+                                weight: '400'
+                            },
                             maxRotation: 0,
                             minRotation: 0,
-                            autoSkip: false,
-                            callback: function(value, index) {
-                                const label = labels[index];
-                                if (label && label.length > 35) {
-                                    return label.substring(0, 32) + '...';
-                                }
-                                return label;
-                            }
+                            autoSkip: false
                         }
                     }
                 },
@@ -497,7 +497,6 @@ async function laadFrequentieChart() {
         console.error('❌ Fout bij laden frequentie chart:', err);
     }
 }
-
 // ===== MODULE 6: ACTIVITEITENLOG =====
 async function laadActiviteitenLog() {
     console.log('📋 Activiteitenlog laden...');
