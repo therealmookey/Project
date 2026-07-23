@@ -33,15 +33,39 @@ console.log('✅ DOM elementen gevonden');
 // ===== MODULES LADEN =====
 async function laadModules() {
     try {
-        const { data, error } = await supabase
+        // Haal alle modules op
+        const { data: modules, error: modError } = await supabase
             .from('modules')
             .select('*')
             .order('module_naam');
         
-        if (error) throw error;
+        if (modError) throw modError;
         
-        alleModules = data || [];
+        alleModules = modules || [];
         console.log('📋 Alle modules geladen:', alleModules.length);
+        
+        // Haal ook alle rechten op als die nog niet geladen zijn
+        if (alleRechten.length === 0) {
+            const { data: rechten, error: rechtError } = await supabase
+                .from('gebruikers_module_rechten')
+                .select('*');
+            
+            if (rechtError) throw rechtError;
+            alleRechten = rechten || [];
+            console.log('📋 Rechten geladen in laadModules:', alleRechten.length);
+        }
+        
+        // Haal ook alle gebruikers op als die nog niet geladen zijn
+        if (alleGebruikers.length === 0) {
+            const { data: gebruikers, error: userError } = await supabase
+                .from('gebruikers_rollen')
+                .select('*')
+                .order('gebruikersnaam');
+            
+            if (userError) throw userError;
+            alleGebruikers = gebruikers || [];
+            console.log('📋 Gebruikers geladen in laadModules:', alleGebruikers.length);
+        }
         
         toonModules(alleModules);
     } catch (err) {
@@ -52,7 +76,7 @@ async function laadModules() {
 
 // ===== MODULES TONEN (ALLE MODULES OVERZICHT) =====
 function toonModules(modules) {
-    console.log('📋 toonModules aangeroepen, modulesLijst:', modulesLijst);
+    console.log('📋 toonModules aangeroepen');
     
     if (!modulesLijst) {
         console.error('❌ modulesLijst element niet gevonden!');
@@ -64,12 +88,12 @@ function toonModules(modules) {
         return;
     }
     
-    // Tel hoeveel gebruikers per module rechten hebben
-    // Dit moet rekening houden met:
-    // 1. Expliciete rechten in gebruikers_module_rechten
-    // 2. Standaard rechten (standaard_aan = true)
-    // 3. Admin gebruikers hebben alle rechten
+    // ===== DEBUG: Log alle data =====
+    console.log('📋 Alle gebruikers:', alleGebruikers);
+    console.log('📋 Alle rechten:', alleRechten);
+    console.log('📋 Alle modules:', modules);
     
+    // Tel hoeveel gebruikers per module rechten hebben
     const moduleCounts = {};
     modules.forEach(module => {
         moduleCounts[module.module_sleutel] = 0;
@@ -77,8 +101,17 @@ function toonModules(modules) {
     
     // Loop door alle gebruikers
     alleGebruikers.forEach(user => {
+        console.log(`👤 Gebruiker: ${user.gebruikersnaam} (${user.rol}) - status: ${user.status}`);
+        
+        // Alleen goedgekeurde gebruikers tellen
+        if (user.status !== 'goedgekeurd') {
+            console.log(`   ⏳ Overslaan: status is ${user.status}`);
+            return;
+        }
+        
         // Admin heeft altijd alle rechten
         if (user.rol === 'admin') {
+            console.log(`   👑 Admin: alle modules`);
             modules.forEach(module => {
                 moduleCounts[module.module_sleutel]++;
             });
@@ -87,19 +120,20 @@ function toonModules(modules) {
         
         // Haal de rechten voor deze gebruiker op
         const userRechten = alleRechten.filter(r => r.user_id === user.user_id);
+        console.log(`   📋 Rechten voor ${user.gebruikersnaam}:`, userRechten);
         
         // Check per module of de gebruiker toegang heeft
         modules.forEach(module => {
             const recht = userRechten.find(r => r.module_sleutel === module.module_sleutel);
-            // Heeft toegang als:
-            // - Er een expliciet recht is met actief = true
-            // - Of er is geen expliciet recht en standaard_aan = true
             const heeftToegang = recht ? recht.actief : module.standaard_aan;
+            console.log(`   ${module.module_sleutel}: recht=${recht?.actief || 'geen'}, standaard=${module.standaard_aan}, heeftToegang=${heeftToegang}`);
             if (heeftToegang) {
                 moduleCounts[module.module_sleutel]++;
             }
         });
     });
+    
+    console.log('📋 Module counts:', moduleCounts);
     
     let html = `
         <div style="overflow-x: auto;">
@@ -184,7 +218,6 @@ function toonGebruikersMetRechten(gebruikers) {
     
     let filteredData = gebruikers;
     
-    // Zoekfilter
     if (searchModuleUserInput && searchModuleUserInput.value) {
         const term = searchModuleUserInput.value.toLowerCase();
         filteredData = gebruikers.filter(user => 
@@ -214,10 +247,8 @@ function toonGebruikersMetRechten(gebruikers) {
     `;
     
     filteredData.forEach(user => {
-        // Haal de rechten voor deze gebruiker op
         const userRechten = alleRechten.filter(r => r.user_id === user.user_id);
         
-        // Toon welke modules actief zijn
         let rechtenLabels = [];
         if (user.rol === 'admin') {
             rechtenLabels = ['👑 Alle modules (admin)'];
@@ -260,7 +291,6 @@ function toonGebruikersMetRechten(gebruikers) {
     
     gebruikersModuleLijst.innerHTML = html;
     
-    // Event listeners voor rechten bewerken
     document.querySelectorAll('.edit-rights-btn').forEach(btn => {
         btn.addEventListener('click', () => openModulePopup(btn.dataset.userid));
     });
@@ -269,7 +299,6 @@ function toonGebruikersMetRechten(gebruikers) {
 // ===== MODULE POPUP =====
 async function openModulePopup(userId) {
     try {
-        // Haal gebruiker info op
         const { data: user, error: userError } = await supabase
             .from('gebruikers_rollen')
             .select('*')
@@ -282,7 +311,6 @@ async function openModulePopup(userId) {
         modulePopupTitle.textContent = 'Module rechten bewerken';
         modulePopupUser.textContent = user.gebruikersnaam || 'Onbekend';
         
-        // Haal alle modules op
         const { data: modules, error: modError } = await supabase
             .from('modules')
             .select('*')
@@ -290,7 +318,6 @@ async function openModulePopup(userId) {
         
         if (modError) throw modError;
         
-        // Haal bestaande rechten op
         const { data: rechten, error: rechtError } = await supabase
             .from('gebruikers_module_rechten')
             .select('*')
@@ -350,20 +377,17 @@ async function saveModuleRights() {
             });
         });
         
-        // Verwijder alle bestaande rechten voor deze gebruiker
         await supabase
             .from('gebruikers_module_rechten')
             .delete()
             .eq('user_id', currentUserId);
         
-        // Voeg nieuwe rechten toe
         for (const update of updates) {
             await supabase
                 .from('gebruikers_module_rechten')
                 .insert([update]);
         }
         
-        // Update de lokale rechten
         const existingRechten = alleRechten.filter(r => r.user_id !== currentUserId);
         const newRechtenData = updates.map(u => ({
             user_id: currentUserId,
@@ -372,13 +396,10 @@ async function saveModuleRights() {
         }));
         alleRechten = [...existingRechten, ...newRechtenData];
         
-        // Herlaad ook de modules lijst om de aantallen bij te werken
         toonModules(alleModules);
         
         showToast('✅ Module rechten opgeslagen!', 'success');
         modulePopup.style.display = 'none';
-        
-        // Herlaad de gebruikerslijst
         laadGebruikersMetRechten();
         
     } catch (err) {
@@ -404,11 +425,9 @@ function initTabs() {
         btn.addEventListener('click', function() {
             console.log('🔘 Tab geklikt:', this.dataset.tab);
             
-            // Verwijder active class van alle tabs
             document.querySelectorAll('.module-tabs .tab-btn').forEach(b => b.classList.remove('active'));
             document.querySelectorAll('.module-tab').forEach(t => t.classList.remove('active'));
             
-            // Voeg active class toe aan geklikte tab
             this.classList.add('active');
             const tabId = this.dataset.tab;
             const tabContent = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
@@ -421,7 +440,6 @@ function initTabs() {
         });
     });
     
-    // Zorg dat de eerste tab actief is
     const firstTab = document.querySelector('.module-tabs .tab-btn.active');
     if (firstTab) {
         const tabId = firstTab.dataset.tab;
@@ -430,7 +448,6 @@ function initTabs() {
             tabContent.classList.add('active');
         }
     } else {
-        // Fallback: activeer de eerste tab
         const firstBtn = document.querySelector('.module-tabs .tab-btn');
         if (firstBtn) {
             firstBtn.classList.add('active');
@@ -448,7 +465,6 @@ function initTabs() {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔄 Modules pagina initialiseren...');
     
-    // Controleer of gebruiker admin is
     const isAdmin = await requireAdmin('dashboard.html');
     if (!isAdmin) {
         console.warn('⚠️ Geen admin toegang, redirect...');
@@ -456,16 +472,11 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     console.log('✅ Admin toegang verleend');
     
-    // Initialiseer tabs
     initTabs();
     
-    // Laad data
     await laadModules();
     await laadGebruikersMetRechten();
     
-    // ===== EVENT LISTENERS =====
-    
-    // Zoekfunctionaliteit
     if (searchModuleUserInput) {
         searchModuleUserInput.addEventListener('input', () => {
             laadGebruikersMetRechten();
@@ -476,19 +487,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         clearModuleUserSearchBtn.addEventListener('click', resetUserFilter);
     }
     
-    // Opslaan rechten
     if (saveModuleRightsBtn) {
         saveModuleRightsBtn.addEventListener('click', saveModuleRights);
     }
     
-    // Sluiten popup
     if (closeModulePopup) {
         closeModulePopup.addEventListener('click', () => {
             modulePopup.style.display = 'none';
         });
     }
     
-    // Sluiten bij klik buiten popup
     window.addEventListener('click', (e) => {
         if (e.target === modulePopup) {
             modulePopup.style.display = 'none';
