@@ -228,11 +228,12 @@ function toonPlanning(planningen) {
     setTimeout(() => initialiseerSortable(), 300);
 }
 
-// ===== SORTABLE INITIALISATIE =====
+// ===== SORTABLE INITIALISATIE (GE-FIXED) =====
 function initialiseerSortable() {
-    const container = document.querySelector('.sortable-list');
-    if (!container) {
-        console.warn('⚠️ Geen sortable container gevonden');
+    // Zoek alleen de planning items, niet de hele container
+    const items = document.querySelectorAll('.planning-item');
+    if (!items || items.length === 0) {
+        console.warn('⚠️ Geen planning items gevonden voor sortable');
         return;
     }
     
@@ -241,16 +242,33 @@ function initialiseerSortable() {
         return;
     }
     
+    // We moeten de items individueel maken
+    // Zet de planning items in een aparte container
+    const container = document.querySelector('.sortable-list');
+    if (!container) {
+        console.warn('⚠️ Geen sortable container gevonden');
+        return;
+    }
+    
     try {
+        // Maak een nieuwe Sortable op de container, maar alleen voor de items
         const sortable = new Sortable(container, {
             handle: '.drag-handle',
             animation: 150,
             ghostClass: 'sortable-ghost',
             chosenClass: 'sortable-chosen',
             dragClass: 'sortable-drag',
-            filter: '.datum-header',
+            // Filter: geen items uitsluiten, maar we zorgen dat alleen items worden gesleept
+            filter: '.datum-header, .datum-header *',
             preventOnFilter: false,
+            // Zorg dat alleen de planning items worden gesleept
+            draggable: '.planning-item',
+            // Zorg dat de datum headers blijven staan
+            onStart: function(evt) {
+                console.log('🔄 Sorteren gestart voor item:', evt.item.dataset.id);
+            },
             onEnd: async function(evt) {
+                console.log('🔄 Sorteren voltooid!');
                 const items = container.querySelectorAll('.planning-item');
                 const updates = [];
                 
