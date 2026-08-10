@@ -98,21 +98,27 @@ export async function laadActieLijst() {
 
             // Alleen "Te laat" of "Bijna te laat" (binnen 3 dagen)
             if (dagenSindsVerwachte > 0 || dagenSindsVerwachte >= -3) {
-                // Haal de actie_status op uit de adressen tabel
-                const { data: adresData, error: adresError } = await supabase
-                    .from('adressen')
-                    .select('actie_status, telefoon, contactpersoon_naam')
-                    .eq('id', item.ziekenhuis_id)
-                    .single();
-
+                // Haal de actie_status op uit de adressen tabel (met fallback)
                 let actieStatus = 'geen_status';
                 let telefoon = null;
                 let contactpersoon = null;
                 
-                if (!adresError && adresData) {
-                    actieStatus = adresData.actie_status || 'geen_status';
-                    telefoon = adresData.telefoon;
-                    contactpersoon = adresData.contactpersoon_naam;
+                try {
+                    const { data: adresData, error: adresError } = await supabase
+                        .from('adressen')
+                        .select('actie_status, telefoon, contactpersoon_naam')
+                        .eq('id', item.ziekenhuis_id)
+                        .single();
+
+                    if (!adresError && adresData) {
+                        actieStatus = adresData.actie_status || 'geen_status';
+                        telefoon = adresData.telefoon;
+                        contactpersoon = adresData.contactpersoon_naam;
+                    }
+                } catch (err) {
+                    // Fallback: kolom bestaat nog niet
+                    console.warn('⚠️ Kolom actie_status bestaat mogelijk nog niet, gebruik fallback');
+                    actieStatus = 'geen_status';
                 }
 
                 // Controleer of er recente registraties zijn (laatste 7 dagen)
@@ -260,6 +266,17 @@ function toonActieLijst(ziekenhuizen) {
 // ===== ACTIE STATUS UPDATE =====
 async function updateActieStatus(ziekenhuisId, status) {
     try {
+        // Eerst controleren of de kolom bestaat
+        const { data: columns, error: columnsError } = await supabase
+            .from('adressen')
+            .select('actie_status')
+            .limit(1);
+
+        if (columnsError && columnsError.message.includes('column "actie_status" does not exist')) {
+            showToast('❌ Kolom actie_status bestaat nog niet. Voer eerst de SQL update uit.', 'error');
+            return;
+        }
+
         const { error } = await supabase
             .from('adressen')
             .update({ actie_status: status })
