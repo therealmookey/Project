@@ -102,11 +102,12 @@ export async function laadActieLijst() {
                 let actieStatus = 'geen_status';
                 let telefoon = null;
                 let contactpersoon = null;
+                let email = null;
                 
                 try {
                     const { data: adresData, error: adresError } = await supabase
                         .from('adressen')
-                        .select('actie_status, telefoon, contactpersoon_naam')
+                        .select('actie_status, telefoon, contactpersoon_naam, contactpersoon_email')
                         .eq('id', item.ziekenhuis_id)
                         .single();
 
@@ -114,6 +115,7 @@ export async function laadActieLijst() {
                         actieStatus = adresData.actie_status || 'geen_status';
                         telefoon = adresData.telefoon;
                         contactpersoon = adresData.contactpersoon_naam;
+                        email = adresData.contactpersoon_email;
                     }
                 } catch (err) {
                     // Fallback: kolom bestaat nog niet
@@ -143,7 +145,8 @@ export async function laadActieLijst() {
                         dagenSindsVerwachte: dagenSindsVerwachte,
                         heeftRecenteRegistratie: heeftRecenteRegistratie,
                         telefoon: telefoon,
-                        contactpersoon: contactpersoon
+                        contactpersoon: contactpersoon,
+                        email: email
                     });
                 }
             }
@@ -166,7 +169,7 @@ export async function laadActieLijst() {
     }
 }
 
-// ===== ACTIE LIJST TONEN =====
+// ===== ACTIE LIJST TONEN (ZONDER VERWIJDERKNOP) =====
 function toonActieLijst(ziekenhuizen) {
     const actieContainer = document.getElementById('actieLijst');
     if (!actieContainer) return;
@@ -200,6 +203,7 @@ function toonActieLijst(ziekenhuizen) {
         }
 
         const heeftTelefoon = item.telefoon && item.telefoon.length > 0;
+        const heeftEmail = item.email && item.email.length > 0;
 
         html += `
             <div class="actie-item ${urgencyClass}" data-id="${item.ziekenhuis_id}">
@@ -208,9 +212,10 @@ function toonActieLijst(ziekenhuizen) {
                     <span class="actie-urgency">${urgencyLabel}</span>
                 </div>
                 <div class="actie-item-details">
-                    <span>📍 ${escapeHtml(item.straat)}, ${escapeHtml(item.plaats)}</span>
-                    ${item.telefoon ? `<span>📞 ${escapeHtml(item.telefoon)}</span>` : ''}
                     ${item.contactpersoon ? `<span>👤 ${escapeHtml(item.contactpersoon)}</span>` : ''}
+                    ${heeftTelefoon ? `<span>📞 ${escapeHtml(item.telefoon)}</span>` : ''}
+                    ${heeftEmail ? `<span>✉️ ${escapeHtml(item.email)}</span>` : ''}
+                    <span>📍 ${escapeHtml(item.straat)}, ${escapeHtml(item.plaats)}</span>
                 </div>
                 <div class="actie-item-actions">
                     <div class="actie-status-selector">
@@ -227,14 +232,6 @@ function toonActieLijst(ziekenhuizen) {
                             ⏳ Nog geen ophaling
                         </button>
                     </div>
-                    ${heeftTelefoon ? `
-                        <a href="tel:${item.telefoon}" class="btn btn-primary btn-small bell-btn">
-                            📞 Bel nu
-                        </a>
-                    ` : ''}
-                    <button class="btn btn-secondary btn-small verwijder-actie-btn" data-id="${item.ziekenhuis_id}">
-                        ✖ Verwijder
-                    </button>
                 </div>
             </div>
         `;
@@ -249,16 +246,6 @@ function toonActieLijst(ziekenhuizen) {
             const status = this.dataset.status;
             const id = this.dataset.id;
             await updateActieStatus(id, status);
-        });
-    });
-
-    // Event listeners voor verwijderen
-    document.querySelectorAll('.verwijder-actie-btn').forEach(btn => {
-        btn.addEventListener('click', async function() {
-            const id = this.dataset.id;
-            if (confirm('Weet je zeker dat je dit ziekenhuis uit de actie lijst wilt verwijderen?')) {
-                await verwijderUitActieLijst(id);
-            }
         });
     });
 }
@@ -292,18 +279,6 @@ async function updateActieStatus(ziekenhuisId, status) {
     } catch (err) {
         console.error('Fout bij updaten status:', err);
         showToast('❌ Fout bij updaten status: ' + err.message, 'error');
-    }
-}
-
-// ===== VERWIJDER UIT ACTIE LIJST =====
-async function verwijderUitActieLijst(ziekenhuisId) {
-    try {
-        // Zet de status naar 'geen_status' zodat hij uit de lijst verdwijnt
-        await updateActieStatus(ziekenhuisId, 'geen_status');
-        showToast('✅ Ziekenhuis verwijderd uit actie lijst', 'success');
-    } catch (err) {
-        console.error('Fout bij verwijderen:', err);
-        showToast('❌ Fout bij verwijderen: ' + err.message, 'error');
     }
 }
 
