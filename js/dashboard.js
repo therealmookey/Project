@@ -2,25 +2,61 @@
 // DASHBOARD - Hoofdscript voor dashboard pagina
 // ============================================================
 
-import { requireAuth, toonGebruikersnaam } from './core/auth.js';
+// Importeer modules
 import { laadAgenda, vorigeMaand, volgendeMaand, gaNaarVandaag } from './modules/dashboard/agenda.js';
 import { laadOphalingAnalyse, setCutoff } from './modules/dashboard/voorspelling.js';
+import { laadActieLijst } from './modules/dashboard/actie.js';
 
-console.log('🚀 dashboard.js geladen!');
+// ===== DASHBOARD AUTH =====
+
+async function checkDashboardAuth() {
+    if (typeof window.supabase === 'undefined') {
+        console.error('Geen Supabase in dashboard');
+        window.location.href = 'index.html';
+        return;
+    }
+
+    const { data: { session }, error } = await window.supabase.auth.getSession();
+    if (error || !session) {
+        console.log('Geen sessie gevonden, terug naar login.');
+        window.location.href = 'index.html';
+    } else {
+        console.log('Sessie is geldig voor:', session.user.email);
+        toonGebruikersnaam(session.user.id);
+        laadAgenda();
+        laadOphalingAnalyse();
+        laadActieLijst();
+    }
+}
+
+function toonGebruikersnaam(userId) {
+    const userEmailSpan = document.getElementById('userEmail');
+    if (!userEmailSpan) return;
+
+    try {
+        window.supabase
+            .from('gebruikers_rollen')
+            .select('gebruikersnaam')
+            .eq('user_id', userId)
+            .single()
+            .then(({ data, error }) => {
+                if (error) {
+                    console.error('Fout bij ophalen gebruikersnaam:', error);
+                    userEmailSpan.textContent = 'Gebruiker';
+                    return;
+                }
+                userEmailSpan.textContent = data?.gebruikersnaam || 'Gebruiker';
+            });
+    } catch (err) {
+        console.error('Fout:', err);
+        userEmailSpan.textContent = 'Gebruiker';
+    }
+}
 
 // ===== INITIALISATIE =====
 
-document.addEventListener('DOMContentLoaded', async function() {
-    // Controleer of gebruiker is ingelogd en goedgekeurd
-    const auth = await requireAuth('index.html');
-    if (!auth.isAuthenticated) return;
-
-    // Toon gebruikersnaam
-    toonGebruikersnaam(auth.user.id, 'userEmail');
-
-    // Laad agenda en voorspellingen
-    laadAgenda();
-    laadOphalingAnalyse();
+document.addEventListener('DOMContentLoaded', function() {
+    checkDashboardAuth();
 
     // Agenda navigatie knoppen
     const prevBtn = document.getElementById('prevMonthBtn');
