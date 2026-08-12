@@ -241,7 +241,11 @@ async function laadTrendChart() {
         const labels = Object.keys(grouped).sort();
         const counts = labels.map(l => grouped[l].count);
         const gewichten = labels.map(l => Math.round(grouped[l].gewicht));
-        const ziekenhuisNaam = data[0]?.ziekenhuis?.instelling_naam || 'Alle ziekenhuizen';
+        
+        // Bepaal of er een specifiek ziekenhuis is geselecteerd
+        const isAlleZiekenhuizen = !huidigeFilters.ziekenhuis_id || huidigeFilters.ziekenhuis_id === 'alles';
+        const ziekenhuisNaam = data[0]?.ziekenhuis?.instelling_naam || '';
+        const ziekenhuisLabel = isAlleZiekenhuizen ? '' : ` - ${ziekenhuisNaam}`;
 
         if (!trendChartCanvas) return;
         const ctx = trendChartCanvas.getContext('2d');
@@ -258,7 +262,7 @@ async function laadTrendChart() {
                 labels: labels.map(labelFormatter),
                 datasets: [
                     {
-                        label: `Aantal ophalingen - ${ziekenhuisNaam}`,
+                        label: `Aantal ophalingen${ziekenhuisLabel}`,
                         data: counts,
                         borderColor: '#2c7da0',
                         backgroundColor: 'rgba(44, 125, 160, 0.1)',
@@ -267,7 +271,7 @@ async function laadTrendChart() {
                         yAxisID: 'y'
                     },
                     {
-                        label: `Gewicht (kg) - ${ziekenhuisNaam}`,
+                        label: `Gewicht (kg)${ziekenhuisLabel}`,
                         data: gewichten,
                         borderColor: '#28a745',
                         backgroundColor: 'rgba(40, 167, 69, 0.1)',
