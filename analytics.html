@@ -155,16 +155,22 @@
         </div>
     </main>
     <!-- ===== SCRIPTS ===== -->
-<!-- 1. Supabase CDN -->
+<!-- 1. Chart.js CDN (voor grafieken) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- 2. SheetJS voor Excel export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<!-- 3. Supabase CDN -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<!-- 2. Configuratie -->
+<!-- 4. Configuratie -->
 <script src="js/config.js"></script>
 
-<!-- 3. MAIN (als module) - laadt navigatie, thema, versie -->
+<!-- 5. MAIN (als module) -->
 <script type="module" src="js/main.js"></script>
 
-<!-- 4. Admin specifiek (als module) -->
+<!-- 6. Analytics specifiek (als module) -->
 <script type="module" src="js/analytics.js"></script>
 </body>
 </html>
