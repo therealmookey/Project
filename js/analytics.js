@@ -74,11 +74,18 @@ async function laadZiekenhuizen() {
 
 // ===== HULPFUNCTIE: GROEPEER DATA =====
 function groepeerData(data, periode) {
+    console.log('📊 Groepeer data met periode:', periode);
     const grouped = {};
     
-    data.forEach(r => {
+    data.forEach((r, index) => {
         let key;
         const date = new Date(r.registratiedatum);
+        
+        // Controleer of de datum geldig is
+        if (isNaN(date.getTime())) {
+            console.warn('⚠️ Ongeldige datum bij record', index, r.registratiedatum);
+            return;
+        }
         
         switch(periode) {
             case 'wekelijks':
@@ -104,6 +111,7 @@ function groepeerData(data, periode) {
         grouped[key].gewicht += r.gewicht || 0;
     });
     
+    console.log('📊 Gegroepeerd in', Object.keys(grouped).length, 'groepen');
     return grouped;
 }
 
@@ -198,9 +206,10 @@ async function laadKPI() {
     }
 }
 
-// ===== MODULE 2: TREND CHART (MET FILTERS) =====
+// ===== MODULE 2: TREND CHART (MET FILTERS + DEBUG) =====
 async function laadTrendChart() {
     console.log('📈 Trend chart laden met filters...');
+    console.log('📋 Huidige filters:', huidigeFilters);
     
     try {
         let query = supabase
@@ -211,13 +220,16 @@ async function laadTrendChart() {
         
         if (huidigeFilters.ziekenhuis_id && huidigeFilters.ziekenhuis_id !== 'alles') {
             query = query.eq('ziekenhuis_id', parseInt(huidigeFilters.ziekenhuis_id));
+            console.log('🔍 Filter op ziekenhuis ID:', huidigeFilters.ziekenhuis_id);
         }
         
         if (huidigeFilters.datumVanaf) {
             query = query.gte('registratiedatum', huidigeFilters.datumVanaf);
+            console.log('🔍 Filter vanaf datum:', huidigeFilters.datumVanaf);
         }
         if (huidigeFilters.datumTot) {
             query = query.lte('registratiedatum', huidigeFilters.datumTot);
+            console.log('🔍 Filter tot datum:', huidigeFilters.datumTot);
         }
         
         const { data, error } = await query;
@@ -227,9 +239,12 @@ async function laadTrendChart() {
             return;
         }
         
+        console.log('📋 Data opgehaald:', data?.length || 0, 'records');
+        
         alleOphalingenData = data || [];
         
         if (!data || data.length === 0) {
+            console.warn('⚠️ Geen data gevonden voor deze filters');
             if (trendChartCanvas) {
                 trendChartCanvas.parentElement.innerHTML = '<p>Geen data beschikbaar voor deze filters</p>';
             }
@@ -237,29 +252,43 @@ async function laadTrendChart() {
         }
 
         const grouped = groepeerData(data, huidigeFilters.periode);
+        console.log('📋 Gegroepeerde data:', grouped);
         
         const labels = Object.keys(grouped).sort();
+        console.log('📋 Labels:', labels);
+        
         const counts = labels.map(l => grouped[l].count);
         const gewichten = labels.map(l => Math.round(grouped[l].gewicht));
         
-        // Bepaal of er een specifiek ziekenhuis is geselecteerd
+        console.log('📋 Counts:', counts);
+        console.log('📋 Gewichten:', gewichten);
+        
         const isAlleZiekenhuizen = !huidigeFilters.ziekenhuis_id || huidigeFilters.ziekenhuis_id === 'alles';
         const ziekenhuisNaam = data[0]?.ziekenhuis?.instelling_naam || '';
         const ziekenhuisLabel = isAlleZiekenhuizen ? '' : ` - ${ziekenhuisNaam}`;
 
-        if (!trendChartCanvas) return;
+        if (!trendChartCanvas) {
+            console.error('❌ Trend chart canvas niet gevonden');
+            return;
+        }
+        
         const ctx = trendChartCanvas.getContext('2d');
         
         if (trendChartInstance) {
+            console.log('🔄 Vernietig oude grafiek');
             trendChartInstance.destroy();
+            trendChartInstance = null;
         }
 
         const labelFormatter = getLabelFormatter(huidigeFilters.periode);
+        const formattedLabels = labels.map(labelFormatter);
+        console.log('📋 Geformatteerde labels:', formattedLabels);
         
+        // Maak de grafiek
         trendChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: labels.map(labelFormatter),
+                labels: formattedLabels,
                 datasets: [
                     {
                         label: `Aantal ophalingen${ziekenhuisLabel}`,
@@ -314,7 +343,10 @@ async function laadTrendChart() {
             }
         });
         
-        console.log('✅ Trend chart geladen');
+        // Forceer een update
+        trendChartInstance.update();
+        
+        console.log('✅ Trend chart geladen met', labels.length, 'datapunten');
     } catch (err) {
         console.error('❌ Fout bij laden trend chart:', err);
     }
@@ -788,6 +820,8 @@ async function exportExcel() {
 
 // ===== FILTER FUNCTIES =====
 function applyFilters() {
+    console.log('🔍 Filters toepassen...');
+    
     if (analyticsZiekenhuisFilter) {
         huidigeFilters.ziekenhuis_id = analyticsZiekenhuisFilter.value;
     }
@@ -804,25 +838,9 @@ function applyFilters() {
         huidigeFilters.datumTot = null;
     }
     
-    laadTrendChart();
-}
-
-function resetFilters() {
-    if (analyticsZiekenhuisFilter) analyticsZiekenhuisFilter.value = 'alles';
-    if (analyticsPeriodeFilter) analyticsPeriodeFilter.value = 'maandelijks';
-    if (analyticsDatumVanaf) analyticsDatumVanaf.value = '';
-    if (analyticsDatumTot) analyticsDatumTot.value = '';
+    console.log('📋 Nieuwe filters:', huidigeFilters);
     
-    huidigeFilters = {
-        ziekenhuis_id: 'alles',
-        periode: 'maandelijks',
-        datumVanaf: null,
-        datumTot: null
-    };
-    
-    document.getElementById('analyticsDatumVanafGroup').style.display = 'none';
-    document.getElementById('analyticsDatumTotGroup').style.display = 'none';
-    
+    // Herlaad de grafiek
     laadTrendChart();
 }
 
