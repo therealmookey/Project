@@ -4077,3 +4077,92 @@ hr {
         align-items: flex-start;
     }
 }
+
+/* ===== REGISTRATIE SUMMARY ===== */
+.registratie-summary {
+    margin-top: 20px;
+    padding: 16px 20px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.summary-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 8px 12px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.summary-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.summary-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #2c7da0;
+    margin-top: 2px;
+}
+
+.summary-filter-info {
+    text-align: center;
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Dark mode */
+[data-theme="dark"] .registratie-summary {
+    background: #1a1a2e;
+    border-color: #2a2a4e;
+}
+
+[data-theme="dark"] .summary-item {
+    background: #1e1e3a;
+}
+
+[data-theme="dark"] .summary-value {
+    color: #5a9ab0;
+}
+
+[data-theme="dark"] .summary-filter-info {
+    color: #a0a0a0;
+    border-top-color: #2a2a4e;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .summary-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    
+    .summary-item {
+        padding: 6px 10px;
+    }
+    
+    .summary-value {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
