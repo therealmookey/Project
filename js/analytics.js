@@ -58,7 +58,6 @@ async function laadZiekenhuizen() {
         
         alleZiekenhuizen = data || [];
         
-        // Vul de filter select
         if (analyticsZiekenhuisFilter) {
             analyticsZiekenhuisFilter.innerHTML = '<option value="alles">Alle ziekenhuizen</option>';
             alleZiekenhuizen.forEach(zk => {
@@ -71,6 +70,58 @@ async function laadZiekenhuizen() {
     } catch (err) {
         console.error('Fout bij laden ziekenhuizen:', err);
     }
+}
+
+// ===== HULPFUNCTIE: GROEPEER DATA =====
+function groepeerData(data, periode) {
+    const grouped = {};
+    
+    data.forEach(r => {
+        let key;
+        const date = new Date(r.registratiedatum);
+        
+        switch(periode) {
+            case 'wekelijks':
+                const startOfYear = new Date(date.getFullYear(), 0, 1);
+                const diff = (date - startOfYear) / (7 * 24 * 60 * 60 * 1000);
+                const weekNumber = Math.ceil(diff);
+                key = `${date.getFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
+                break;
+            case 'jaarlijks':
+                key = `${date.getFullYear()}`;
+                break;
+            case 'aangepast':
+            case 'maandelijks':
+            default:
+                key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                break;
+        }
+        
+        if (!grouped[key]) {
+            grouped[key] = { count: 0, gewicht: 0 };
+        }
+        grouped[key].count++;
+        grouped[key].gewicht += r.gewicht || 0;
+    });
+    
+    return grouped;
+}
+
+// ===== HULPFUNCTIE: LABEL FORMATTER =====
+function getLabelFormatter(periode) {
+    const maandNamen = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
+    
+    return function(label) {
+        if (periode === 'jaarlijks') {
+            return label;
+        } else if (periode === 'wekelijks') {
+            const [year, week] = label.split('-W');
+            return `W${week} '${year.slice(2)}`;
+        } else {
+            const [year, month] = label.split('-');
+            return `${maandNamen[parseInt(month) - 1]} ${year}`;
+        }
+    };
 }
 
 // ===== MODULE 1: KPI DASHBOARD =====
@@ -152,19 +203,16 @@ async function laadTrendChart() {
     console.log('📈 Trend chart laden met filters...');
     
     try {
-        // Bouw de query
         let query = supabase
             .from('ophaalregistraties')
             .select('registratiedatum, gewicht, ziekenhuis_id, ziekenhuis:ziekenhuis_id (instelling_naam)')
             .eq('type', 'ophaling')
             .order('registratiedatum', { ascending: true });
         
-        // Ziekenhuis filter
         if (huidigeFilters.ziekenhuis_id && huidigeFilters.ziekenhuis_id !== 'alles') {
             query = query.eq('ziekenhuis_id', parseInt(huidigeFilters.ziekenhuis_id));
         }
         
-        // Datum filters
         if (huidigeFilters.datumVanaf) {
             query = query.gte('registratiedatum', huidigeFilters.datumVanaf);
         }
@@ -188,7 +236,6 @@ async function laadTrendChart() {
             return;
         }
 
-        // Groepeer op basis van de gekozen periode
         const grouped = groepeerData(data, huidigeFilters.periode);
         
         const labels = Object.keys(grouped).sort();
@@ -237,13 +284,6 @@ async function laadTrendChart() {
                     legend: {
                         position: 'top',
                         labels: { font: { size: 11 } }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.parsed.y;
-                            }
-                        }
                     }
                 },
                 scales: {
@@ -276,86 +316,390 @@ async function laadTrendChart() {
     }
 }
 
-// ===== HULPFUNCTIE: GROEPEER DATA =====
-function groepeerData(data, periode) {
-    const grouped = {};
-    
-    data.forEach(r => {
-        let key;
-        const date = new Date(r.registratiedatum);
-        
-        switch(periode) {
-            case 'wekelijks':
-                // Bepaal weeknummer
-                const startOfYear = new Date(date.getFullYear(), 0, 1);
-                const diff = (date - startOfYear) / (7 * 24 * 60 * 60 * 1000);
-                const weekNumber = Math.ceil(diff);
-                key = `${date.getFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
-                break;
-            case 'jaarlijks':
-                key = `${date.getFullYear()}`;
-                break;
-            case 'aangepast':
-            case 'maandelijks':
-            default:
-                key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                break;
-        }
-        
-        if (!grouped[key]) {
-            grouped[key] = { count: 0, gewicht: 0 };
-        }
-        grouped[key].count++;
-        grouped[key].gewicht += r.gewicht || 0;
-    });
-    
-    return grouped;
-}
-
-// ===== HULPFUNCTIE: LABEL FORMATTER =====
-function getLabelFormatter(periode) {
-    const maandNamen = ['Jan', 'Feb', 'Mrt', 'Apr', 'Mei', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'];
-    
-    return function(label) {
-        if (periode === 'jaarlijks') {
-            return label;
-        } else if (periode === 'wekelijks') {
-            const [year, week] = label.split('-W');
-            return `W${week} '${year.slice(2)}`;
-        } else {
-            const [year, month] = label.split('-');
-            return `${maandNamen[parseInt(month) - 1]} ${year}`;
-        }
-    };
-}
-
 // ===== MODULE 3: TOP ZIEKENHUIZEN =====
 async function laadTopZiekenhuizen() {
-    // ... blijft hetzelfde ...
+    console.log('🏥 Top ziekenhuizen laden...');
+    
+    if (!topZiekenhuizenContainer) return;
+    
+    try {
+        const { data, error } = await supabase
+            .from('ophaalregistraties')
+            .select(`
+                ziekenhuis_id,
+                gewicht,
+                ziekenhuis:ziekenhuis_id (instelling_naam)
+            `)
+            .eq('type', 'ophaling');
+        
+        if (error) {
+            console.error('❌ Fout bij top ziekenhuizen:', error);
+            return;
+        }
+        
+        if (!data || data.length === 0) {
+            topZiekenhuizenContainer.innerHTML = '<p>Geen data beschikbaar</p>';
+            return;
+        }
+
+        const ziekenhuizen = {};
+        data.forEach(r => {
+            const naam = r.ziekenhuis?.instelling_naam || 'Onbekend';
+            if (!ziekenhuizen[naam]) {
+                ziekenhuizen[naam] = { count: 0, gewicht: 0 };
+            }
+            ziekenhuizen[naam].count++;
+            ziekenhuizen[naam].gewicht += r.gewicht || 0;
+        });
+
+        const sorted = Object.entries(ziekenhuizen)
+            .map(([naam, data]) => ({ naam, ...data }))
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 10);
+
+        let html = '<ul class="top-list">';
+        sorted.forEach((item, index) => {
+            const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+            html += `
+                <li class="top-item">
+                    <span class="top-rank">${medal}</span>
+                    <span class="top-naam">${escapeHtml(item.naam)}</span>
+                    <span class="top-count">${item.count} ophalingen</span>
+                    <span class="top-weight">${item.gewicht.toFixed(0)} kg</span>
+                </li>
+            `;
+        });
+        html += '</ul>';
+        
+        topZiekenhuizenContainer.innerHTML = html;
+        console.log('✅ Top ziekenhuizen geladen');
+    } catch (err) {
+        console.error('❌ Fout bij laden top ziekenhuizen:', err);
+        topZiekenhuizenContainer.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
+    }
 }
 
 // ===== MODULE 4: VOORRAAD WAARSCHUWINGEN =====
 async function laadVoorraadWaarschuwingen() {
-    // ... blijft hetzelfde ...
+    console.log('⚠️ Voorraad waarschuwingen laden...');
+    
+    if (!voorraadWaarschuwingenContainer) return;
+    
+    try {
+        const { data, error } = await supabase
+            .from('stock_items')
+            .select('*')
+            .order('aantal', { ascending: true });
+        
+        if (error) {
+            console.error('❌ Fout bij voorraad waarschuwingen:', error);
+            return;
+        }
+        
+        const warnings = data ? data.filter(item => item.aantal < item.minimum_stock) : [];
+        
+        if (!warnings || warnings.length === 0) {
+            voorraadWaarschuwingenContainer.innerHTML = '<p>✅ Alle items zijn op voorraad!</p>';
+            return;
+        }
+
+        let html = '<ul class="warning-list">';
+        warnings.forEach(item => {
+            const tekort = item.minimum_stock - item.aantal;
+            const urgency = tekort > 10 ? '🔴' : tekort > 5 ? '🟡' : '🟠';
+            html += `
+                <li class="warning-item">
+                    <span class="warning-urgency">${urgency}</span>
+                    <span class="warning-code">${escapeHtml(item.item_code)}</span>
+                    <span class="warning-name">${escapeHtml(item.omschrijving)}</span>
+                    <span class="warning-stock">${item.aantal} / ${item.minimum_stock}</span>
+                    <span class="warning-tekort">Tekort: ${tekort}</span>
+                </li>
+            `;
+        });
+        html += '</ul>';
+        
+        voorraadWaarschuwingenContainer.innerHTML = html;
+        console.log('✅ Voorraad waarschuwingen geladen');
+    } catch (err) {
+        console.error('❌ Fout bij laden voorraad waarschuwingen:', err);
+        voorraadWaarschuwingenContainer.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
+    }
 }
 
 // ===== MODULE 5: FREQUENTIE CHART =====
 async function laadFrequentieChart() {
-    // ... blijft hetzelfde ...
+    console.log('📊 Frequentie chart laden...');
+    
+    try {
+        const { data, error } = await supabase
+            .from('ophaling_analyse')
+            .select('instelling_naam, gemiddeld_interval, aantal_ophalingen')
+            .order('gemiddeld_interval', { ascending: true });
+        
+        if (error) {
+            console.error('❌ Fout bij frequentie chart:', error);
+            return;
+        }
+        
+        if (!data || data.length === 0) {
+            if (frequentieChartCanvas) {
+                frequentieChartCanvas.parentElement.innerHTML = '<p>Geen data beschikbaar</p>';
+            }
+            return;
+        }
+
+        const countEl = document.getElementById('frequentieCount');
+        if (countEl) {
+            countEl.textContent = `${data.length} ziekenhuizen`;
+        }
+
+        const labels = data.map(item => item.instelling_naam || 'Onbekend');
+        const intervals = data.map(item => item.gemiddeld_interval || 0);
+
+        const basisKleur = '#2c7da0';
+        const backgroundColor = intervals.map(() => basisKleur + 'CC');
+        const borderColor = intervals.map(() => basisKleur);
+
+        if (!frequentieChartCanvas) return;
+        const ctx = frequentieChartCanvas.getContext('2d');
+        
+        if (frequentieChartInstance) {
+            frequentieChartInstance.destroy();
+        }
+
+        const container = frequentieChartCanvas.parentElement;
+        if (container) {
+            container.style.height = Math.max(400, data.length * 35) + 'px';
+            container.style.minHeight = '400px';
+        }
+
+        frequentieChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Gemiddeld interval (dagen)',
+                    data: intervals,
+                    backgroundColor: backgroundColor,
+                    borderColor: borderColor,
+                    borderWidth: 1,
+                    borderRadius: 2,
+                    barPercentage: 0.8,
+                    categoryPercentage: 0.95
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.85)',
+                        titleColor: '#fff',
+                        bodyColor: '#e0e0e0',
+                        cornerRadius: 6,
+                        padding: 12,
+                        titleFont: { size: 14, weight: 'bold' },
+                        bodyFont: { size: 13 },
+                        callbacks: {
+                            afterBody: function(tooltipItems) {
+                                const index = tooltipItems[0].dataIndex;
+                                const item = data[index];
+                                return [
+                                    `Aantal ophalingen: ${item.aantal_ophalingen || 0}`,
+                                    `Gemiddeld interval: ${item.gemiddeld_interval || 0} dagen`
+                                ];
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.06)', drawBorder: false },
+                        title: {
+                            display: true,
+                            text: 'Dagen',
+                            font: { size: 14, weight: 'bold' }
+                        },
+                        ticks: {
+                            font: { size: 13 },
+                            stepSize: 7,
+                            maxTicksLimit: 15
+                        }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: {
+                            font: { size: 13, weight: '400' },
+                            maxRotation: 0,
+                            minRotation: 0,
+                            autoSkip: false
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        top: 15,
+                        bottom: 15,
+                        left: 10,
+                        right: 10
+                    }
+                }
+            }
+        });
+        
+        setTimeout(() => {
+            if (frequentieChartInstance) {
+                frequentieChartInstance.resize();
+            }
+        }, 100);
+        
+        console.log('✅ Frequentie chart geladen');
+    } catch (err) {
+        console.error('❌ Fout bij laden frequentie chart:', err);
+    }
 }
 
 // ===== MODULE 6: ACTIVITEITENLOG =====
 async function laadActiviteitenLog() {
-    // ... blijft hetzelfde ...
+    console.log('📋 Activiteitenlog laden...');
+    
+    if (!activiteitenLogContainer) return;
+    
+    try {
+        const logs = await haalLogs(100);
+        
+        if (!logs || logs.length === 0) {
+            activiteitenLogContainer.innerHTML = '<p>Geen activiteiten gevonden.</p>';
+            return;
+        }
+
+        let html = '<table class="log-table">';
+        html += `
+            <thead>
+                <tr>
+                    <th>Datum</th>
+                    <th>Gebruiker</th>
+                    <th>Module</th>
+                    <th>Actie</th>
+                    <th>Entity</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+        `;
+        
+        const actieIcons = {
+            'toegevoegd': '➕',
+            'bijgewerkt': '✏️',
+            'verwijderd': '🗑️',
+            'voorraad aangepast': '📦',
+            'ingelogd': '🔐',
+            'uitgelogd': '🚪'
+        };
+        
+        const moduleIcons = {
+            'adressen': '📍',
+            'stock': '📦',
+            'planning': '📅',
+            'gebruikers': '👤',
+            'registraties': '📋',
+            'admin': '👑'
+        };
+
+        logs.forEach(log => {
+            const datum = new Date(log.created_at).toLocaleString('nl-NL');
+            const actieIcon = actieIcons[log.actie] || '📌';
+            const moduleIcon = moduleIcons[log.module] || '📂';
+            const gebruiker = log.user?.gebruikersnaam || log.gebruikersnaam || 'Onbekend';
+            
+            let detailsHtml = '-';
+            if (log.details) {
+                try {
+                    const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                    detailsHtml = Object.entries(details)
+                        .filter(([key]) => !['user_id', 'created_at', 'id'].includes(key))
+                        .map(([key, value]) => {
+                            if (typeof value === 'object') return `${key}: ${JSON.stringify(value).substring(0, 30)}...`;
+                            return `${key}: ${value}`;
+                        })
+                        .join(', ');
+                    if (detailsHtml.length > 100) detailsHtml = detailsHtml.substring(0, 100) + '...';
+                } catch(e) {
+                    detailsHtml = String(log.details).substring(0, 100);
+                }
+            }
+            
+            const entityDisplay = log.entity_naam || log.entity_id || '-';
+            
+            html += `
+                <tr>
+                    <td style="font-size:0.8rem;">${datum}</td>
+                    <td><strong>${escapeHtml(gebruiker)}</strong></td>
+                    <td>${moduleIcon} ${escapeHtml(log.module)}</td>
+                    <td>${actieIcon} ${escapeHtml(log.actie)}</td>
+                    <td>${escapeHtml(entityDisplay)}</td>
+                    <td style="font-size:0.75rem;color:#6c757d;">${escapeHtml(detailsHtml)}</td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table>';
+        activiteitenLogContainer.innerHTML = html;
+        console.log('✅ Activiteitenlog geladen');
+    } catch (err) {
+        console.error('❌ Fout bij laden activiteitenlog:', err);
+        activiteitenLogContainer.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
+    }
 }
 
-// ===== HULPFUNCTIES VOOR LOGS =====
+// ===== HULPFUNCTIE: LOGS OPHALEN =====
 async function haalLogs(limit = 100) {
-    // ... blijft hetzelfde ...
+    try {
+        const { data, error } = await supabase
+            .from('activiteitenlog')
+            .select(`
+                *,
+                user:user_id (gebruikersnaam)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(limit);
+        
+        if (error) {
+            console.error('❌ Fout bij ophalen logs:', error);
+            return [];
+        }
+        return data || [];
+    } catch (err) {
+        console.error('❌ Fout bij ophalen logs:', err);
+        return [];
+    }
 }
 
+// ===== HULPFUNCTIE: LOG ACTIE =====
 async function logActie(actie, module, entityId = null, entityNaam = null, details = null) {
-    // ... blijft hetzelfde ...
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const logData = {
+            user_id: user.id,
+            actie: actie,
+            module: module,
+            entity_id: entityId ? String(entityId) : null,
+            entity_naam: entityNaam,
+            details: details ? JSON.stringify(details) : null
+        };
+
+        await supabase
+            .from('activiteitenlog')
+            .insert([logData]);
+    } catch (err) {
+        console.warn('Fout bij loggen:', err);
+    }
 }
 
 // ===== EXPORT EXCEL =====
@@ -366,6 +710,11 @@ async function exportExcel() {
     }
     
     try {
+        if (typeof XLSX === 'undefined') {
+            showToast('⚠️ Excel bibliotheek niet geladen. Vernieuw de pagina.', 'error');
+            return;
+        }
+        
         showToast('📊 Excel wordt voorbereid...', 'info');
         
         const ziekenhuisNaam = alleOphalingenData[0]?.ziekenhuis?.instelling_naam || 'Alle ziekenhuizen';
@@ -376,7 +725,6 @@ async function exportExcel() {
             'aangepast': 'Aangepaste periode'
         }[huidigeFilters.periode] || 'Maandelijks';
         
-        // Groepeer data voor export
         const grouped = groepeerData(alleOphalingenData, huidigeFilters.periode);
         const labels = Object.keys(grouped).sort();
         const labelFormatter = getLabelFormatter(huidigeFilters.periode);
@@ -388,7 +736,6 @@ async function exportExcel() {
             'Gemiddeld gewicht (kg)': (grouped[label].count > 0 ? (grouped[label].gewicht / grouped[label].count).toFixed(1) : 0)
         }));
         
-        // Voeg een samenvatting toe
         const totalCount = excelData.reduce((sum, d) => sum + d['Aantal ophalingen'], 0);
         const totalWeight = excelData.reduce((sum, d) => sum + parseFloat(d['Totaal gewicht (kg)']), 0);
         const avgWeight = totalCount > 0 ? (totalWeight / totalCount).toFixed(1) : 0;
@@ -407,7 +754,6 @@ async function exportExcel() {
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(finalData);
         
-        // Kolombreedtes instellen
         ws['!cols'] = [
             { wch: 25 },
             { wch: 18 },
@@ -438,17 +784,14 @@ async function exportExcel() {
 
 // ===== FILTER FUNCTIES =====
 function applyFilters() {
-    // Ziekenhuis filter
     if (analyticsZiekenhuisFilter) {
         huidigeFilters.ziekenhuis_id = analyticsZiekenhuisFilter.value;
     }
     
-    // Periode filter
     if (analyticsPeriodeFilter) {
         huidigeFilters.periode = analyticsPeriodeFilter.value;
     }
     
-    // Datum filters (alleen bij aangepaste periode)
     if (huidigeFilters.periode === 'aangepast') {
         huidigeFilters.datumVanaf = analyticsDatumVanaf?.value || null;
         huidigeFilters.datumTot = analyticsDatumTot?.value || null;
@@ -457,7 +800,6 @@ function applyFilters() {
         huidigeFilters.datumTot = null;
     }
     
-    // Herlaad de grafiek
     laadTrendChart();
 }
 
@@ -474,7 +816,6 @@ function resetFilters() {
         datumTot: null
     };
     
-    // Verberg datum velden
     document.getElementById('analyticsDatumVanafGroup').style.display = 'none';
     document.getElementById('analyticsDatumTotGroup').style.display = 'none';
     
@@ -493,10 +834,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     console.log('✅ Ingelogd als:', auth.user?.email);
     
-    // Laad ziekenhuizen
     await laadZiekenhuizen();
     
-    // Laad alle modules
     await laadKPI();
     await laadTrendChart();
     await laadTopZiekenhuizen();
@@ -504,9 +843,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     await laadFrequentieChart();
     await laadActiviteitenLog();
     
-    // ===== FILTER EVENT LISTENERS =====
-    
-    // Periode filter toont/verbergt datum velden
     if (analyticsPeriodeFilter) {
         analyticsPeriodeFilter.addEventListener('change', function() {
             const isAangepast = this.value === 'aangepast';
@@ -515,22 +851,18 @@ document.addEventListener('DOMContentLoaded', async function() {
         });
     }
     
-    // Filter knop
     if (analyticsFilterBtn) {
         analyticsFilterBtn.addEventListener('click', applyFilters);
     }
     
-    // Reset knop
     if (analyticsResetBtn) {
         analyticsResetBtn.addEventListener('click', resetFilters);
     }
     
-    // Export knop
     if (analyticsExportBtn) {
         analyticsExportBtn.addEventListener('click', exportExcel);
     }
     
-    // Enter toets op datum velden
     if (analyticsDatumVanaf) {
         analyticsDatumVanaf.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
