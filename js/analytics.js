@@ -233,8 +233,10 @@ async function laadTrendChart() {
         alleOphalingenData = data || [];
         
         if (!data || data.length === 0) {
-            if (trendChartCanvas) {
-                trendChartCanvas.parentElement.innerHTML = '<p>Geen data beschikbaar voor deze filters</p>';
+            // Toon een bericht in de container
+            const container = trendChartCanvas?.parentElement;
+            if (container) {
+                container.innerHTML = '<p style="text-align:center;padding:20px;color:#6c757d;">Geen data beschikbaar voor deze filters</p>';
             }
             return;
         }
@@ -249,7 +251,11 @@ async function laadTrendChart() {
         const ziekenhuisNaam = data[0]?.ziekenhuis?.instelling_naam || '';
         const ziekenhuisLabel = isAlleZiekenhuizen ? '' : ` - ${ziekenhuisNaam}`;
 
-        if (!trendChartCanvas) return;
+        if (!trendChartCanvas) {
+            console.warn('⚠️ Trend chart canvas niet gevonden');
+            return;
+        }
+        
         const ctx = trendChartCanvas.getContext('2d');
         
         if (trendChartInstance) {
@@ -258,6 +264,12 @@ async function laadTrendChart() {
         }
 
         const labelFormatter = getLabelFormatter(huidigeFilters.periode);
+        
+        // Zorg dat de canvas zichtbaar is
+        const container = trendChartCanvas.parentElement;
+        if (container) {
+            container.style.display = 'block';
+        }
         
         trendChartInstance = new Chart(ctx, {
             type: 'line',
@@ -661,6 +673,7 @@ async function laadActiviteitenLog() {
         console.log('✅ Activiteitenlog geladen');
     } catch (err) {
         console.error('❌ Fout bij laden activiteitenlog:', err);
+        // Toon een vriendelijke melding in plaats van een fout
         activiteitenLogContainer.innerHTML = '<p>⚠️ Activiteitenlog is nog niet beschikbaar.</p>';
     }
 }
@@ -678,7 +691,8 @@ async function haalLogs(limit = 100) {
             .limit(limit);
         
         if (error) {
-            if (error.code === '42P01') {
+            // Als de tabel niet bestaat, geef een lege array terug
+            if (error.code === 'PGRST205' || error.message?.includes('Could not find the table')) {
                 console.warn('⚠️ Tabel activiteitenlog bestaat nog niet');
                 return [];
             }
