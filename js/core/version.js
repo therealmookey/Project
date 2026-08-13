@@ -10,19 +10,13 @@ export const VERSION = {
     // Build datum (automatisch gegenereerd)
     buildDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
     
-    // Huidige stap - alle modules zijn nu geïmplementeerd
+    // Huidige stap
     moduleStep: 8,
-    
-    // Totaal aantal stappen
     totalSteps: 8,
-    
-    // Naam van de huidige stap
     currentStepName: 'Alle modules voltooid',
     
-    // Git commit hash (als je Git gebruikt, anders leeg laten)
+    // Git informatie
     commitHash: '',
-    
-    // Branch naam
     branch: 'main'
 };
 
@@ -43,25 +37,24 @@ export function showVersion() {
 }
 
 /**
- * Update de versie naar een nieuwe stap
- * @param {number} step - Huidige stap nummer
- * @param {string} stepName - Naam van de stap
- * @param {string} versionNumber - Optioneel: nieuwe versie nummer
+ * Update de versie naar een nieuwe versie
+ * @param {string} newVersion - Nieuwe versienummer (bijv. '3.1.0')
+ * @param {string} changelog - Wat er is veranderd (optioneel)
  */
-export function setVersion(step, stepName, versionNumber = null) {
-    VERSION.moduleStep = step;
-    VERSION.currentStepName = stepName;
-    if (versionNumber) {
-        VERSION.number = versionNumber;
-    }
+export function updateVersion(newVersion, changelog = '') {
+    const oldVersion = VERSION.number;
+    VERSION.number = newVersion;
     VERSION.buildDate = new Date().toISOString().replace('T', ' ').substring(0, 16);
     
     // Reset de "getoond" vlag zodat de nieuwe versie wordt getoond
     versionShown = false;
     showVersion();
-    
-    // Update de badge als die bestaat
     updateBadge();
+    
+    if (changelog) {
+        console.log(`%c📝 Changelog: ${changelog}`, 'font-size:12px; color:#6c757d;');
+    }
+    console.log(`%c🔄 Versie bijgewerkt: ${oldVersion} → ${newVersion}`, 'font-size:12px; color:#28a745;');
 }
 
 /**
@@ -70,8 +63,6 @@ export function setVersion(step, stepName, versionNumber = null) {
 function updateBadge() {
     const badge = document.getElementById('version-badge');
     if (!badge) return;
-    
-    // Alleen updaten als de badge zichtbaar is
     if (badge.style.display === 'none') return;
     
     badge.innerHTML = `
@@ -142,8 +133,6 @@ export function addVersionBadge() {
         </span>
     `;
     document.body.appendChild(badge);
-    
-    // Toon ook in console
     showVersion();
 }
 
