@@ -351,7 +351,7 @@ async function laadPlanningen() {
     }
 }
 
-// ===== STATUS UPDATE MET AUTOMATISCHE REGISTRATIE =====
+// ===== STATUS UPDATE MET AUTOMATISCHE REGISTRATIE (GEEN OPMERKING) =====
 async function updatePlanningStatus(id, status) {
     try {
         // Haal de planning op
@@ -370,32 +370,39 @@ async function updatePlanningStatus(id, status) {
                 // Er zijn al registraties, overslaan
                 console.log('⏳ Registraties al aangemaakt voor deze planning');
             } else {
-                // Maak registraties aan voor elke combinatie
+                // Maak EÉN registratie voor ALLE combinaties
                 const registratieIds = [];
                 
+                // Bouw een beschrijving van alle combinaties
+                const combinatieBeschrijving = planning.combinaties.map(combo => {
+                    const combinatie = alleCombinaties.find(c => c.id === combo.combinatie_id);
+                    return combinatie ? `${combinatie.item_code}×${combo.aantal}` : `ID ${combo.combinatie_id}×${combo.aantal}`;
+                }).join(', ');
+                
+                // Maak één registratie met alle combinaties
+                const registratieData = {
+                    type: 'opstart',
+                    ziekenhuis_id: planning.adres_id,
+                    registratiedatum: planning.datum,
+                    combinatie_id: null, // Geen specifieke combinatie, we slaan alles op in opmerkingen
+                    opstart_aantal: 1,
+                    opmerkingen: `Combinaties: ${combinatieBeschrijving}`,
+                    geregistreerd_door: (await supabase.auth.getUser()).data.user?.id
+                };
+                
+                const { data: regData, error: regError } = await supabase
+                    .from('ophaalregistraties')
+                    .insert([registratieData])
+                    .select();
+                
+                if (regError) throw regError;
+                
+                if (regData && regData.length > 0) {
+                    registratieIds.push(regData[0].id);
+                }
+                
+                // Haal de componenten uit de voorraad voor ALLE combinaties
                 for (const combo of planning.combinaties) {
-                    const registratieData = {
-                        type: 'opstart',
-                        ziekenhuis_id: planning.adres_id,
-                        registratiedatum: planning.datum,
-                        combinatie_id: combo.combinatie_id,
-                        opstart_aantal: combo.aantal,
-                        opmerkingen: `Automatisch geregistreerd vanuit planning ${planning.id}`,
-                        geregistreerd_door: (await supabase.auth.getUser()).data.user?.id
-                    };
-                    
-                    const { data: regData, error: regError } = await supabase
-                        .from('ophaalregistraties')
-                        .insert([registratieData])
-                        .select();
-                    
-                    if (regError) throw regError;
-                    
-                    if (regData && regData.length > 0) {
-                        registratieIds.push(regData[0].id);
-                    }
-                    
-                    // Haal de componenten uit de voorraad
                     const { data: componenten, error: compError } = await supabase
                         .from('combinatie_componenten')
                         .select('*')
@@ -443,7 +450,7 @@ async function updatePlanningStatus(id, status) {
                     })
                     .eq('id', id);
                 
-                showToast(`✅ ${registratieIds.length} registraties automatisch aangemaakt en voorraad bijgewerkt!`, 'success');
+                showToast(`✅ 1 registratie aangemaakt met ${planning.combinaties.length} combinaties en voorraad bijgewerkt!`, 'success');
             }
         } else {
             // Normale status update
