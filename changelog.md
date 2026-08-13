@@ -59,4 +59,4 @@ Alle belangrijke wijzigingen in dit project worden hier bijgehouden.
 
 - Eerste module structuur
 - Supabase core
-- Version beheer
+- Version beheer 
