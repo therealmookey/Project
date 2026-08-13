@@ -4,11 +4,25 @@
 
 // ===== VERSIE INFORMATIE =====
 export const VERSION = {
-    number: '2.2.0',
+    // Semantische versie (MAJOR.MINOR.PATCH)
+    number: '3.0.0',
+    
+    // Build datum (automatisch gegenereerd)
     buildDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
-    moduleStep: 4,
+    
+    // Huidige stap - alle modules zijn nu geïmplementeerd
+    moduleStep: 8,
+    
+    // Totaal aantal stappen
     totalSteps: 8,
-    currentStepName: 'Navigation Module',
+    
+    // Naam van de huidige stap
+    currentStepName: 'Alle modules voltooid',
+    
+    // Git commit hash (als je Git gebruikt, anders leeg laten)
+    commitHash: '',
+    
+    // Branch naam
     branch: 'main'
 };
 
@@ -29,7 +43,10 @@ export function showVersion() {
 }
 
 /**
- * Update de versie naar een nieuwe stap (alleen vanuit version.js)
+ * Update de versie naar een nieuwe stap
+ * @param {number} step - Huidige stap nummer
+ * @param {string} stepName - Naam van de stap
+ * @param {string} versionNumber - Optioneel: nieuwe versie nummer
  */
 export function setVersion(step, stepName, versionNumber = null) {
     VERSION.moduleStep = step;
