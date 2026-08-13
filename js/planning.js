@@ -351,7 +351,7 @@ async function laadPlanningen() {
     }
 }
 
-// ===== STATUS UPDATE MET AUTOMATISCHE REGISTRATIE (GEEN OPMERKING) =====
+// ===== STATUS UPDATE MET AUTOMATISCHE REGISTRATIE (COMBINATIE IN VELD) =====
 async function updatePlanningStatus(id, status) {
     try {
         // Haal de planning op
@@ -367,26 +367,28 @@ async function updatePlanningStatus(id, status) {
         if (status === 'uitgevoerd' && planning.type === 'plaatsing' && planning.combinaties && planning.combinaties.length > 0) {
             // Controleer of er al registraties zijn voor deze planning
             if (planning.geregistreerde_ids && planning.geregistreerde_ids.length > 0) {
-                // Er zijn al registraties, overslaan
                 console.log('⏳ Registraties al aangemaakt voor deze planning');
             } else {
-                // Maak EÉN registratie voor ALLE combinaties
                 const registratieIds = [];
                 
-                // Bouw een beschrijving van alle combinaties
-                const combinatieBeschrijving = planning.combinaties.map(combo => {
-                    const combinatie = alleCombinaties.find(c => c.id === combo.combinatie_id);
-                    return combinatie ? `${combinatie.item_code}×${combo.aantal}` : `ID ${combo.combinatie_id}×${combo.aantal}`;
-                }).join(', ');
+                // Haal de eerste combinatie op om deze als hoofd-combinatie te gebruiken
+                // We gebruiken de eerste combinatie in de lijst
+                const eersteCombinatieId = planning.combinaties[0].combinatie_id;
                 
-                // Maak één registratie met alle combinaties
+                // Bereken het totaal aantal opstarten (som van alle aantallen)
+                let totaalAantal = 0;
+                for (const combo of planning.combinaties) {
+                    totaalAantal += combo.aantal;
+                }
+                
+                // Maak één registratie met de eerste combinatie
                 const registratieData = {
                     type: 'opstart',
                     ziekenhuis_id: planning.adres_id,
                     registratiedatum: planning.datum,
-                    combinatie_id: null, // Geen specifieke combinatie, we slaan alles op in opmerkingen
-                    opstart_aantal: 1,
-                    opmerkingen: `Combinaties: ${combinatieBeschrijving}`,
+                    combinatie_id: eersteCombinatieId,
+                    opstart_aantal: totaalAantal,
+                    opmerkingen: null, // Leeg laten
                     geregistreerd_door: (await supabase.auth.getUser()).data.user?.id
                 };
                 
