@@ -270,7 +270,21 @@ function toonRegistraties(registraties) {
         filteredData.forEach(reg => {
             const typeLabel = reg.type === 'ophaling' ? '📦 Ophaling' : '🔄 Opstart';
             const gewichtDisplay = reg.gewicht ? `${reg.gewicht} kg` : '-';
-            const combinatieDisplay = reg.combinatie ? `${reg.combinatie.item_code} - ${reg.combinatie.omschrijving}` : '-';
+            
+            // ===== COMBINATIE WEERGAVE (MET ALLE COMBINATIES) =====
+            let combinatieDisplay = '-';
+            if (reg.combinatie_lijst && reg.combinatie_lijst.length > 0) {
+                // Toon alle combinaties uit de lijst
+                const namen = reg.combinatie_lijst.map(combo => {
+                    const combinatie = alleCombinaties.find(c => c.id === combo.combinatie_id);
+                    return combinatie ? `${combinatie.item_code}×${combo.aantal}` : `ID ${combo.combinatie_id}×${combo.aantal}`;
+                });
+                combinatieDisplay = namen.join(', ');
+            } else if (reg.combinatie) {
+                // Fallback: toon de enkele combinatie
+                combinatieDisplay = `${reg.combinatie.item_code} - ${reg.combinatie.omschrijving}`;
+            }
+            
             const aantalDisplay = reg.opstart_aantal || '-';
             
             tabelHtml += `

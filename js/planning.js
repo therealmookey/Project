@@ -351,7 +351,7 @@ async function laadPlanningen() {
     }
 }
 
-// ===== STATUS UPDATE MET AUTOMATISCHE REGISTRATIE (COMBINATIE IN VELD) =====
+// ===== STATUS UPDATE MET AUTOMATISCHE REGISTRATIE (ALLE COMBINATIES) =====
 async function updatePlanningStatus(id, status) {
     try {
         // Haal de planning op
@@ -371,24 +371,30 @@ async function updatePlanningStatus(id, status) {
             } else {
                 const registratieIds = [];
                 
-                // Haal de eerste combinatie op om deze als hoofd-combinatie te gebruiken
-                // We gebruiken de eerste combinatie in de lijst
-                const eersteCombinatieId = planning.combinaties[0].combinatie_id;
-                
-                // Bereken het totaal aantal opstarten (som van alle aantallen)
+                // Bereken het totaal aantal opstarten
                 let totaalAantal = 0;
                 for (const combo of planning.combinaties) {
                     totaalAantal += combo.aantal;
                 }
                 
-                // Maak één registratie met de eerste combinatie
+                // Maak een lijst van combinatie IDs voor de combinatie_lijst
+                const combinatieLijst = planning.combinaties.map(combo => ({
+                    combinatie_id: combo.combinatie_id,
+                    aantal: combo.aantal
+                }));
+                
+                // Gebruik de eerste combinatie als hoofd-combinatie
+                const eersteCombinatieId = planning.combinaties[0].combinatie_id;
+                
+                // Maak één registratie met alle combinaties
                 const registratieData = {
                     type: 'opstart',
                     ziekenhuis_id: planning.adres_id,
                     registratiedatum: planning.datum,
                     combinatie_id: eersteCombinatieId,
                     opstart_aantal: totaalAantal,
-                    opmerkingen: null, // Leeg laten
+                    combinatie_lijst: combinatieLijst, // Alle combinaties hier
+                    opmerkingen: null,
                     geregistreerd_door: (await supabase.auth.getUser()).data.user?.id
                 };
                 
