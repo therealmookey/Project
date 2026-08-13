@@ -4263,3 +4263,60 @@ hr {
         min-width: 80px;
     }
 }
+/* ===== COMBINATIE WINKELMANDJE ===== */
+.combinatie-winkelmandje {
+    margin: 10px 0;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.combinatie-toevoegen {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.combinatie-toevoegen select {
+    flex: 1;
+    min-width: 150px;
+    margin-bottom: 0;
+}
+
+.combinatie-toevoegen input[type="number"] {
+    width: 80px;
+    margin-bottom: 0;
+}
+
+.combinatie-lijst {
+    min-height: 40px;
+    margin-top: 8px;
+}
+
+.combinatie-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: white;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    border: 1px solid #e9ecef;
+}
+
+.combinatie-item .btn-danger {
+    padding: 2px 8px;
+    font-size: 0.7rem;
+}
+
+/* Dark mode */
+[data-theme="dark"] .combinatie-winkelmandje {
+    background: #1a1a2e;
+}
+
+[data-theme="dark"] .combinatie-item {
+    background: #1e1e3a;
+    border-color: #2a2a4e;
+}

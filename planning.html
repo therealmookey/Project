@@ -70,6 +70,26 @@
                 <input type="number" id="aantalLegeTonnen" min="1" max="100" value="1" step="1">
             </div>
             
+            <!-- ===== COMBINATIE WINKELMANDJE ===== -->
+            <div id="combinatieSelectieContainer" style="display: none;">
+                <hr>
+                <h4>📦 Combinaties voor plaatsing</h4>
+                <p style="font-size:0.85rem;color:#6c757d;">Selecteer de combinaties die bij deze plaatsing horen.</p>
+                
+                <div class="combinatie-winkelmandje">
+                    <div class="combinatie-toevoegen">
+                        <select id="planningCombinatieSelect" class="form-input">
+                            <option value="">Kies een combinatie...</option>
+                        </select>
+                        <input type="number" id="planningCombinatieAantal" min="1" value="1" step="1" style="width:80px;display:inline-block;">
+                        <button id="addPlanningCombinatieBtn" class="btn btn-secondary">➕ Toevoegen</button>
+                    </div>
+                    <div id="planningCombinatieLijst" class="combinatie-lijst">
+                        <p>Geen combinaties toegevoegd.</p>
+                    </div>
+                </div>
+            </div>
+            
             <label>Opmerkingen</label>
             <textarea id="opmerkingen" rows="3" placeholder="Extra informatie..."></textarea>
             
