@@ -379,7 +379,7 @@ async function verwijderRegistratie(id) {
     }
 }
 
-// ===== REGISTRATIE OPSLAAN =====
+// ===== REGISTRATIE OPSLAAN (MET STATUS CHECK) =====
 async function saveRegistratie() {
     const type = getValue('registratieType');
     const ziekenhuis_id = getValue('ziekenhuisSelect');
@@ -391,6 +391,37 @@ async function saveRegistratie() {
         return;
     }
     
+    // ===== CHECK: Bestaat er een planning voor deze datum? =====
+    const { data: planningen, error: planningError } = await supabase
+        .from('planningen')
+        .select('id, status, type')
+        .eq('adres_id', parseInt(ziekenhuis_id))
+        .eq('datum', datum);
+    
+    if (planningError) {
+        console.error('Fout bij checken planning:', planningError);
+    } else if (planningen && planningen.length > 0) {
+        // Er is minstens één planning voor deze datum
+        for (const planning of planningen) {
+            // Alleen checken voor hetzelfde type (ophaling vs plaatsing)
+            const planningType = planning.type === 'ophaling' ? 'ophaling' : 'opstart';
+            if (planningType === type && planning.status !== 'uitgevoerd') {
+                // Toon een popup met de melding
+                const confirmResult = confirm(
+                    `⚠️ Er is een ${planning.type === 'ophaling' ? 'ophaling' : 'plaatsing'} gepland voor ${datum} bij dit ziekenhuis.\n\n` +
+                    `Status: ${planning.status}\n\n` +
+                    'Wil je doorgaan met de registratie zonder de status te wijzigen?'
+                );
+                
+                if (!confirmResult) {
+                    return; // Stop met opslaan
+                }
+                break; // Een melding is voldoende
+            }
+        }
+    }
+    
+    // ===== REST VAN DE REGISTRATIE LOGICA =====
     const registratieData = {
         type: type,
         ziekenhuis_id: parseInt(ziekenhuis_id),
@@ -400,17 +431,28 @@ async function saveRegistratie() {
     
     let combinatieId = null;
     let opstartAantal = 1;
+    let combinatieLijst = [];
     
     if (type === 'ophaling') {
         registratieData.gewicht = parseFloat(getValue('gewicht')) || null;
         registratieData.combinatie_id = null;
         registratieData.opstart_aantal = null;
+        registratieData.combinatie_lijst = [];
     } else if (type === 'opstart') {
         combinatieId = parseInt(getValue('combinatieSelect')) || null;
         opstartAantal = parseInt(getValue('opstartAantal')) || 1;
         registratieData.combinatie_id = combinatieId;
         registratieData.opstart_aantal = opstartAantal;
         registratieData.gewicht = null;
+        
+        // Als er een combinatie is geselecteerd, voeg deze toe aan de lijst
+        if (combinatieId) {
+            combinatieLijst = [{
+                combinatie_id: combinatieId,
+                aantal: opstartAantal
+            }];
+        }
+        registratieData.combinatie_lijst = combinatieLijst;
         
         // Check voorraad beschikbaar
         if (combinatieId) {
@@ -523,7 +565,7 @@ function resetFilters() {
     laadRegistraties();
 }
 
-// ===== EXCEL EXPORT =====
+// ===== EXCEL EXPORT (MET ALLE COMBINATIES) =====
 async function exportExcel() {
     const huidigeData = getHuidigeGefilterdeData();
     
@@ -535,18 +577,44 @@ async function exportExcel() {
     try {
         showToast(`📊 ${huidigeData.length} registraties worden geëxporteerd...`, 'info');
         
-        const excelData = huidigeData.map(reg => ({
-            'Datum': formatDate(reg.registratiedatum),
-            'Ziekenhuis': reg.ziekenhuis?.instelling_naam || 'Onbekend',
-            'Type': reg.type === 'ophaling' ? 'Ophaling' : 'Opstart',
-            'Gewicht (kg)': reg.gewicht || '',
-            'Combinatie': reg.combinatie ? `${reg.combinatie.item_code} - ${reg.combinatie.omschrijving}` : '',
-            'Aantal': reg.opstart_aantal || '',
-            'Opmerkingen': reg.opmerkingen || ''
-        }));
+        const excelData = huidigeData.map(reg => {
+            // Bepaal de combinatie weergave voor Excel
+            let combinatieDisplay = '';
+            if (reg.combinatie_lijst && reg.combinatie_lijst.length > 0) {
+                const namen = reg.combinatie_lijst.map(combo => {
+                    const combinatie = alleCombinaties.find(c => c.id === combo.combinatie_id);
+                    return combinatie ? `${combinatie.item_code}×${combo.aantal}` : `ID ${combo.combinatie_id}×${combo.aantal}`;
+                });
+                combinatieDisplay = namen.join(', ');
+            } else if (reg.combinatie) {
+                combinatieDisplay = `${reg.combinatie.item_code} - ${reg.combinatie.omschrijving}`;
+            }
+            
+            return {
+                'Datum': formatDate(reg.registratiedatum),
+                'Ziekenhuis': reg.ziekenhuis?.instelling_naam || 'Onbekend',
+                'Type': reg.type === 'ophaling' ? 'Ophaling' : 'Opstart',
+                'Gewicht (kg)': reg.gewicht || '',
+                'Combinatie': combinatieDisplay,
+                'Aantal': reg.opstart_aantal || '',
+                'Opmerkingen': reg.opmerkingen || ''
+            };
+        });
         
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(excelData);
+        
+        // Kolombreedtes instellen
+        ws['!cols'] = [
+            { wch: 15 },  // Datum
+            { wch: 30 },  // Ziekenhuis
+            { wch: 12 },  // Type
+            { wch: 15 },  // Gewicht
+            { wch: 40 },  // Combinatie (breder voor meerdere combinaties)
+            { wch: 12 },  // Aantal
+            { wch: 30 }   // Opmerkingen
+        ];
+        
         XLSX.utils.book_append_sheet(wb, ws, 'Registraties');
         
         const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
