@@ -152,8 +152,23 @@ export async function laadActieLijst() {
             }
         }
 
-        // Sorteer op urgentie (meest te laat eerst)
-        actieZiekenhuizen.sort((a, b) => b.dagenSindsVerwachte - a.dagenSindsVerwachte);
+      
+actieZiekenhuizen.sort((a, b) => {
+    // Eerst: Te laat (meest te laat eerst)
+    const isATeLaat = a.dagenSindsVerwachte > 0;
+    const isBTeLaat = b.dagenSindsVerwachte > 0;
+    
+    if (isATeLaat && !isBTeLaat) return -1;
+    if (!isATeLaat && isBTeLaat) return 1;
+    
+    // Beide te laat: meest te laat eerst
+    if (isATeLaat && isBTeLaat) {
+        return b.dagenSindsVerwachte - a.dagenSindsVerwachte;
+    }
+    
+    // Beide bijna te laat: eerstkomende eerst
+    return a.dagenSindsVerwachte - b.dagenSindsVerwachte;
+});
 
         if (actieZiekenhuizen.length === 0) {
             actieContainer.innerHTML = '<p>✅ Alle ziekenhuizen zijn op schema of recent geregistreerd!</p>';

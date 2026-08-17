@@ -115,20 +115,57 @@ export async function laadOphalingAnalyse() {
             }
         }
 
-        filteredData.sort((a, b) => {
-            const statusOrder = {
-                'Te laat': 1,
-                'Bijna te laat': 2,
-                'Binnenkort': 3,
-                'Op schema': 4,
-                'Onvoldoende data': 5,
-                'Geen data': 6
-            };
-            const orderA = statusOrder[a.status] || 5;
-            const orderB = statusOrder[b.status] || 5;
-            if (orderA !== orderB) return orderA - orderB;
-            return (a.instelling_naam || '').localeCompare(b.instelling_naam || '');
-        });
+        // Sorteer op status en vervolgens op urgentie binnen elke status
+filteredData.sort((a, b) => {
+    const statusOrder = {
+        'Te laat': 1,
+        'Bijna te laat': 2,
+        'Binnenkort': 3,
+        'Op schema': 4,
+        'Onvoldoende data': 5,
+        'Geen data': 6
+    };
+    
+    const orderA = statusOrder[a.status] || 5;
+    const orderB = statusOrder[b.status] || 5;
+    
+    // Eerst sorteren op status
+    if (orderA !== orderB) return orderA - orderB;
+    
+    // Binnen dezelfde status: sorteren op urgentie
+    const vandaag = new Date();
+    vandaag.setHours(0, 0, 0, 0);
+    
+    // Bepaal de 'dagen tot' voor elk item
+    let daysA = Infinity;
+    let daysB = Infinity;
+    
+    if (a.verwachteDatum) {
+        daysA = Math.ceil((new Date(a.verwachteDatum) - vandaag) / (1000 * 60 * 60 * 24));
+    }
+    if (b.verwachteDatum) {
+        daysB = Math.ceil((new Date(b.verwachteDatum) - vandaag) / (1000 * 60 * 60 * 24));
+    }
+    
+    // TE LAAT: meest te laat eerst (dagenSindsVerwachte is negatief, dus kleiner = verder te laat)
+    if (a.status === 'Te laat') {
+        const aDagen = a.dagenSindsLaatste || 0;
+        const bDagen = b.dagenSindsLaatste || 0;
+        return bDagen - aDagen; // Grootste eerst
+    }
+    
+    // BIJNA TE LAAT of OP SCHEMA: eerstkomende eerst (kleinste dagen eerst)
+    if (a.status === 'Bijna te laat' || a.status === 'Op schema' || a.status === 'Binnenkort') {
+        // Als er geen verwachte datum is, zet dan achteraan
+        if (a.verwachteDatum && !b.verwachteDatum) return -1;
+        if (!a.verwachteDatum && b.verwachteDatum) return 1;
+        if (!a.verwachteDatum && !b.verwachteDatum) return 0;
+        return daysA - daysB; // Kleinste eerst
+    }
+    
+    // Fallback: alfabetisch op naam
+    return (a.instelling_naam || '').localeCompare(b.instelling_naam || '');
+});
 
         if (filteredData.length === 0) {
             analyseLijst.innerHTML = `<p>✅ Alle ziekenhuizen zijn op schema. Er zijn geen ophalingen nodig in de komende ${cutoff} dagen.</p>`;
