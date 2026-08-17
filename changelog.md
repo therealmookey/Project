@@ -3,7 +3,7 @@
 Alle belangrijke wijzigingen in dit project worden hier bijgehouden.
 ## [3.0.1] - 2028-08)17
 
-- sortering van ziekenhuis voorspellingen volgends datum.
+- ✅ Sortering van ziekenhuis voorspellingen volgends datum.(Te laat, langste eerst, Op schema, eerstkomende eerst).
 
 ## [3.0.0] - 2026-08-13
 
