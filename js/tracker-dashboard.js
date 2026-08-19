@@ -444,21 +444,24 @@ function startRealtimeListener() {
         });
 }
 
-// ===== AUTO CLEANUP =====
+// ===== AUTO CLEANUP - 4 UUR TIMEOUT =====
 function startAutoCleanup() {
+    console.log('⏰ Auto-cleanup ingesteld op 4 uur');
+    console.log('📌 Chauffeurs worden pas verwijderd na 4 uur inactiviteit');
+    
     setInterval(() => {
         const now = Date.now();
-        const timeout = 120000;
+        const timeout = 14400000; // 4 uur
 
         let removed = false;
         Object.keys(driverInfo).forEach(id => {
             if (now - driverInfo[id].timestamp > timeout) {
-                console.log(`⏰ Chauffeur ${id} verwijderd (timeout)`);
+                console.log(`⏰ Chauffeur ${id} verwijderd (4 uur inactief)`);
                 removeMarker(id);
                 removed = true;
             }
         });
-    }, 30000);
+    }, 60000); // Check elke minuut
 }
 
 // ===== CENTREER FUNCTIES =====
