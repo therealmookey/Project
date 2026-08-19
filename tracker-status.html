@@ -51,8 +51,11 @@
             color: white;
         }
         .btn-refresh { background: #2196F3; }
+        .btn-refresh:hover { background: #1976D2; }
         .btn-start { background: #4CAF50; }
+        .btn-start:hover { background: #388E3C; }
         .btn-stop { background: #f44336; }
+        .btn-stop:hover { background: #d32f2f; }
         .last-update { text-align: center; color: #999; font-size: 12px; margin-top: 10px; }
         .note {
             background: #fff8e1;
@@ -64,55 +67,84 @@
             text-align: center;
             border-left: 4px solid #ffc107;
         }
+        .driver-id-input {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .driver-id-input input {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .driver-id-input input:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        .driver-id-input button {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .driver-id-input button:hover {
+            background: #1976D2;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📡 Tracker Status</h1>
-        
+
+        <!-- Driver ID selector -->
+        <div class="driver-id-input">
+            <input type="text" id="driverIdInput" placeholder="Chauffeur ID (bijv. tablet-01)" value="">
+            <button id="setDriverBtn">🔍 Zoek</button>
+        </div>
+
         <div class="status-item">
             <span class="status-label">Chauffeur ID</span>
-            <span class="status-value" id="driverId">Tablet</span>
+            <span class="status-value" id="driverIdDisplay">-</span>
         </div>
-        
+
         <div class="status-item">
             <span class="status-label">Tracking status</span>
             <span class="status-value" id="trackingStatus">Onbekend</span>
         </div>
-        
+
         <div class="status-item">
             <span class="status-label">Laatste locatie</span>
             <span class="status-value" id="lastLocation">-</span>
         </div>
-        
+
         <div class="status-item">
             <span class="status-label">Laatste update</span>
             <span class="status-value" id="lastUpdate">-</span>
         </div>
-        
+
         <div class="status-item">
             <span class="status-label">Aantal updates</span>
-            <span class="status-value" id="updateCount">0</span>
+            <span class="status-value" id="updateCount">-</span>
         </div>
-        
+
         <div class="status-item">
             <span class="status-label">Database verbinding</span>
             <span class="status-value" id="dbStatus">Controleren...</span>
         </div>
-        
-        <div class="status-item">
-            <span class="status-label">GPS signaal</span>
-            <span class="status-value" id="gpsStatus">Controleren...</span>
-        </div>
-        
+
         <div class="btn-row">
             <button class="btn btn-refresh" onclick="loadStatus()">🔄 Ververs</button>
-            <button class="btn btn-start" onclick="startTracker()">▶ Start</button>
-            <button class="btn btn-stop" onclick="stopTracker()">⏹ Stop</button>
+            <button class="btn btn-start" onclick="sendCommand('start')">▶ Start</button>
+            <button class="btn btn-stop" onclick="sendCommand('stop')">⏹ Stop</button>
         </div>
-        
+
         <div class="last-update" id="lastRefresh">Laatst ververst: -</div>
-        
+
         <div class="note">
             💡 Commando's worden via de database naar de tracker gestuurd.
         </div>
@@ -120,14 +152,38 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // ============================================================
+        // CONFIGURATIE
+        // ============================================================
         const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
         const TABLE_NAME = 'locations_test';
         const COMMAND_TABLE = 'tracker_commands';
-        const DRIVER_ID = 'Tablet';
+        const STORAGE_KEY = 'tracker_driver_id';
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+        // ============================================================
+        // STATE
+        // ============================================================
+        let currentDriverId = '';
+
+        // ============================================================
+        // DOM ELEMENTEN
+        // ============================================================
+        const driverIdInput = document.getElementById('driverIdInput');
+        const setDriverBtn = document.getElementById('setDriverBtn');
+        const driverIdDisplay = document.getElementById('driverIdDisplay');
+        const trackingStatus = document.getElementById('trackingStatus');
+        const lastLocation = document.getElementById('lastLocation');
+        const lastUpdate = document.getElementById('lastUpdate');
+        const updateCount = document.getElementById('updateCount');
+        const dbStatus = document.getElementById('dbStatus');
+        const lastRefresh = document.getElementById('lastRefresh');
+
+        // ============================================================
+        // FUNCTIES
+        // ============================================================
         function setStatus(element, text, className = '') {
             element.textContent = text;
             element.className = 'status-value ' + className;
@@ -136,96 +192,130 @@
         function formatDate(date) {
             if (!date) return '-';
             const d = new Date(date);
-            return d.toLocaleString('nl-NL', { 
+            return d.toLocaleString('nl-NL', {
                 day: '2-digit', month: '2-digit', year: 'numeric',
-                hour: '2-digit', minute: '2-digit', second: '2-digit' 
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
             });
         }
 
-        async function startTracker() {
-            try {
-                const { error } = await supabaseClient
-                    .from(COMMAND_TABLE)
-                    .insert({ driver_id: DRIVER_ID, command: 'start' });
-
-                if (error) {
-                    alert('❌ Fout bij starten: ' + error.message);
-                } else {
-                    alert('✅ Start commando verzonden!');
-                    loadStatus();
-                }
-            } catch (err) {
-                alert('❌ Fout: ' + err.message);
-            }
-        }
-
-        async function stopTracker() {
-            try {
-                const { error } = await supabaseClient
-                    .from(COMMAND_TABLE)
-                    .insert({ driver_id: DRIVER_ID, command: 'stop' });
-
-                if (error) {
-                    alert('❌ Fout bij stoppen: ' + error.message);
-                } else {
-                    alert('⏹ Stop commando verzonden!');
-                    loadStatus();
-                }
-            } catch (err) {
-                alert('❌ Fout: ' + err.message);
+        function loadSavedDriver() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                driverIdInput.value = saved;
+                currentDriverId = saved;
+                driverIdDisplay.textContent = saved;
+                loadStatus();
             }
         }
 
         async function loadStatus() {
-            console.log('🔄 Status laden...');
-            document.getElementById('lastRefresh').textContent = 'Laatst ververst: ' + new Date().toLocaleTimeString('nl-NL');
+            if (!currentDriverId) {
+                setStatus(driverIdDisplay, 'Geen ID ingesteld', 'orange');
+                return;
+            }
+
+            console.log(`🔄 Status laden voor: ${currentDriverId}`);
+            lastRefresh.textContent = 'Laatst ververst: ' + new Date().toLocaleTimeString('nl-NL');
+            driverIdDisplay.textContent = currentDriverId;
 
             try {
                 const { data, error } = await supabaseClient
                     .from(TABLE_NAME)
                     .select('*')
-                    .eq('driver_id', DRIVER_ID)
+                    .eq('driver_id', currentDriverId)
                     .order('last_updated', { ascending: false })
                     .limit(1);
 
                 if (error) {
-                    setStatus(document.getElementById('dbStatus'), '❌ Fout: ' + error.message, 'red');
-                } else if (data && data.length > 0) {
+                    setStatus(dbStatus, '❌ Fout: ' + error.message, 'red');
+                    return;
+                }
+
+                if (data && data.length > 0) {
                     const row = data[0];
-                    setStatus(document.getElementById('dbStatus'), '✅ Verbonden', 'green');
-                    document.getElementById('lastLocation').textContent = `${row.latitude.toFixed(6)}, ${row.longitude.toFixed(6)}`;
-                    document.getElementById('lastUpdate').textContent = formatDate(row.last_updated);
-                    
-                    const lastUpdate = new Date(row.last_updated);
-                    const secondsAgo = Math.floor((Date.now() - lastUpdate.getTime()) / 1000);
-                    
-                    if (secondsAgo < 300) {
-                        setStatus(document.getElementById('trackingStatus'), `✅ Actief (${secondsAgo}s geleden)`, 'green');
-                    } else if (secondsAgo < 600) {
-                        setStatus(document.getElementById('trackingStatus'), `⚠️ Twijfelachtig (${secondsAgo}s geleden)`, 'orange');
+                    setStatus(dbStatus, '✅ Verbonden', 'green');
+                    lastLocation.textContent = `${row.latitude.toFixed(6)}, ${row.longitude.toFixed(6)}`;
+                    lastUpdate.textContent = formatDate(row.last_updated);
+
+                    const lastUpdateTime = new Date(row.last_updated);
+                    const secondsAgo = Math.floor((Date.now() - lastUpdateTime.getTime()) / 1000);
+
+                    if (secondsAgo < 30) {
+                        setStatus(trackingStatus, `✅ Actief (${secondsAgo}s geleden)`, 'green');
+                    } else if (secondsAgo < 120) {
+                        setStatus(trackingStatus, `⚠️ Twijfelachtig (${secondsAgo}s geleden)`, 'orange');
                     } else {
-                        setStatus(document.getElementById('trackingStatus'), `❌ Inactief (${secondsAgo}s geleden)`, 'red');
+                        setStatus(trackingStatus, `❌ Inactief (${secondsAgo}s geleden)`, 'red');
                     }
                 } else {
-                    setStatus(document.getElementById('dbStatus'), '⚠️ Geen locatie gevonden', 'orange');
+                    setStatus(dbStatus, '⚠️ Geen locatie gevonden', 'orange');
+                    setStatus(trackingStatus, '❌ Geen data', 'red');
+                    lastLocation.textContent = '-';
+                    lastUpdate.textContent = '-';
                 }
             } catch (err) {
-                setStatus(document.getElementById('dbStatus'), '❌ Fout: ' + err.message, 'red');
-            }
-
-            try {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => setStatus(document.getElementById('gpsStatus'), `✅ ${pos.coords.accuracy.toFixed(0)}m`, 'green'),
-                    (err) => setStatus(document.getElementById('gpsStatus'), '⚠️ ' + err.message, 'orange'),
-                    { timeout: 5000 }
-                );
-            } catch (err) {
-                setStatus(document.getElementById('gpsStatus'), '❌ Niet beschikbaar', 'red');
+                setStatus(dbStatus, '❌ Fout: ' + err.message, 'red');
             }
         }
 
-        loadStatus();
-        setInterval(loadStatus, 30000);
+        async function sendCommand(command) {
+            if (!currentDriverId) {
+                alert('⚠️ Voer eerst een chauffeur ID in!');
+                return;
+            }
+
+            try {
+                const { error } = await supabaseClient
+                    .from(COMMAND_TABLE)
+                    .insert({
+                        driver_id: currentDriverId,
+                        command: command
+                    });
+
+                if (error) {
+                    alert('❌ Fout bij ' + command + ': ' + error.message);
+                } else {
+                    alert('✅ ' + (command === 'start' ? 'Start' : 'Stop') + ' commando verzonden!');
+                    loadStatus();
+                }
+            } catch (err) {
+                alert('❌ Fout: ' + err.message);
+            }
+        }
+
+        function setDriver() {
+            const id = driverIdInput.value.trim();
+            if (!id) {
+                alert('⚠️ Vul een chauffeur ID in!');
+                return;
+            }
+            currentDriverId = id;
+            localStorage.setItem(STORAGE_KEY, id);
+            driverIdDisplay.textContent = id;
+            loadStatus();
+        }
+
+        // ============================================================
+        // EVENT LISTENERS
+        // ============================================================
+        setDriverBtn.addEventListener('click', setDriver);
+        driverIdInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                setDriver();
+            }
+        });
+
+        // ============================================================
+        // START
+        // ============================================================
+        console.log('📡 Tracker status pagina geladen');
+
+        // Laad opgeslagen ID
+        loadSavedDriver();
+
+        // Auto-refresh elke 15 seconden
+        setInterval(loadStatus, 15000);
     </script>
 </body>
 </html>
