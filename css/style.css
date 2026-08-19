@@ -4438,19 +4438,18 @@ hr {
     }
 }
 /* ===== NAVIGATIE - MODULES STANDAARD VERBORGEN ===== */
-/* Gebruik geen !important, zodat JavaScript de display kan overschrijven */
 .nav-links .module-link {
-    display: none;
+    display: none !important;
+}
+
+/* Als een module zichtbaar moet zijn, overschrijf de verborgen status */
+.nav-links .module-link.visible {
+    display: inline-block !important;
 }
 
 /* Alleen dashboard en profiel zijn altijd zichtbaar */
 .nav-links .always-visible {
-    display: inline-block;
-}
-
-/* Als een module zichtbaar moet zijn, wordt dit door JavaScript toegevoegd */
-.nav-links .module-link.visible {
-    display: inline-block;
+    display: inline-block !important;
 }
 
 /* Dark mode */
@@ -4459,6 +4458,15 @@ hr {
 }
 
 [data-theme="dark"] .nav-links .always-visible:hover {
+    background-color: #2a2a4e;
+    color: #f0f0f0;
+}
+
+[data-theme="dark"] .nav-links .module-link.visible {
+    color: #d0d0d0;
+}
+
+[data-theme="dark"] .nav-links .module-link.visible:hover {
     background-color: #2a2a4e;
     color: #f0f0f0;
 }

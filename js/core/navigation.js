@@ -138,9 +138,10 @@ export async function filterNavigatieModules() {
         
         console.log(`🔍 ${moduleLinks.length} module links gevonden`);
         
-        // Eerst alle links verbergen (verwijder visible klasse)
+        // Eerst alle links verbergen (zowel klasse als style)
         moduleLinks.forEach(link => {
             link.classList.remove('visible');
+            link.style.display = 'none';
         });
         
         // Dan per link checken of de gebruiker toegang heeft
@@ -151,6 +152,7 @@ export async function filterNavigatieModules() {
             const heeftToegang = await heeftModuleToegang(moduleSleutel);
             if (heeftToegang) {
                 link.classList.add('visible');
+                link.style.display = 'inline-block';
                 console.log(`✅ Module zichtbaar: ${moduleSleutel}`);
             } else {
                 console.log(`🔒 Module verborgen: ${moduleSleutel}`);
