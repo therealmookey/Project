@@ -33,39 +33,15 @@ console.log('✅ DOM elementen gevonden');
 // ===== MODULES LADEN =====
 async function laadModules() {
     try {
-        // Haal alle modules op
-        const { data: modules, error: modError } = await supabase
+        const { data, error } = await supabase
             .from('modules')
             .select('*')
             .order('module_naam');
         
-        if (modError) throw modError;
+        if (error) throw error;
         
-        alleModules = modules || [];
+        alleModules = data || [];
         console.log('📋 Alle modules geladen:', alleModules.length);
-        
-        // Haal ook alle rechten op als die nog niet geladen zijn
-        if (alleRechten.length === 0) {
-            const { data: rechten, error: rechtError } = await supabase
-                .from('gebruikers_module_rechten')
-                .select('*');
-            
-            if (rechtError) throw rechtError;
-            alleRechten = rechten || [];
-            console.log('📋 Rechten geladen in laadModules:', alleRechten.length);
-        }
-        
-        // Haal ook alle gebruikers op als die nog niet geladen zijn
-        if (alleGebruikers.length === 0) {
-            const { data: gebruikers, error: userError } = await supabase
-                .from('gebruikers_rollen')
-                .select('*')
-                .order('gebruikersnaam');
-            
-            if (userError) throw userError;
-            alleGebruikers = gebruikers || [];
-            console.log('📋 Gebruikers geladen in laadModules:', alleGebruikers.length);
-        }
         
         toonModules(alleModules);
     } catch (err) {
@@ -74,24 +50,14 @@ async function laadModules() {
     }
 }
 
-// ===== MODULES TONEN (ALLE MODULES OVERZICHT) =====
+// ===== MODULES TONEN =====
 function toonModules(modules) {
-    console.log('📋 toonModules aangeroepen');
-    
-    if (!modulesLijst) {
-        console.error('❌ modulesLijst element niet gevonden!');
-        return;
-    }
+    if (!modulesLijst) return;
     
     if (!modules || modules.length === 0) {
         modulesLijst.innerHTML = '<p>Geen modules gevonden.</p>';
         return;
     }
-    
-    // ===== DEBUG: Log alle data =====
-    console.log('📋 Alle gebruikers:', alleGebruikers);
-    console.log('📋 Alle rechten:', alleRechten);
-    console.log('📋 Alle modules:', modules);
     
     // Tel hoeveel gebruikers per module rechten hebben
     const moduleCounts = {};
@@ -99,41 +65,28 @@ function toonModules(modules) {
         moduleCounts[module.module_sleutel] = 0;
     });
     
-    // Loop door alle gebruikers
-    alleGebruikers.forEach(user => {
-        console.log(`👤 Gebruiker: ${user.gebruikersnaam} (${user.rol}) - status: ${user.status}`);
-        
-        // Alleen goedgekeurde gebruikers tellen
-        if (user.status !== 'goedgekeurd') {
-            console.log(`   ⏳ Overslaan: status is ${user.status}`);
-            return;
-        }
-        
+    // Loop door alle gebruikers (alleen goedgekeurde)
+    const goedgekeurdeGebruikers = alleGebruikers.filter(u => u.status === 'goedgekeurd');
+    
+    goedgekeurdeGebruikers.forEach(user => {
         // Admin heeft altijd alle rechten
         if (user.rol === 'admin') {
-            console.log(`   👑 Admin: alle modules`);
             modules.forEach(module => {
                 moduleCounts[module.module_sleutel]++;
             });
             return;
         }
         
-        // Haal de rechten voor deze gebruiker op
         const userRechten = alleRechten.filter(r => r.user_id === user.user_id);
-        console.log(`   📋 Rechten voor ${user.gebruikersnaam}:`, userRechten);
         
-        // Check per module of de gebruiker toegang heeft
         modules.forEach(module => {
             const recht = userRechten.find(r => r.module_sleutel === module.module_sleutel);
             const heeftToegang = recht ? recht.actief : module.standaard_aan;
-            console.log(`   ${module.module_sleutel}: recht=${recht?.actief || 'geen'}, standaard=${module.standaard_aan}, heeftToegang=${heeftToegang}`);
             if (heeftToegang) {
                 moduleCounts[module.module_sleutel]++;
             }
         });
     });
-    
-    console.log('📋 Module counts:', moduleCounts);
     
     let html = `
         <div style="overflow-x: auto;">
@@ -168,7 +121,7 @@ function toonModules(modules) {
                 </tbody>
             </table>
             <div style="margin-top: 10px; font-size: 0.85rem; color: #6c757d;">
-                Totaal: ${modules.length} modules | ${alleGebruikers.filter(u => u.status === 'goedgekeurd').length} actieve gebruikers
+                Totaal: ${modules.length} modules | ${goedgekeurdeGebruikers.length} actieve gebruikers
             </div>
         </div>
     `;
@@ -177,14 +130,13 @@ function toonModules(modules) {
     console.log('✅ Modules weergegeven in tabModules:', modules.length);
 }
 
-// ===== GEBRUIKERS LADEN (MET RECHTEN) =====
+// ===== GEBRUIKERS LADEN =====
 async function laadGebruikersMetRechten() {
     if (!gebruikersModuleLijst) return;
     
     gebruikersModuleLijst.innerHTML = '<p>Bezig met laden...</p>';
     
     try {
-        // Haal alle gebruikers op
         const { data: gebruikers, error: userError } = await supabase
             .from('gebruikers_rollen')
             .select('*')
@@ -192,7 +144,6 @@ async function laadGebruikersMetRechten() {
         
         if (userError) throw userError;
         
-        // Haal alle module rechten op
         const { data: rechten, error: rechtError } = await supabase
             .from('gebruikers_module_rechten')
             .select('*');
@@ -212,7 +163,7 @@ async function laadGebruikersMetRechten() {
     }
 }
 
-// ===== GEBRUIKERS TONEN MET RECHTEN =====
+// ===== GEBRUIKERS TONEN =====
 function toonGebruikersMetRechten(gebruikers) {
     if (!gebruikersModuleLijst) return;
     
@@ -408,12 +359,6 @@ async function saveModuleRights() {
     }
 }
 
-// ===== FILTER RESET =====
-function resetUserFilter() {
-    if (searchModuleUserInput) searchModuleUserInput.value = '';
-    laadGebruikersMetRechten();
-}
-
 // ===== TAB FUNCTIES =====
 function initTabs() {
     console.log('🔄 Tabs initialiseren...');
@@ -461,7 +406,6 @@ function initTabs() {
 }
 
 // ===== INITIALISATIE =====
-
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔄 Modules pagina initialiseren...');
     
@@ -484,7 +428,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     
     if (clearModuleUserSearchBtn) {
-        clearModuleUserSearchBtn.addEventListener('click', resetUserFilter);
+        clearModuleUserSearchBtn.addEventListener('click', () => {
+            searchModuleUserInput.value = '';
+            laadGebruikersMetRechten();
+        });
     }
     
     if (saveModuleRightsBtn) {
