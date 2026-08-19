@@ -4438,16 +4438,22 @@ hr {
     }
 }
 /* ===== NAVIGATIE - MODULES STANDAARD VERBORGEN ===== */
+/* Gebruik geen !important, zodat JavaScript de display kan overschrijven */
 .nav-links .module-link {
-    display: none !important;
+    display: none;
 }
 
 /* Alleen dashboard en profiel zijn altijd zichtbaar */
 .nav-links .always-visible {
-    display: inline-block !important;
+    display: inline-block;
 }
 
-/* Dark mode blijft zoals het was */
+/* Als een module zichtbaar moet zijn, wordt dit door JavaScript toegevoegd */
+.nav-links .module-link.visible {
+    display: inline-block;
+}
+
+/* Dark mode */
 [data-theme="dark"] .nav-links .always-visible {
     color: #d0d0d0;
 }

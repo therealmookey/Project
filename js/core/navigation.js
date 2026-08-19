@@ -138,19 +138,19 @@ export async function filterNavigatieModules() {
         
         console.log(`🔍 ${moduleLinks.length} module links gevonden`);
         
-        // Eerst alle links verbergen
+        // Eerst alle links verbergen (verwijder visible klasse)
         moduleLinks.forEach(link => {
-            link.style.display = 'none';
+            link.classList.remove('visible');
         });
         
-        // Dan per link checken
+        // Dan per link checken of de gebruiker toegang heeft
         for (const link of moduleLinks) {
             const moduleSleutel = link.dataset.module;
             if (!moduleSleutel) continue;
             
             const heeftToegang = await heeftModuleToegang(moduleSleutel);
             if (heeftToegang) {
-                link.style.display = 'inline-block';
+                link.classList.add('visible');
                 console.log(`✅ Module zichtbaar: ${moduleSleutel}`);
             } else {
                 console.log(`🔒 Module verborgen: ${moduleSleutel}`);
