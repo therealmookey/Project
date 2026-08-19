@@ -229,7 +229,20 @@
                 setStatus(gpsStatusEl, '❌ Niet beschikbaar', 'red');
             }
         }
-
+// Voeg dit toe aan tracker-status.html om live updates te zien
+setInterval(async () => {
+    const { data } = await supabase
+        .from('locations_test')
+        .select('*')
+        .eq('driver_id', 'Tablet')
+        .order('last_updated', { ascending: false })
+        .limit(1);
+    
+    if (data && data.length > 0) {
+        console.log('📩 Laatste update:', data[0].last_updated);
+        console.log('📍 Locatie:', data[0].latitude, data[0].longitude);
+    }
+}, 5000);
         // ============================================================
         // START - Automatisch laden
         // ============================================================
