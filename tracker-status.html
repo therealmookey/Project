@@ -23,7 +23,8 @@
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        h1 { color: #333; font-size: 20px; margin-bottom: 20px; text-align: center; }
+        h1 { color: #333; font-size: 20px; margin-bottom: 5px; text-align: center; }
+        .subtitle { text-align: center; color: #999; font-size: 13px; margin-bottom: 20px; }
         .status-item {
             display: flex;
             justify-content: space-between;
@@ -35,6 +36,7 @@
         .status-value.green { color: #4CAF50; }
         .status-value.red { color: #f44336; }
         .status-value.orange { color: #ff9800; }
+        .status-value.blue { color: #2196F3; }
         .btn-row {
             display: flex;
             gap: 10px;
@@ -67,54 +69,118 @@
             text-align: center;
             border-left: 4px solid #ffc107;
         }
-        .driver-id-input {
+        .driver-selector {
             display: flex;
             gap: 10px;
             margin-bottom: 15px;
+            align-items: center;
+            flex-wrap: wrap;
         }
-        .driver-id-input input {
+        .driver-selector select {
             flex: 1;
             padding: 10px;
             border: 2px solid #ddd;
             border-radius: 8px;
             font-size: 16px;
+            background: white;
+            min-width: 150px;
         }
-        .driver-id-input input:focus {
+        .driver-selector select:focus {
             outline: none;
             border-color: #2196F3;
         }
-        .driver-id-input button {
+        .driver-selector .btn-refresh-drivers {
             padding: 10px 20px;
-            background: #2196F3;
+            background: #6c757d;
             color: white;
             border: none;
             border-radius: 8px;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
         }
-        .driver-id-input button:hover {
-            background: #1976D2;
+        .driver-selector .btn-refresh-drivers:hover {
+            background: #5a6268;
+        }
+        .driver-count {
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .status-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        .status-box.active {
+            background: #e8f5e9;
+            border: 2px solid #4CAF50;
+        }
+        .status-box.inactive {
+            background: #f5f5f5;
+            border: 2px solid #e0e0e0;
+        }
+        .status-box .driver-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+        }
+        .status-box .driver-status {
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .status-box .driver-location {
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-active { background: #4CAF50; color: white; }
+        .badge-inactive { background: #999; color: white; }
+        .badge-warning { background: #ff9800; color: white; }
+        .no-drivers {
+            text-align: center;
+            color: #999;
+            padding: 20px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📡 Tracker Status</h1>
+        <p class="subtitle">Overzicht van alle actieve chauffeurs</p>
 
-        <!-- Driver ID selector -->
-        <div class="driver-id-input">
-            <input type="text" id="driverIdInput" placeholder="Chauffeur ID (bijv. tablet-01)" value="">
-            <button id="setDriverBtn">🔍 Zoek</button>
+        <!-- Driver selector -->
+        <div class="driver-selector">
+            <select id="driverSelect">
+                <option value="">-- Kies een chauffeur --</option>
+            </select>
+            <button class="btn-refresh-drivers" onclick="loadActiveDrivers()">🔄 Ververs lijst</button>
         </div>
 
-        <div class="status-item">
-            <span class="status-label">Chauffeur ID</span>
-            <span class="status-value" id="driverIdDisplay">-</span>
+        <div class="driver-count" id="driverCount">Geen chauffeurs actief</div>
+
+        <!-- Status display -->
+        <div class="status-box" id="statusBox">
+            <div class="driver-name" id="driverName">Selecteer een chauffeur</div>
+            <div class="driver-status" id="driverStatus">
+                <span class="badge badge-inactive">Inactief</span>
+            </div>
+            <div class="driver-location" id="driverLocation">📍 Wacht op locatie...</div>
+            <div class="driver-location" id="driverLastUpdate" style="font-size:11px;color:#999;margin-top:5px;">Laatste update: -</div>
         </div>
 
+        <!-- Status items -->
         <div class="status-item">
             <span class="status-label">Tracking status</span>
-            <span class="status-value" id="trackingStatus">Onbekend</span>
+            <span class="status-value" id="trackingStatus">-</span>
         </div>
 
         <div class="status-item">
@@ -128,17 +194,12 @@
         </div>
 
         <div class="status-item">
-            <span class="status-label">Aantal updates</span>
-            <span class="status-value" id="updateCount">-</span>
-        </div>
-
-        <div class="status-item">
             <span class="status-label">Database verbinding</span>
             <span class="status-value" id="dbStatus">Controleren...</span>
         </div>
 
         <div class="btn-row">
-            <button class="btn btn-refresh" onclick="loadStatus()">🔄 Ververs</button>
+            <button class="btn btn-refresh" onclick="loadCurrentDriver()">🔄 Ververs status</button>
             <button class="btn btn-start" onclick="sendCommand('start')">▶ Start</button>
             <button class="btn btn-stop" onclick="sendCommand('stop')">⏹ Stop</button>
         </div>
@@ -146,7 +207,7 @@
         <div class="last-update" id="lastRefresh">Laatst ververst: -</div>
 
         <div class="note">
-            💡 Commando's worden via de database naar de tracker gestuurd.
+            💡 Commando's worden via de database naar de geselecteerde chauffeur gestuurd.
         </div>
     </div>
 
@@ -159,7 +220,6 @@
         const SUPABASE_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
         const TABLE_NAME = 'locations_test';
         const COMMAND_TABLE = 'tracker_commands';
-        const STORAGE_KEY = 'tracker_driver_id';
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -167,17 +227,22 @@
         // STATE
         // ============================================================
         let currentDriverId = '';
+        let activeDrivers = [];
+        let selectedDriverData = null;
 
         // ============================================================
         // DOM ELEMENTEN
         // ============================================================
-        const driverIdInput = document.getElementById('driverIdInput');
-        const setDriverBtn = document.getElementById('setDriverBtn');
-        const driverIdDisplay = document.getElementById('driverIdDisplay');
+        const driverSelect = document.getElementById('driverSelect');
+        const driverCount = document.getElementById('driverCount');
+        const statusBox = document.getElementById('statusBox');
+        const driverName = document.getElementById('driverName');
+        const driverStatus = document.getElementById('driverStatus');
+        const driverLocation = document.getElementById('driverLocation');
+        const driverLastUpdate = document.getElementById('driverLastUpdate');
         const trackingStatus = document.getElementById('trackingStatus');
         const lastLocation = document.getElementById('lastLocation');
         const lastUpdate = document.getElementById('lastUpdate');
-        const updateCount = document.getElementById('updateCount');
         const dbStatus = document.getElementById('dbStatus');
         const lastRefresh = document.getElementById('lastRefresh');
 
@@ -198,31 +263,143 @@
             });
         }
 
-        function loadSavedDriver() {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                driverIdInput.value = saved;
-                currentDriverId = saved;
-                driverIdDisplay.textContent = saved;
-                loadStatus();
-            }
-        }
-
-        async function loadStatus() {
-            if (!currentDriverId) {
-                setStatus(driverIdDisplay, 'Geen ID ingesteld', 'orange');
+        function updateStatusBox(driver, active) {
+            if (!driver) {
+                statusBox.className = 'status-box';
+                driverName.textContent = 'Selecteer een chauffeur';
+                driverStatus.innerHTML = '<span class="badge badge-inactive">Inactief</span>';
+                driverLocation.textContent = '📍 Wacht op locatie...';
+                driverLastUpdate.textContent = 'Laatste update: -';
                 return;
             }
 
-            console.log(`🔄 Status laden voor: ${currentDriverId}`);
-            lastRefresh.textContent = 'Laatst ververst: ' + new Date().toLocaleTimeString('nl-NL');
-            driverIdDisplay.textContent = currentDriverId;
+            statusBox.className = 'status-box ' + (active ? 'active' : 'inactive');
+            driverName.textContent = driver.driver_id;
+
+            if (active) {
+                driverStatus.innerHTML = '<span class="badge badge-active">✅ Actief</span>';
+            } else {
+                driverStatus.innerHTML = '<span class="badge badge-inactive">⏸️ Inactief</span>';
+            }
+
+            if (driver.latitude && driver.longitude) {
+                driverLocation.textContent = `📍 ${driver.latitude.toFixed(6)}, ${driver.longitude.toFixed(6)}`;
+            } else {
+                driverLocation.textContent = '📍 Geen locatie';
+            }
+
+            if (driver.last_updated) {
+                const lastUpdateTime = new Date(driver.last_updated);
+                const secondsAgo = Math.floor((Date.now() - lastUpdateTime.getTime()) / 1000);
+                driverLastUpdate.textContent = `Laatste update: ${formatDate(driver.last_updated)} (${secondsAgo}s geleden)`;
+            } else {
+                driverLastUpdate.textContent = 'Laatste update: -';
+            }
+        }
+
+        async function loadActiveDrivers() {
+            console.log('🔄 Actieve chauffeurs laden...');
+
+            try {
+                // Haal alle locaties op, groepeer per driver (laatste update per driver)
+                const { data, error } = await supabaseClient
+                    .from(TABLE_NAME)
+                    .select('*')
+                    .order('last_updated', { ascending: false });
+
+                if (error) {
+                    console.error('❌ Fout bij laden:', error);
+                    return;
+                }
+
+                // Groepeer per driver (alleen de laatste update per driver)
+                const driverMap = {};
+                data.forEach(row => {
+                    if (!driverMap[row.driver_id] ||
+                        new Date(row.last_updated) > new Date(driverMap[row.driver_id].last_updated)) {
+                        driverMap[row.driver_id] = row;
+                    }
+                });
+
+                activeDrivers = Object.values(driverMap);
+
+                // Check welke drivers actief zijn (update < 30 seconden)
+                const now = Date.now();
+                activeDrivers.forEach(driver => {
+                    const lastUpdateTime = new Date(driver.last_updated).getTime();
+                    driver.isActive = (now - lastUpdateTime) < 30000;
+                });
+
+                // Sorteer: actief eerst, dan op naam
+                activeDrivers.sort((a, b) => {
+                    if (a.isActive && !b.isActive) return -1;
+                    if (!a.isActive && b.isActive) return 1;
+                    return a.driver_id.localeCompare(b.driver_id);
+                });
+
+                // Update dropdown
+                const currentValue = driverSelect.value;
+                driverSelect.innerHTML = '<option value="">-- Kies een chauffeur --</option>';
+
+                activeDrivers.forEach(driver => {
+                    const option = document.createElement('option');
+                    option.value = driver.driver_id;
+                    const status = driver.isActive ? '🟢' : '🔴';
+                    const lastTime = new Date(driver.last_updated).toLocaleTimeString('nl-NL');
+                    option.textContent = `${status} ${driver.driver_id} (${lastTime})`;
+                    driverSelect.appendChild(option);
+                });
+
+                // Herstel selectie als die nog bestond
+                if (currentValue && activeDrivers.some(d => d.driver_id === currentValue)) {
+                    driverSelect.value = currentValue;
+                }
+
+                // Update count
+                const activeCount = activeDrivers.filter(d => d.isActive).length;
+                driverCount.textContent = `${activeDrivers.length} chauffeurs (${activeCount} actief)`;
+
+                console.log(`✅ ${activeDrivers.length} chauffeurs geladen`);
+
+                // Als er een driver geselecteerd is, laad de status
+                if (driverSelect.value) {
+                    loadCurrentDriver();
+                } else if (activeDrivers.length > 0) {
+                    // Selecteer de eerste actieve driver
+                    const firstActive = activeDrivers.find(d => d.isActive);
+                    if (firstActive) {
+                        driverSelect.value = firstActive.driver_id;
+                        loadCurrentDriver();
+                    }
+                }
+
+                lastRefresh.textContent = 'Laatst ververst: ' + new Date().toLocaleTimeString('nl-NL');
+
+            } catch (err) {
+                console.error('❌ Fout:', err);
+            }
+        }
+
+        async function loadCurrentDriver() {
+            const driverId = driverSelect.value;
+            if (!driverId) {
+                currentDriverId = '';
+                selectedDriverData = null;
+                updateStatusBox(null, false);
+                setStatus(trackingStatus, '-', '');
+                setStatus(lastLocation, '-', '');
+                setStatus(lastUpdate, '-', '');
+                return;
+            }
+
+            currentDriverId = driverId;
+            console.log(`🔍 Status laden voor: ${driverId}`);
 
             try {
                 const { data, error } = await supabaseClient
                     .from(TABLE_NAME)
                     .select('*')
-                    .eq('driver_id', currentDriverId)
+                    .eq('driver_id', driverId)
                     .order('last_updated', { ascending: false })
                     .limit(1);
 
@@ -233,26 +410,39 @@
 
                 if (data && data.length > 0) {
                     const row = data[0];
+                    selectedDriverData = row;
                     setStatus(dbStatus, '✅ Verbonden', 'green');
-                    lastLocation.textContent = `${row.latitude.toFixed(6)}, ${row.longitude.toFixed(6)}`;
-                    lastUpdate.textContent = formatDate(row.last_updated);
 
-                    const lastUpdateTime = new Date(row.last_updated);
-                    const secondsAgo = Math.floor((Date.now() - lastUpdateTime.getTime()) / 1000);
+                    const now = Date.now();
+                    const lastUpdateTime = new Date(row.last_updated).getTime();
+                    const isActive = (now - lastUpdateTime) < 30000;
 
-                    if (secondsAgo < 30) {
-                        setStatus(trackingStatus, `✅ Actief (${secondsAgo}s geleden)`, 'green');
-                    } else if (secondsAgo < 120) {
-                        setStatus(trackingStatus, `⚠️ Twijfelachtig (${secondsAgo}s geleden)`, 'orange');
+                    updateStatusBox(row, isActive);
+
+                    if (row.latitude && row.longitude) {
+                        setStatus(lastLocation, `${row.latitude.toFixed(6)}, ${row.longitude.toFixed(6)}`, 'blue');
                     } else {
-                        setStatus(trackingStatus, `❌ Inactief (${secondsAgo}s geleden)`, 'red');
+                        setStatus(lastLocation, '-', '');
                     }
+                    setStatus(lastUpdate, formatDate(row.last_updated), '');
+
+                    if (isActive) {
+                        setStatus(trackingStatus, '✅ Actief', 'green');
+                    } else {
+                        const secondsAgo = Math.floor((now - lastUpdateTime) / 1000);
+                        setStatus(trackingStatus, `⚠️ Inactief (${secondsAgo}s geleden)`, 'orange');
+                    }
+
                 } else {
                     setStatus(dbStatus, '⚠️ Geen locatie gevonden', 'orange');
                     setStatus(trackingStatus, '❌ Geen data', 'red');
-                    lastLocation.textContent = '-';
-                    lastUpdate.textContent = '-';
+                    setStatus(lastLocation, '-', '');
+                    setStatus(lastUpdate, '-', '');
+                    updateStatusBox(null, false);
                 }
+
+                lastRefresh.textContent = 'Laatst ververst: ' + new Date().toLocaleTimeString('nl-NL');
+
             } catch (err) {
                 setStatus(dbStatus, '❌ Fout: ' + err.message, 'red');
             }
@@ -260,7 +450,7 @@
 
         async function sendCommand(command) {
             if (!currentDriverId) {
-                alert('⚠️ Voer eerst een chauffeur ID in!');
+                alert('⚠️ Selecteer eerst een chauffeur!');
                 return;
             }
 
@@ -275,47 +465,31 @@
                 if (error) {
                     alert('❌ Fout bij ' + command + ': ' + error.message);
                 } else {
-                    alert('✅ ' + (command === 'start' ? 'Start' : 'Stop') + ' commando verzonden!');
-                    loadStatus();
+                    alert('✅ ' + (command === 'start' ? 'Start' : 'Stop') + ' commando verzonden naar ' + currentDriverId);
+                    setTimeout(() => loadCurrentDriver(), 1000);
                 }
             } catch (err) {
                 alert('❌ Fout: ' + err.message);
             }
         }
 
-        function setDriver() {
-            const id = driverIdInput.value.trim();
-            if (!id) {
-                alert('⚠️ Vul een chauffeur ID in!');
-                return;
-            }
-            currentDriverId = id;
-            localStorage.setItem(STORAGE_KEY, id);
-            driverIdDisplay.textContent = id;
-            loadStatus();
-        }
-
         // ============================================================
         // EVENT LISTENERS
         // ============================================================
-        setDriverBtn.addEventListener('click', setDriver);
-        driverIdInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                setDriver();
-            }
-        });
+        driverSelect.addEventListener('change', loadCurrentDriver);
 
         // ============================================================
         // START
         // ============================================================
         console.log('📡 Tracker status pagina geladen');
 
-        // Laad opgeslagen ID
-        loadSavedDriver();
+        // Laad actieve chauffeurs
+        loadActiveDrivers();
 
         // Auto-refresh elke 15 seconden
-        setInterval(loadStatus, 15000);
+        setInterval(() => {
+            loadActiveDrivers();
+        }, 15000);
     </script>
 </body>
 </html>
