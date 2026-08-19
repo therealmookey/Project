@@ -461,7 +461,7 @@ function startAutoCleanup() {
                 removed = true;
             }
         });
-    }, 60000); // Check elke minuut
+    }, 60000);
 }
 
 // ===== CENTREER FUNCTIES =====
@@ -497,6 +497,44 @@ function restartRealtime() {
         showToast('✅ Realtime verbinding herstart', 'success');
     }, 1000);
 }
+
+// ============================================================
+// EXPORTS
+// ============================================================
+export {
+    initMap,
+    laadBestaandeLocaties,
+    laadBestemmingen,
+    forceRefresh,
+    restartRealtime,
+    centerOnAllDrivers,
+    updateMarker,
+    removeMarker,
+    markers,
+    driverInfo,
+    channel,
+    map
+};
+
+// Maak ook globaal beschikbaar voor console debugging
+window.trackerDashboard = {
+    initMap,
+    laadBestaandeLocaties,
+    laadBestemmingen,
+    forceRefresh,
+    restartRealtime,
+    centerOnAllDrivers,
+    updateMarker,
+    removeMarker,
+    getDriverInfo: () => ({ ...driverInfo }),
+    getDriverCount: () => Object.keys(driverInfo).length,
+    markers,
+    driverInfo,
+    channel,
+    map
+};
+
+console.log('✅ Tracker dashboard exports beschikbaar');
 
 // ===== INITIALISATIE =====
 
