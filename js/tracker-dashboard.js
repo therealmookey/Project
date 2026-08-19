@@ -28,6 +28,7 @@ const trackerCount = document.getElementById('trackerCount');
 const trackerStatus = document.getElementById('trackerStatus');
 const centerAllBtn = document.getElementById('centerAllBtn');
 const refreshBtn = document.getElementById('refreshTrackerBtn');
+const restartRealtimeBtn = document.getElementById('restartRealtimeBtn');
 const driversUl = document.getElementById('trackerDriversUl');
 
 console.log('✅ DOM elementen gevonden');
@@ -42,13 +43,11 @@ function initMap() {
 
     map = L.map('trackerMap').setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
-    // Standaard OpenStreetMap kaart
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Custom marker voor chauffeurs
     const customIcon = L.divIcon({
         className: 'tracker-marker',
         html: `<div style="
@@ -119,13 +118,11 @@ async function laadBestemmingen() {
 }
 
 function tekenBestemmingen(planningen) {
-    // Verwijder oude bestemmingsmarkers
     destinationMarkers.forEach(marker => {
         if (map) map.removeLayer(marker);
     });
     destinationMarkers = [];
 
-    // Icoon voor bestemmingen (groene vlag)
     const destinationIcon = L.divIcon({
         className: 'destination-marker',
         html: `<div style="
@@ -171,7 +168,7 @@ function tekenBestemmingen(planningen) {
     console.log(`✅ ${destinationMarkers.length} bestemmingsmarkers getekend`);
 }
 
-// ===== MARKER FUNCTIES VOOR CHAUFFEURS =====
+// ===== MARKER FUNCTIES =====
 function updateMarker(driverId, lat, lng, name = null) {
     if (!map) return;
 
@@ -327,7 +324,6 @@ async function forceRefresh() {
     markers = {};
     driverInfo = {};
 
-    // Verwijder ook bestemmingsmarkers
     destinationMarkers.forEach(marker => {
         if (map) map.removeLayer(marker);
     });
@@ -400,8 +396,9 @@ async function laadBestaandeLocaties() {
 // ===== REALTIME LISTENER =====
 function startRealtimeListener() {
     if (channel) {
-        console.log('⚠️ Realtime listener bestaat al');
-        return;
+        console.log('⚠️ Realtime listener bestaat al, wordt vervangen');
+        channel.unsubscribe();
+        channel = null;
     }
 
     console.log('📡 Verbinden met Supabase Realtime...');
@@ -488,7 +485,18 @@ function centerOnAllDrivers() {
     map.setView(center, 12);
 }
 
+// ===== HERRSTART REALTIME =====
+function restartRealtime() {
+    console.log('🔄 Realtime herstarten...');
+    showToast('🔄 Realtime verbinding wordt herstart...', 'info');
+    startRealtimeListener();
+    setTimeout(() => {
+        showToast('✅ Realtime verbinding herstart', 'success');
+    }, 1000);
+}
+
 // ===== INITIALISATIE =====
+
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔄 Tracker dashboard initialiseren...');
 
@@ -499,28 +507,22 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     console.log('✅ Ingelogd als:', auth.user?.email);
 
-    // 1. Kaart initialiseren
     initMap();
-
-    // 2. Bestaande chauffeurs laden
     await laadBestaandeLocaties();
-
-    // 3. Bestemmingen laden (planning van vandaag)
     await laadBestemmingen();
-
-    // 4. Realtime listener starten
     startRealtimeListener();
-
-    // 5. Auto cleanup starten (verwijder oude chauffeurs)
     startAutoCleanup();
 
-    // 6. Event listeners voor knoppen
     if (centerAllBtn) {
         centerAllBtn.addEventListener('click', centerOnAllDrivers);
     }
 
     if (refreshBtn) {
         refreshBtn.addEventListener('click', forceRefresh);
+    }
+
+    if (restartRealtimeBtn) {
+        restartRealtimeBtn.addEventListener('click', restartRealtime);
     }
 
     console.log('✅ Tracker dashboard geïnitialiseerd!');
