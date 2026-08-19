@@ -70,8 +70,9 @@
         const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
         const TABLE_NAME = 'locations_test';
+        const COMMAND_TABLE = 'tracker_commands';
         const DRIVER_ID = 'Tablet';
-        const HEARTBEAT_INTERVAL = 5000; // 5 seconden
+        const HEARTBEAT_INTERVAL = 5000;
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -157,7 +158,7 @@
                 return;
             }
 
-            console.log('📍 Tracking gestart (stil)');
+            console.log('📍 Tracking gestart');
             isTracking = true;
             updateStatus(true);
             updateCount = 0;
@@ -167,23 +168,10 @@
                     const { latitude, longitude } = position.coords;
                     lastLocation = { latitude, longitude };
                     updateCount++;
-                    
-                    const success = await sendLocation(latitude, longitude);
-                    if (success) {
-                        console.log('📍 Update #' + updateCount);
-                    }
+                    await sendLocation(latitude, longitude);
                 },
                 (error) => {
                     console.warn('⚠️ GPS error:', error.message);
-                    if (error.code === 3) {
-                        navigator.geolocation.getCurrentPosition(
-                            (pos) => {
-                                sendLocation(pos.coords.latitude, pos.coords.longitude);
-                            },
-                            () => {},
-                            { enableHighAccuracy: false, timeout: 5000 }
-                        );
-                    }
                 },
                 {
                     enableHighAccuracy: false,
@@ -192,21 +180,11 @@
                 }
             );
 
-            // Heartbeat - elke 5 seconden
             if (intervalId) clearInterval(intervalId);
             intervalId = setInterval(async () => {
-                if (!isTracking) return;
-                if (!lastLocation) return;
-
-                try {
-                    const { latitude, longitude } = lastLocation;
-                    const success = await sendLocation(latitude, longitude);
-                    if (success) {
-                        console.log('💓 Heartbeat');
-                    }
-                } catch (err) {
-                    console.warn('⚠️ Heartbeat failed:', err.message);
-                }
+                if (!isTracking || !lastLocation) return;
+                const { latitude, longitude } = lastLocation;
+                await sendLocation(latitude, longitude);
             }, HEARTBEAT_INTERVAL);
         }
 
@@ -226,46 +204,67 @@
                 intervalId = null;
             }
 
-            try {
-                supabaseClient
-                    .from(TABLE_NAME)
-                    .delete()
-                    .eq('driver_id', DRIVER_ID)
-                    .then(() => console.log('🗑️ Locatie verwijderd'))
-                    .catch(() => {});
-            } catch (err) {}
+            supabaseClient
+                .from(TABLE_NAME)
+                .delete()
+                .eq('driver_id', DRIVER_ID)
+                .then(() => console.log('🗑️ Locatie verwijderd'))
+                .catch(() => {});
         }
 
         // ============================================================
-        // MAAK TRACKER BESCHIKBAAR VOOR ANDERE PAGINA'S
+        // LUISTER NAAR COMMANDO'S VIA DATABASE
         // ============================================================
-        window.tracker = {
-            start: startTracking,
-            stop: stopTracking,
-            status: () => isTracking ? 'Actief' : 'Inactief',
-            count: () => updateCount,
-            lastLocation: lastLocation
-        };
+        async function checkCommands() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from(COMMAND_TABLE)
+                    .select('*')
+                    .eq('driver_id', DRIVER_ID)
+                    .eq('executed', false)
+                    .order('created_at', { ascending: true })
+                    .limit(1);
+
+                if (error) {
+                    console.warn('⚠️ Commando check error:', error.message);
+                    return;
+                }
+
+                if (data && data.length > 0) {
+                    const command = data[0];
+                    console.log('📩 Commando ontvangen:', command.command);
+
+                    if (command.command === 'start') {
+                        startTracking();
+                    } else if (command.command === 'stop') {
+                        stopTracking();
+                    }
+
+                    await supabaseClient
+                        .from(COMMAND_TABLE)
+                        .update({ executed: true })
+                        .eq('id', command.id);
+                }
+            } catch (err) {
+                console.warn('⚠️ Commando check exception:', err.message);
+            }
+        }
 
         // ============================================================
         // START
         // ============================================================
-        console.log('✅ Tracker geladen (stille modus)');
+        console.log('✅ Tracker geladen');
 
-        setTimeout(() => {
-            startTracking();
-        }, 1000);
+        // Start tracking direct
+        setTimeout(() => startTracking(), 1000);
+
+        // Check commando's elke 5 seconden
+        setInterval(checkCommands, 5000);
 
         window.addEventListener('beforeunload', function() {
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-            }
-            if (intervalId) {
-                clearInterval(intervalId);
-            }
+            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+            if (intervalId) clearInterval(intervalId);
         });
-
-        console.log('✅ Tracker module beschikbaar via window.tracker');
     </script>
 </body>
 </html>
