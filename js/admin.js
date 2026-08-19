@@ -359,23 +359,82 @@ async function bewerkGebruiker(userId) {
     }
 }
 
-// ===== GEBRUIKER VERWIJDEREN =====
+// ===== GEBRUIKER VERWIJDEREN (VIA DELETE-USER EDGE FUNCTION) =====
 async function verwijderGebruiker(userId) {
-    if (!confirm('Weet je zeker dat je deze gebruiker volledig wilt verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+    // Controleer of gebruiker zichzelf niet kan verwijderen
+    const { data: { user } } = await supabase.auth.getUser();
+    if (userId === user.id) {
+        showToast('Je kunt jezelf niet verwijderen!', 'error');
+        return;
+    }
+    
+    // Vraag bevestiging met extra waarschuwing
+    if (!confirm('⚠️ Weet je zeker dat je deze gebruiker volledig wilt verwijderen?\n\nDit verwijdert:\n- De gebruiker uit auth.users\n- Alle rollen en rechten\n- Dit kan niet ongedaan worden gemaakt!')) return;
     
     try {
-        const result = await callAdminAction('delete', { user_id: userId });
-        if (result.success) {
-            showToast('✅ Gebruiker volledig verwijderd!', 'success');
+        showToast('🔄 Bezig met verwijderen...', 'info');
+        
+        // === STAP 1: Verwijder module rechten ===
+        const { error: rechtError } = await supabase
+            .from('gebruikers_module_rechten')
+            .delete()
+            .eq('user_id', userId);
+        
+        if (rechtError) {
+            console.warn('⚠️ Kon rechten niet verwijderen:', rechtError);
         } else {
-            showToast('⚠️ ' + (result.warning || 'Gebruiker gedeeltelijk verwijderd.'), 'warning');
+            console.log('✅ Module rechten verwijderd');
         }
+        
+        // === STAP 2: Verwijder gebruiker uit gebruikers_rollen ===
+        const { error: rolError } = await supabase
+            .from('gebruikers_rollen')
+            .delete()
+            .eq('user_id', userId);
+        
+        if (rolError) {
+            throw new Error('Fout bij verwijderen rollen: ' + rolError.message);
+        }
+        
+        console.log('✅ Gebruiker verwijderd uit gebruikers_rollen');
+        
+        // === STAP 3: Verwijder uit auth.users via de Edge Function ===
+        const { data: { session } } = await supabase.auth.getSession();
+        const token = session?.access_token;
+        
+        if (!token) {
+            throw new Error('Je bent niet ingelogd. Log opnieuw in.');
+        }
+        
+        const response = await fetch(
+            'https://jcdqcgviossmrvlgsiqd.supabase.co/functions/v1/delete-user',
+            {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ user_id: userId })
+            }
+        );
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.error || 'Fout bij verwijderen uit auth');
+        }
+        
+        console.log('✅ Gebruiker verwijderd uit auth.users:', result);
+        
+        // === STAP 4: Herlaad de lijsten ===
+        showToast('✅ Gebruiker volledig verwijderd!', 'success');
         laadGebruikers();
         laadChauffeurs();
         laadStatistieken();
+        
     } catch (err) {
         console.error('Fout bij verwijderen:', err);
-        showToast('Fout bij verwijderen: ' + err.message, 'error');
+        showToast('❌ Fout bij verwijderen: ' + err.message, 'error');
     }
 }
 
