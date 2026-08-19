@@ -1,0 +1,361 @@
+// ============================================================
+// TRACKER DASHBOARD - Chauffeurs volgen (tracker-dashboard.html)
+// ============================================================
+
+console.log('🚀 tracker-dashboard.js wordt geladen...');
+
+import { requireAuth } from './core/auth.js';
+import { showToast, escapeHtml } from './core/utils.js';
+import { supabase } from './core/supabase.js';
+
+console.log('✅ Imports geladen!');
+
+// ===== STATE =====
+let map = null;
+let markers = {};
+let driverInfo = {};
+let channel = null;
+let isInitialized = false;
+
+// ===== CONSTANTEN =====
+const TABLE_NAME = 'locations_test';
+const DEFAULT_CENTER = [51.0, 4.0];
+const DEFAULT_ZOOM = 12;
+
+// ===== DOM ELEMENTEN =====
+const trackerCount = document.getElementById('trackerCount');
+const trackerStatus = document.getElementById('trackerStatus');
+const centerAllBtn = document.getElementById('centerAllBtn');
+const refreshBtn = document.getElementById('refreshTrackerBtn');
+const driversUl = document.getElementById('trackerDriversUl');
+
+console.log('✅ DOM elementen gevonden');
+
+// ===== KAART INITIALISATIE =====
+function initMap() {
+    const container = document.getElementById('trackerMap');
+    if (!container) {
+        console.error('❌ Kaart container niet gevonden');
+        return;
+    }
+
+    map = L.map('trackerMap').setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // Custom marker
+    const customIcon = L.divIcon({
+        className: 'tracker-marker',
+        html: `<div style="
+            width: 28px;
+            height: 28px;
+            background: #2196F3;
+            border: 3px solid white;
+            border-radius: 50% 50% 50% 0;
+            transform: rotate(-45deg);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        ">
+            <span style="
+                transform: rotate(45deg);
+                color: white;
+                font-size: 12px;
+            ">●</span>
+        </div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -28]
+    });
+
+    map._customIcon = customIcon;
+
+    // Kaart resize fix na laden
+    setTimeout(() => {
+        if (map) map.invalidateSize();
+    }, 500);
+
+    console.log('✅ Kaart geïnitialiseerd');
+    return map;
+}
+
+// ===== MARKER FUNCTIES =====
+function updateMarker(driverId, lat, lng, name = null) {
+    if (!map) return;
+
+    const icon = map._customIcon || L.marker();
+
+    if (markers[driverId]) {
+        markers[driverId].setLatLng([lat, lng]);
+    } else {
+        const marker = L.marker([lat, lng], { icon: icon })
+            .addTo(map)
+            .bindPopup(`
+                <b>${escapeHtml(name || driverId)}</b><br>
+                📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
+                🕐 ${new Date().toLocaleTimeString('nl-NL')}
+            `);
+        markers[driverId] = marker;
+    }
+
+    driverInfo[driverId] = {
+        name: name || driverId,
+        lat: lat,
+        lng: lng,
+        time: new Date().toLocaleTimeString('nl-NL'),
+        timestamp: Date.now()
+    };
+
+    updateDriverList();
+    updateCount();
+}
+
+function removeMarker(driverId) {
+    if (markers[driverId]) {
+        map.removeLayer(markers[driverId]);
+        delete markers[driverId];
+    }
+    delete driverInfo[driverId];
+    updateDriverList();
+    updateCount();
+}
+
+// ===== UI UPDATE FUNCTIES =====
+function updateCount() {
+    const count = Object.keys(driverInfo).length;
+    if (trackerCount) {
+        trackerCount.textContent = `${count} chauffeur${count !== 1 ? 's' : ''}`;
+    }
+}
+
+function updateDriverList() {
+    if (!driversUl) return;
+
+    const driverIds = Object.keys(driverInfo);
+
+    if (driverIds.length === 0) {
+        driversUl.innerHTML = '<li class="empty-message">Geen chauffeurs actief</li>';
+        return;
+    }
+
+    driversUl.innerHTML = driverIds.map(id => {
+        const info = driverInfo[id];
+        return `
+            <li>
+                <span class="driver-dot"></span>
+                <span class="driver-name">${escapeHtml(info.name)}</span>
+                <span class="driver-time">${info.time || ''}</span>
+            </li>
+        `;
+    }).join('');
+}
+
+function updateStatus(status, message) {
+    if (!trackerStatus) return;
+    trackerStatus.textContent = message || status;
+    trackerStatus.className = 'badge';
+
+    if (status === 'connected') {
+        trackerStatus.classList.add('badge-success');
+    } else if (status === 'connecting') {
+        trackerStatus.classList.add('badge-warning');
+    } else if (status === 'error') {
+        trackerStatus.classList.add('badge-danger');
+    }
+}
+
+// ===== DATA LADEN =====
+async function laadBestaandeLocaties() {
+    try {
+        console.log('📥 Bestaande locaties laden...');
+        updateStatus('connecting', '🔄 Laden...');
+
+        const { data, error } = await supabase
+            .from(TABLE_NAME)
+            .select('*')
+            .order('last_updated', { ascending: false });
+
+        if (error) {
+            console.error('❌ Fout bij laden:', error);
+            updateStatus('error', '❌ Fout bij laden');
+            return;
+        }
+
+        // Verwijder alle bestaande markers
+        Object.keys(markers).forEach(id => removeMarker(id));
+
+        if (data && data.length > 0) {
+            const latestByDriver = {};
+            data.forEach(row => {
+                const id = row.driver_id;
+                if (!latestByDriver[id] ||
+                    new Date(row.last_updated) > new Date(latestByDriver[id].last_updated)) {
+                    latestByDriver[id] = row;
+                }
+            });
+
+            let first = null;
+            Object.values(latestByDriver).forEach(row => {
+                if (row.latitude && row.longitude) {
+                    updateMarker(
+                        row.driver_id,
+                        row.latitude,
+                        row.longitude,
+                        row.driver_name
+                    );
+                    if (!first) first = row;
+                }
+            });
+
+            if (first && map) {
+                map.setView([first.latitude, first.longitude], 13);
+            }
+
+            console.log(`✅ ${Object.keys(latestByDriver).length} chauffeurs geladen`);
+            updateStatus('connected', '✅ Verbonden');
+        } else {
+            console.log('📭 Geen bestaande locaties gevonden');
+            updateStatus('connected', '✅ Verbonden (geen chauffeurs)');
+        }
+    } catch (err) {
+        console.error('❌ Fout bij laden:', err);
+        updateStatus('error', '❌ Fout: ' + err.message);
+    }
+}
+
+// ===== REALTIME LISTENER =====
+function startRealtimeListener() {
+    if (channel) {
+        console.log('⚠️ Realtime listener bestaat al');
+        return;
+    }
+
+    console.log('📡 Verbinden met Supabase Realtime...');
+    updateStatus('connecting', '🔄 Verbinden...');
+
+    channel = supabase
+        .channel('locations_test_changes')
+        .on(
+            'postgres_changes',
+            {
+                event: '*',
+                schema: 'public',
+                table: TABLE_NAME
+            },
+            (payload) => {
+                console.log('📩 Event ontvangen:', payload.eventType);
+
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    const data = payload.new;
+                    if (data && data.latitude && data.longitude) {
+                        updateMarker(
+                            data.driver_id,
+                            data.latitude,
+                            data.longitude,
+                            data.driver_name
+                        );
+                    }
+                } else if (payload.eventType === 'DELETE') {
+                    const data = payload.old;
+                    if (data && data.driver_id) {
+                        removeMarker(data.driver_id);
+                    }
+                }
+            }
+        )
+        .subscribe((status) => {
+            console.log('🔗 Realtime status:', status);
+            if (status === 'SUBSCRIBED') {
+                updateStatus('connected', '✅ Verbonden');
+            } else if (status === 'CHANNEL_ERROR') {
+                updateStatus('error', '❌ Verbindingsfout');
+            }
+        });
+}
+
+// ===== AUTO CLEANUP =====
+function startAutoCleanup() {
+    setInterval(() => {
+        const now = Date.now();
+        const timeout = 120000;
+
+        let removed = false;
+        Object.keys(driverInfo).forEach(id => {
+            if (now - driverInfo[id].timestamp > timeout) {
+                console.log(`⏰ Chauffeur ${id} verwijderd (timeout)`);
+                removeMarker(id);
+                removed = true;
+            }
+        });
+    }, 30000);
+}
+
+// ===== CENTREER FUNCTIES =====
+function centerOnAllDrivers() {
+    if (!map) return;
+
+    const drivers = Object.values(driverInfo);
+    if (drivers.length === 0) {
+        map.setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+        return;
+    }
+
+    if (drivers.length === 1) {
+        map.setView([drivers[0].lat, drivers[0].lng], 14);
+        return;
+    }
+
+    let latSum = 0, lngSum = 0;
+    drivers.forEach(d => {
+        latSum += d.lat;
+        lngSum += d.lng;
+    });
+    const center = [latSum / drivers.length, lngSum / drivers.length];
+    map.setView(center, 12);
+}
+
+// ===== INITIALISATIE =====
+
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('🔄 Tracker dashboard initialiseren...');
+
+    // Auth check
+    const auth = await requireAuth('index.html');
+    if (!auth.isAuthenticated) {
+        console.warn('⚠️ Niet ingelogd, redirect...');
+        return;
+    }
+    console.log('✅ Ingelogd als:', auth.user?.email);
+
+    // Init kaart
+    initMap();
+
+    // Laad data
+    await laadBestaandeLocaties();
+
+    // Start realtime
+    startRealtimeListener();
+
+    // Start cleanup
+    startAutoCleanup();
+
+    // ===== EVENT LISTENERS =====
+
+    // Alle chauffeurs knop
+    if (centerAllBtn) {
+        centerAllBtn.addEventListener('click', centerOnAllDrivers);
+    }
+
+    // Refresh knop
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', laadBestaandeLocaties);
+    }
+
+    console.log('✅ Tracker dashboard geïnitialiseerd!');
+});
+
+console.log('✅ tracker-dashboard.js geladen!');

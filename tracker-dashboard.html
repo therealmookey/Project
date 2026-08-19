@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project - Chauffeurs Tracker</title>
+
+    <!-- ===== VOORKOM FLITS VAN LIGHT MODE ===== -->
+    <script>
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                document.documentElement.style.backgroundColor = '#0f0f1a';
+                document.documentElement.style.color = '#f0f0f0';
+            }
+        })();
+    </script>
+
+    <!-- Leaflet voor de kaart -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Eigen CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- Navigatie -->
+    <div id="navigatie-placeholder"></div>
+
+    <main class="container-fluid">
+        <div class="page-header">
+            <h1>🗺️ Chauffeurs Tracker</h1>
+            <div class="tracker-stats">
+                <span id="trackerCount" class="badge">0 chauffeurs</span>
+                <span id="trackerStatus" class="badge badge-success">🟢 Verbonden</span>
+                <button id="centerAllBtn" class="btn btn-secondary btn-small">📍 Alle chauffeurs</button>
+                <button id="refreshTrackerBtn" class="btn btn-secondary btn-small">🔄 Ververs</button>
+            </div>
+        </div>
+
+        <!-- Kaart -->
+        <div id="trackerMap" class="tracker-map-full"></div>
+
+        <!-- Chauffeurs lijst (overlay) -->
+        <div id="trackerDriversList" class="tracker-drivers-overlay">
+            <h4>🚗 Actieve chauffeurs</h4>
+            <ul id="trackerDriversUl">
+                <li class="empty-message">Geen chauffeurs actief</li>
+            </ul>
+        </div>
+    </main>
+
+    <!-- ===== SCRIPTS ===== -->
+    <!-- 1. Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- 2. Configuratie -->
+    <script src="js/config.js"></script>
+
+    <!-- 3. MAIN (als module) -->
+    <script type="module" src="js/main.js"></script>
+
+    <!-- 4. Tracker Dashboard specifiek (als module) -->
+    <script type="module" src="js/tracker-dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Chauffeurs Volgen</title>
+    
+    <!-- Leaflet voor de kaart -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Supabase client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        
+        /* Info panel rechtsboven */
+        #info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 220px;
+            border-left: 4px solid #4CAF50;
+        }
+        #info h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 16px;
+        }
+        #info .count {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        #info .status-dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4CAF50;
+            margin-right: 8px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        #info .status-text {
+            font-size: 13px;
+            color: #666;
+        }
+        #info .sub {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        /* Chauffeurs lijst linksonder */
+        #drivers-list {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-height: 250px;
+            overflow-y: auto;
+            min-width: 220px;
+            max-width: 300px;
+        }
+        #drivers-list h4 {
+            margin: 0 0 12px 0;
+            color: #333;
+            font-size: 14px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        #drivers-list ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+        #drivers-list li {
+            padding: 6px 0;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #drivers-list li:last-child {
+            border-bottom: none;
+        }
+        .driver-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2196F3;
+            flex-shrink: 0;
+        }
+        .driver-name {
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+        }
+        .driver-time {
+            font-size: 11px;
+            color: #999;
+        }
+        .empty-message {
+            color: #999;
+            font-style: italic;
+            text-align: center;
+            padding: 10px 0;
+        }
+        
+        /* Legend */
+        #legend {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            font-size: 12px;
+            color: #666;
+        }
+        #legend span {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #2196F3;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        
+        /* Scrollbar styling */
+        #drivers-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        #drivers-list::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div id="info">
+        <h3>
+            <span class="status-dot"></span> 
+            Live Tracking
+        </h3>
+        <p style="margin: 0;">
+            <span id="driverCount" class="count">0</span> 
+            <span style="font-size:16px;color:#666;">chauffeurs</span>
+        </p>
+        <p class="status-text" id="connectionStatus">🔄 Verbinden...</p>
+        <p class="sub" id="lastUpdate">Wacht op data...</p>
+    </div>
+    
+    <div id="drivers-list">
+        <h4>🚗 Actieve chauffeurs</h4>
+        <ul id="driversUl">
+            <li class="empty-message">Geen chauffeurs actief</li>
+        </ul>
+    </div>
+    
+    <div id="legend">
+        <span></span> Realtime locatie
+    </div>
+
+    <script>
+        // 🔑 Supabase credentials
+        const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // 📍 Kaart initialiseren
+        const map = L.map('map').setView([51.0, 4.0], 12);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // 📍 Custom marker met betere zichtbaarheid
+        const customIcon = L.divIcon({
+            className: 'custom-marker',
+            html: `<div style="
+                width: 28px;
+                height: 28px;
+                background: #2196F3;
+                border: 3px solid white;
+                border-radius: 50% 50% 50% 0;
+                transform: rotate(-45deg);
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            ">
+                <span style="
+                    transform: rotate(45deg);
+                    color: white;
+                    font-size: 12px;
+                ">●</span>
+            </div>`,
+            iconSize: [28, 28],
+            iconAnchor: [14, 28],
+            popupAnchor: [0, -28]
+        });
+
+        // Data
+        const markers = {};
+        const driverInfo = {};
+
+        function updateDriverList() {
+            const ul = document.getElementById('driversUl');
+            const driverIds = Object.keys(driverInfo);
+            
+            if (driverIds.length === 0) {
+                ul.innerHTML = '<li class="empty-message">Geen chauffeurs actief</li>';
+                document.getElementById('driverCount').textContent = '0';
+                return;
+            }
+            
+            document.getElementById('driverCount').textContent = driverIds.length;
+            
+            ul.innerHTML = driverIds.map(id => {
+                const info = driverInfo[id];
+                return `
+                    <li>
+                        <span class="driver-dot"></span>
+                        <span class="driver-name">${info.name || id}</span>
+                        <span class="driver-time">${info.time || ''}</span>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        function updateMarker(driverId, lat, lng, name) {
+            // Marker bijwerken of aanmaken
+            if (markers[driverId]) {
+                markers[driverId].setLatLng([lat, lng]);
+            } else {
+                const marker = L.marker([lat, lng], { icon: customIcon })
+                    .addTo(map)
+                    .bindPopup(`
+                        <b>${name || driverId}</b><br>
+                        📍 ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
+                        🕐 ${new Date().toLocaleTimeString('nl-NL')}
+                    `);
+                markers[driverId] = marker;
+            }
+
+            // Info opslaan voor de lijst
+            const now = new Date();
+            driverInfo[driverId] = {
+                name: name || driverId,
+                time: now.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }),
+                lat: lat,
+                lng: lng,
+                timestamp: now.getTime()
+            };
+
+            // Lijst updaten
+            updateDriverList();
+
+            // Laatste update tijd
+            document.getElementById('lastUpdate').textContent = 
+                `🕐 ${now.toLocaleTimeString('nl-NL')}`;
+        }
+
+        function removeDriver(driverId) {
+            if (markers[driverId]) {
+                map.removeLayer(markers[driverId]);
+                delete markers[driverId];
+            }
+            delete driverInfo[driverId];
+            updateDriverList();
+        }
+
+        // 🔄 Verbinding maken met Supabase Realtime
+        console.log('📡 Verbinden met Supabase Realtime...');
+        document.getElementById('connectionStatus').textContent = '🔄 Verbinden...';
+
+        const channel = supabase
+            .channel('locations_test_changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*',
+                    schema: 'public',
+                    table: 'locations_test'
+                },
+                (payload) => {
+                    console.log('📩 Event ontvangen:', payload);
+                    
+                    if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                        const data = payload.new;
+                        if (data && data.latitude && data.longitude) {
+                            updateMarker(
+                                data.driver_id,
+                                data.latitude,
+                                data.longitude,
+                                data.driver_name
+                            );
+                            
+                            // Kaart centreren op de laatste locatie (optioneel)
+                            // map.setView([data.latitude, data.longitude], 14);
+                        }
+                    } else if (payload.eventType === 'DELETE') {
+                        const data = payload.old;
+                        if (data && data.driver_id) {
+                            removeDriver(data.driver_id);
+                        }
+                    }
+                }
+            )
+            .subscribe((status) => {
+                console.log('🔗 Realtime status:', status);
+                if (status === 'SUBSCRIBED') {
+                    document.getElementById('connectionStatus').textContent = '✅ Verbonden';
+                    document.getElementById('connectionStatus').style.color = '#4CAF50';
+                } else if (status === 'CHANNEL_ERROR') {
+                    document.getElementById('connectionStatus').textContent = '❌ Verbindingsfout';
+                    document.getElementById('connectionStatus').style.color = '#f44336';
+                }
+            });
+
+        // 📋 Bestaande locaties laden bij opstarten
+        async function loadExistingLocations() {
+            try {
+                console.log('📥 Bestaande locaties laden...');
+                const { data, error } = await supabase
+                    .from('locations_test')
+                    .select('*')
+                    .order('last_updated', { ascending: false });
+
+                if (error) {
+                    console.error('Fout bij laden:', error);
+                    return;
+                }
+
+                if (data && data.length > 0) {
+                    console.log(`📥 ${data.length} locaties geladen`);
+                    
+                    // Groepeer per chauffeur (laatste locatie per chauffeur)
+                    const latestByDriver = {};
+                    data.forEach(row => {
+                        const id = row.driver_id;
+                        if (!latestByDriver[id] || 
+                            new Date(row.last_updated) > new Date(latestByDriver[id].last_updated)) {
+                            latestByDriver[id] = row;
+                        }
+                    });
+
+                    Object.values(latestByDriver).forEach(row => {
+                        if (row.latitude && row.longitude) {
+                            updateMarker(
+                                row.driver_id,
+                                row.latitude,
+                                row.longitude,
+                                row.driver_name
+                            );
+                        }
+                    });
+
+                    // Centreer op de eerste chauffeur
+                    const first = Object.values(latestByDriver)[0];
+                    if (first) {
+                        map.setView([first.latitude, first.longitude], 13);
+                    }
+                } else {
+                    console.log('📭 Geen bestaande locaties gevonden');
+                    // Toon België als er geen data is
+                    map.setView([50.85, 4.35], 8);
+                }
+            } catch (err) {
+                console.error('❌ Fout bij laden:', err);
+            }
+        }
+
+        // 🚀 Start het dashboard
+        loadExistingLocations();
+
+        // ⏰ Auto-refresh: chauffeurs die te lang niet geüpdatet zijn verwijderen
+        setInterval(() => {
+            const now = Date.now();
+            const timeout = 120000; // 2 minuten
+            let removed = false;
+            
+            Object.keys(driverInfo).forEach(id => {
+                if (!driverInfo[id].timestamp) {
+                    driverInfo[id].timestamp = now;
+                }
+                if (now - driverInfo[id].timestamp > timeout) {
+                    console.log(`⏰ Chauffeur ${id} is verlopen (te lang geen update)`);
+                    removeDriver(id);
+                    removed = true;
+                }
+            });
+            
+            if (removed) {
+                updateDriverList();
+            }
+        }, 30000);
+
+        console.log('✅ Dashboard gestart');
+        console.log('🔗 Supabase URL:', SUPABASE_URL);
+    </script>
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracker - Locatie Delen</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .status {
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            text-align: center;
+        }
+        .status.active {
+            background: #e8f5e9;
+            border-left-color: #4CAF50;
+        }
+        .status.error {
+            background: #ffebee;
+            border-left-color: #f44336;
+        }
+        .info {
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+        #coords {
+            font-family: monospace;
+            font-size: 16px;
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .driver-input {
+            margin: 15px 0;
+        }
+        .driver-input label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .driver-input input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1976D2;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📍 Tracker</h1>
+        <p class="info">Deel jouw locatie in real-time</p>
+        
+        <div class="driver-input">
+            <label for="driverId">Chauffeur ID:</label>
+            <input type="text" id="driverId" placeholder="bijv. chauffeur-001" value="chauffeur-001">
+        </div>
+
+        <button id="startBtn" onclick="startTracking()">📍 Start met delen</button>
+        <button id="stopBtn" onclick="stopTracking()" style="display:none; background:#f44336;">⏹ Stop met delen</button>
+
+        <div id="status" class="status">Klik op "Start met delen" om te beginnen</div>
+        <div id="coords">Wacht op locatie...</div>
+        <div id="updateCount" class="info">Updates: 0</div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // 🔑 Vul hier jouw Supabase credentials in
+        const SUPABASE_URL = 'https://jouw-project.supabase.co';  // Vervang dit
+        const SUPABASE_KEY = 'jouw-anon-key';                     // Vervang dit
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
+        let watchId = null;
+        let updateCount = 0;
+        let isTracking = false;
+
+        function startTracking() {
+            const driverId = document.getElementById('driverId').value.trim();
+            if (!driverId) {
+                alert('Vul een chauffeur ID in');
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                showStatus('Geolocatie wordt niet ondersteund door deze browser', 'error');
+                return;
+            }
+
+            showStatus('📍 Locatie wordt opgehaald...', 'active');
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'block';
+            document.getElementById('driverId').disabled = true;
+            isTracking = true;
+
+            watchId = navigator.geolocation.watchPosition(
+                async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    updateCount++;
+                    
+                    document.getElementById('coords').innerHTML = 
+                        `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>Nauwkeurigheid: ${position.coords.accuracy.toFixed(0)}m`;
+                    document.getElementById('updateCount').textContent = `Updates: ${updateCount}`;
+                    
+                    showStatus(`✅ Locatie verzonden (${updateCount})`, 'active');
+
+                    // Stuur naar Supabase
+                    try {
+                        const { error } = await supabase
+                            .from('locations_test')
+                            .upsert({
+                                driver_id: driverId,
+                                driver_name: `Chauffeur ${driverId}`,
+                                latitude: latitude,
+                                longitude: longitude,
+                                last_updated: new Date().toISOString()
+                            });
+
+                        if (error) {
+                            console.error('Supabase fout:', error);
+                            showStatus('❌ Fout bij verzenden: ' + error.message, 'error');
+                        }
+                    } catch (err) {
+                        console.error('Fout:', err);
+                        showStatus('❌ Fout: ' + err.message, 'error');
+                    }
+                },
+                (error) => {
+                    showStatus('❌ GPS Fout: ' + error.message, 'error');
+                    console.error('GPS Error:', error);
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 10000,
+                    maximumAge: 0
+                }
+            );
+        }
+
+        function stopTracking() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            isTracking = false;
+            document.getElementById('startBtn').style.display = 'block';
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('driverId').disabled = false;
+            showStatus('⏹ Tracking gestopt', '');
+            document.getElementById('coords').textContent = 'Wacht op locatie...';
+        }
+
+        function showStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = 'status';
+            if (type) {
+                statusEl.classList.add(type);
+            }
+        }
+    </script>
+</body>
+</html>
