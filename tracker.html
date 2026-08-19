@@ -577,6 +577,68 @@
             if (watchId !== null) navigator.geolocation.clearWatch(watchId);
             if (intervalId) clearInterval(intervalId);
         });
+		// ============================================================
+// COMMUNICATIE MET SERVICE WORKER
+// ============================================================
+
+// Registreer de Service Worker
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/Project/sw.js')
+        .then((registration) => {
+            console.log('✅ Service Worker geregistreerd');
+            
+            // Stuur een ping om te testen
+            setTimeout(() => {
+                if (navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                        type: 'ping',
+                        timestamp: Date.now()
+                    });
+                }
+            }, 1000);
+        })
+        .catch((error) => {
+            console.warn('⚠️ Service Worker registratie mislukt:', error);
+        });
+
+    // Luister naar berichten van de Service Worker
+    navigator.serviceWorker.addEventListener('message', (event) => {
+        console.log('📩 Bericht van Service Worker:', event.data);
+        
+        if (event.data && event.data.type === 'pong') {
+            console.log('💓 Service Worker is actief');
+        }
+        
+        if (event.data && event.data.type === 'sync') {
+            console.log('🔄 Service Worker vraagt om herstart');
+            if (!isTracking) {
+                const savedId = localStorage.getItem('tracker_driver_id');
+                if (savedId) {
+                    driverIdInput.value = savedId;
+                    setTimeout(() => startTracking(), 500);
+                }
+            } else {
+                // Stuur een heartbeat om de verbinding te testen
+                if (lastLocation) {
+                    sendLocation(lastLocation.latitude, lastLocation.longitude);
+                }
+            }
+        }
+    });
+}
+
+// ============================================================
+// PERIODIC SYNC (experimenteel)
+// ============================================================
+if ('periodicSync' in navigator) {
+    navigator.periodicSync.register('tracker-periodic-sync', {
+        minInterval: 15 * 60 * 1000 // Elke 15 minuten
+    }).then(() => {
+        console.log('✅ Periodic sync geregistreerd');
+    }).catch((err) => {
+        console.warn('⚠️ Periodic sync niet beschikbaar:', err);
+    });
+}
     </script>
 </body>
 </html>
