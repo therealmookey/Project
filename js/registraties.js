@@ -565,7 +565,7 @@ function resetFilters() {
     laadRegistraties();
 }
 
-// ===== EXCEL EXPORT (MET AUTOFILTER) =====
+// ===== EXCEL EXPORT (MET FILTERS) =====
 async function exportExcel() {
     const huidigeData = getHuidigeGefilterdeData();
     
@@ -603,7 +603,7 @@ async function exportExcel() {
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(excelData);
         
-        // Kolombreedtes
+        // Kolombreedtes voor beter overzicht
         ws['!cols'] = [
             { wch: 15 },  // Datum
             { wch: 35 },  // Ziekenhuis
@@ -614,19 +614,11 @@ async function exportExcel() {
             { wch: 35 }   // Opmerkingen
         ];
         
-        // Probeer autofilter in te schakelen (werkt in sommige versies)
+        // Autofilter op de eerste rij (als de bibliotheek het ondersteunt)
         try {
-            // Autofilter op de eerste rij (A1 tot G1)
             ws['!autofilter'] = { ref: 'A1:G1' };
         } catch (e) {
-            console.log('⚠️ Autofilter niet ondersteund in deze versie');
-        }
-        
-        // Probeer de eerste rij te bevriezen
-        try {
-            ws['!freeze'] = 'A2';
-        } catch (e) {
-            console.log('⚠️ Freeze niet ondersteund in deze versie');
+            // Autofilter niet ondersteund, negeer
         }
         
         XLSX.utils.book_append_sheet(wb, ws, 'Registraties');
