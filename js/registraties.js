@@ -565,7 +565,7 @@ function resetFilters() {
     laadRegistraties();
 }
 
-// ===== EXCEL EXPORT (MET HTML TABEL) =====
+// ===== EXCEL EXPORT (MET AUTOFILTER) =====
 async function exportExcel() {
     const huidigeData = getHuidigeGefilterdeData();
     
@@ -577,67 +577,7 @@ async function exportExcel() {
     try {
         showToast(`📊 ${huidigeData.length} registraties worden geëxporteerd...`, 'info');
         
-        // Bouw een HTML tabel met de data
-        let html = `
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <style>
-                    /* Styling voor de tabel */
-                    table {
-                        border-collapse: collapse;
-                        font-family: Arial, sans-serif;
-                        font-size: 11px;
-                    }
-                    th, td {
-                        border: 1px solid #ddd;
-                        padding: 6px 8px;
-                        text-align: left;
-                    }
-                    th {
-                        background-color: #2c7da0;
-                        color: white;
-                        font-weight: bold;
-                        /* Bevroren rij */
-                        position: sticky;
-                        top: 0;
-                        z-index: 10;
-                    }
-                    /* Afwisselende rijkleuren */
-                    tr:nth-child(even) {
-                        background-color: #f8f9fa;
-                    }
-                    .header-row {
-                        background-color: #2c7da0 !important;
-                    }
-                    /* Filters (worden toegepast in Excel) */
-                    .filter-enabled {
-                        /* Dit is een marker voor Excel */
-                    }
-                </style>
-            </head>
-            <body>
-                <h2>📋 Ophaalregistraties</h2>
-                <p>Geëxporteerd op: ${new Date().toLocaleString('nl-NL')}</p>
-                <p>Aantal registraties: ${huidigeData.length}</p>
-                <hr>
-                <table>
-                    <thead>
-                        <tr class="header-row">
-                            <th>Datum</th>
-                            <th>Ziekenhuis</th>
-                            <th>Type</th>
-                            <th>Gewicht (kg)</th>
-                            <th>Combinatie</th>
-                            <th>Aantal</th>
-                            <th>Opmerkingen</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
-        
-        // Data rijen
-        huidigeData.forEach(reg => {
+        const excelData = huidigeData.map(reg => {
             let combinatieDisplay = '';
             if (reg.combinatie_lijst && reg.combinatie_lijst.length > 0) {
                 const namen = reg.combinatie_lijst.map(combo => {
@@ -649,49 +589,66 @@ async function exportExcel() {
                 combinatieDisplay = `${reg.combinatie.item_code} - ${reg.combinatie.omschrijving}`;
             }
             
-            html += `
-                <tr>
-                    <td>${formatDate(reg.registratiedatum)}</td>
-                    <td>${escapeHtml(reg.ziekenhuis?.instelling_naam || 'Onbekend')}</td>
-                    <td>${reg.type === 'ophaling' ? 'Ophaling' : 'Opstart'}</td>
-                    <td>${reg.gewicht || ''}</td>
-                    <td>${escapeHtml(combinatieDisplay)}</td>
-                    <td>${reg.opstart_aantal || ''}</td>
-                    <td>${escapeHtml(reg.opmerkingen || '')}</td>
-                </tr>
-            `;
+            return {
+                'Datum': formatDate(reg.registratiedatum),
+                'Ziekenhuis': reg.ziekenhuis?.instelling_naam || 'Onbekend',
+                'Type': reg.type === 'ophaling' ? 'Ophaling' : 'Opstart',
+                'Gewicht (kg)': reg.gewicht || '',
+                'Combinatie': combinatieDisplay,
+                'Aantal': reg.opstart_aantal || '',
+                'Opmerkingen': reg.opmerkingen || ''
+            };
         });
         
-        html += `
-                    </tbody>
-                </table>
-                <hr>
-                <p style="color:#999;font-size:10px;">Automatisch gegenereerd - Project</p>
-            </body>
-            </html>
-        `;
-        
-        // Genereer Excel bestand uit HTML
         const wb = XLSX.utils.book_new();
-        const ws = XLSX.utils.table_to_sheet(
-            document.createElement('table')
-        );
+        const ws = XLSX.utils.json_to_sheet(excelData);
         
-        // We gebruiken de HTML string direct in een blob
-        const blob = new Blob([html], { 
-            type: 'application/vnd.ms-excel' 
+        // Kolombreedtes
+        ws['!cols'] = [
+            { wch: 15 },  // Datum
+            { wch: 35 },  // Ziekenhuis
+            { wch: 12 },  // Type
+            { wch: 15 },  // Gewicht
+            { wch: 45 },  // Combinatie
+            { wch: 12 },  // Aantal
+            { wch: 35 }   // Opmerkingen
+        ];
+        
+        // Probeer autofilter in te schakelen (werkt in sommige versies)
+        try {
+            // Autofilter op de eerste rij (A1 tot G1)
+            ws['!autofilter'] = { ref: 'A1:G1' };
+        } catch (e) {
+            console.log('⚠️ Autofilter niet ondersteund in deze versie');
+        }
+        
+        // Probeer de eerste rij te bevriezen
+        try {
+            ws['!freeze'] = 'A2';
+        } catch (e) {
+            console.log('⚠️ Freeze niet ondersteund in deze versie');
+        }
+        
+        XLSX.utils.book_append_sheet(wb, ws, 'Registraties');
+        
+        const wbout = XLSX.write(wb, { 
+            bookType: 'xlsx', 
+            type: 'array',
+            bookSST: false
         });
         
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
+        
         const link = document.createElement('a');
         link.href = url;
-        link.download = `registraties_${new Date().toISOString().split('T')[0]}.xls`;
+        link.download = `registraties_${new Date().toISOString().split('T')[0]}.xlsx`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
         
-        showToast(`✅ ${huidigeData.length} registraties geëxporteerd!`, 'success');
+        showToast(`✅ ${excelData.length} registraties geëxporteerd!`, 'success');
         
     } catch (err) {
         console.error('Fout bij Excel export:', err);
