@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Tracker</title>
     <style>
-        /* Minimalistische, onopvallende interface */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: 'Segoe UI', Arial, sans-serif;
@@ -26,8 +25,8 @@
         }
         .status-dot {
             display: inline-block;
-            width: 10px;
-            height: 10px;
+            width: 12px;
+            height: 12px;
             border-radius: 50%;
             background: #4CAF50;
             margin-right: 8px;
@@ -48,63 +47,53 @@
             color: #999;
             text-align: center;
         }
-        /* Verborgen elementen */
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Minimale, neutrale interface -->
         <div style="text-align: center; padding: 10px 0;">
             <span class="status-dot"></span>
             <span class="status-text" id="statusText">Actief</span>
         </div>
         <div class="info-text" id="infoText">📍 Locatie wordt gedeeld</div>
-        
-        <!-- Verborgen inputs (alleen voor admin) -->
         <div class="hidden">
             <input type="text" id="driverId" value="Tablet">
-            <button id="startBtn">Start</button>
-            <button id="stopBtn">Stop</button>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // ============================================================
-        // 🔑 CONFIGURATIE - STIL OP DE ACHTERGROND
+        // CONFIGURATIE
         // ============================================================
         const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
         const TABLE_NAME = 'locations_test';
-        const STORAGE_KEY = 'tracker_driver_id';
-        
-        // Vaste chauffeur ID (kan ook uit localStorage komen)
         const DRIVER_ID = 'Tablet';
+        const HEARTBEAT_INTERVAL = 5000; // 5 seconden
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // ============================================================
-        // 📦 STATE - GEEN VISUELE FEEDBACK
+        // STATE
         // ============================================================
         let watchId = null;
-        let updateCount = 0;
         let isTracking = false;
         let lastLocation = null;
         let intervalId = null;
-        let reconnectAttempts = 0;
+        let updateCount = 0;
 
         // ============================================================
-        // 🎯 DOM ELEMENTEN (minimaal)
+        // DOM
         // ============================================================
         const statusText = document.getElementById('statusText');
         const infoText = document.getElementById('infoText');
 
         // ============================================================
-        // 📋 FUNCTIES - GEEN POPUPS, GEEN MELDINGEN
+        // FUNCTIES
         // ============================================================
         function updateStatus(active) {
-            // Alleen de status-dot en tekst updaten (geen popups)
             if (active) {
                 statusText.textContent = 'Actief';
                 infoText.textContent = '📍 Locatie wordt gedeeld';
@@ -171,25 +160,22 @@
             console.log('📍 Tracking gestart (stil)');
             isTracking = true;
             updateStatus(true);
+            updateCount = 0;
 
-            // GPS starten
             watchId = navigator.geolocation.watchPosition(
                 async (position) => {
-                    const { latitude, longitude, accuracy } = position.coords;
-                    lastLocation = { latitude, longitude, accuracy };
+                    const { latitude, longitude } = position.coords;
+                    lastLocation = { latitude, longitude };
                     updateCount++;
                     
                     const success = await sendLocation(latitude, longitude);
                     if (success) {
-                        reconnectAttempts = 0; // Reset bij succes
+                        console.log('📍 Update #' + updateCount);
                     }
                 },
                 (error) => {
-                    // Stil afhandelen - geen meldingen
                     console.warn('⚠️ GPS error:', error.message);
-                    
-                    // Probeer opnieuw met andere instellingen
-                    if (error.code === 3) { // TIMEOUT
+                    if (error.code === 3) {
                         navigator.geolocation.getCurrentPosition(
                             (pos) => {
                                 sendLocation(pos.coords.latitude, pos.coords.longitude);
@@ -202,11 +188,11 @@
                 {
                     enableHighAccuracy: false,
                     timeout: 30000,
-                    maximumAge: 10000
+                    maximumAge: 5000
                 }
             );
 
-            // Heartbeat interval (elke 10 seconden)
+            // Heartbeat - elke 5 seconden
             if (intervalId) clearInterval(intervalId);
             intervalId = setInterval(async () => {
                 if (!isTracking) return;
@@ -214,39 +200,14 @@
 
                 try {
                     const { latitude, longitude } = lastLocation;
-                    await sendLocation(latitude, longitude);
-                    console.log('💓 Heartbeat');
+                    const success = await sendLocation(latitude, longitude);
+                    if (success) {
+                        console.log('💓 Heartbeat');
+                    }
                 } catch (err) {
                     console.warn('⚠️ Heartbeat failed:', err.message);
                 }
-            }, 10000);
-
-            // Reconnect check (elke 30 seconden)
-            setInterval(async () => {
-                if (!isTracking) return;
-                
-                try {
-                    const { data, error } = await supabaseClient
-                        .from(TABLE_NAME)
-                        .select('driver_id')
-                        .eq('driver_id', DRIVER_ID)
-                        .maybeSingle();
-
-                    if (error) {
-                        reconnectAttempts++;
-                        if (reconnectAttempts > 3 && lastLocation) {
-                            // Probeer opnieuw te verbinden
-                            console.log('🔄 Reconnect poging');
-                            await sendLocation(lastLocation.latitude, lastLocation.longitude);
-                            reconnectAttempts = 0;
-                        }
-                    } else {
-                        reconnectAttempts = 0;
-                    }
-                } catch (err) {
-                    console.warn('⚠️ Connection check failed:', err.message);
-                }
-            }, 30000);
+            }, HEARTBEAT_INTERVAL);
         }
 
         function stopTracking() {
@@ -265,7 +226,6 @@
                 intervalId = null;
             }
 
-            // Verwijder locatie uit database (stil)
             try {
                 supabaseClient
                     .from(TABLE_NAME)
@@ -273,22 +233,29 @@
                     .eq('driver_id', DRIVER_ID)
                     .then(() => console.log('🗑️ Locatie verwijderd'))
                     .catch(() => {});
-            } catch (err) {
-                // Stil afhandelen
-            }
+            } catch (err) {}
         }
 
         // ============================================================
-        // 🚀 START - AUTOMATISCH OP DE ACHTERGROND
+        // MAAK TRACKER BESCHIKBAAR VOOR ANDERE PAGINA'S
+        // ============================================================
+        window.tracker = {
+            start: startTracking,
+            stop: stopTracking,
+            status: () => isTracking ? 'Actief' : 'Inactief',
+            count: () => updateCount,
+            lastLocation: lastLocation
+        };
+
+        // ============================================================
+        // START
         // ============================================================
         console.log('✅ Tracker geladen (stille modus)');
 
-        // Start automatisch na 1 seconde
         setTimeout(() => {
             startTracking();
         }, 1000);
 
-        // Bij pagina sluiten: netjes stoppen (geen meldingen)
         window.addEventListener('beforeunload', function() {
             if (watchId !== null) {
                 navigator.geolocation.clearWatch(watchId);
@@ -298,16 +265,7 @@
             }
         });
 
-        // ============================================================
-        // 🔧 ADMIN FUNCTIES (via console)
-        // ============================================================
-        // Voor admin: in de console kun je de tracking beheren
-        window.tracker = {
-            start: startTracking,
-            stop: stopTracking,
-            status: () => isTracking ? 'Actief' : 'Inactief',
-            count: () => updateCount
-        };
+        console.log('✅ Tracker module beschikbaar via window.tracker');
     </script>
 </body>
 </html>
