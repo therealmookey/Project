@@ -134,15 +134,16 @@ export async function heeftModuleToegang(moduleSleutel) {
 // ===== FILTER NAVIGATIE MODULES =====
 export async function filterNavigatieModules() {
     try {
-        // Alle module links ophalen
         const moduleLinks = document.querySelectorAll('.module-link');
+        
+        console.log(`🔍 ${moduleLinks.length} module links gevonden`);
         
         // Eerst alle links verbergen
         moduleLinks.forEach(link => {
             link.style.display = 'none';
         });
         
-        // Dan per link checken of de gebruiker toegang heeft
+        // Dan per link checken
         for (const link of moduleLinks) {
             const moduleSleutel = link.dataset.module;
             if (!moduleSleutel) continue;
