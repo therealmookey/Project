@@ -17,11 +17,14 @@ let driverInfo = {};
 let destinationMarkers = [];
 let channel = null;
 let isInitialized = false;
+let pollInterval = null;
+let lastKnownData = {};
 
 // ===== CONSTANTEN =====
 const TABLE_NAME = 'locations_test';
 const DEFAULT_CENTER = [51.0, 4.0];
 const DEFAULT_ZOOM = 12;
+const POLL_INTERVAL = 5000; // 5 seconden polling
 
 // ===== DOM ELEMENTEN =====
 const trackerCount = document.getElementById('trackerCount');
@@ -84,7 +87,7 @@ function initMap() {
     return map;
 }
 
-// ===== BESTEMMINGEN (PLANNING VAN VANDAAG) =====
+// ===== BESTEMMINGEN =====
 async function laadBestemmingen() {
     try {
         const vandaag = new Date().toISOString().split('T')[0];
@@ -210,7 +213,7 @@ function removeMarker(driverId) {
     updateCount();
 }
 
-// ===== UI UPDATE FUNCTIES =====
+// ===== UI UPDATE =====
 function updateCount() {
     const count = Object.keys(driverInfo).length;
     if (trackerCount) {
@@ -312,6 +315,133 @@ async function verwijderChauffeur(driverId) {
     }
 }
 
+// ===== DATA LADEN (POLLING) =====
+async function laadBestaandeLocaties() {
+    try {
+        console.log('📥 Bestaande locaties laden (polling)...');
+        updateStatus('connecting', '🔄 Laden...');
+
+        const { data, error } = await supabase
+            .from(TABLE_NAME)
+            .select('*')
+            .order('last_updated', { ascending: false });
+
+        if (error) {
+            console.error('❌ Fout bij laden:', error);
+            updateStatus('error', '❌ Fout bij laden');
+            return;
+        }
+
+        if (data && data.length > 0) {
+            const latestByDriver = {};
+            data.forEach(row => {
+                const id = row.driver_id;
+                if (!latestByDriver[id] ||
+                    new Date(row.last_updated) > new Date(latestByDriver[id].last_updated)) {
+                    latestByDriver[id] = row;
+                }
+            });
+
+            // Update markers
+            Object.keys(latestByDriver).forEach(id => {
+                const row = latestByDriver[id];
+                if (row.latitude && row.longitude) {
+                    updateMarker(
+                        row.driver_id,
+                        row.latitude,
+                        row.longitude,
+                        row.driver_name
+                    );
+                }
+            });
+
+            // Verwijder markers die niet meer in de data zitten
+            Object.keys(markers).forEach(id => {
+                if (!latestByDriver[id]) {
+                    removeMarker(id);
+                }
+            });
+
+            const first = Object.values(latestByDriver)[0];
+            if (first && map) {
+                map.setView([first.latitude, first.longitude], 13);
+            }
+
+            console.log(`✅ ${Object.keys(latestByDriver).length} chauffeurs geladen`);
+            updateStatus('connected', '✅ Verbonden');
+        } else {
+            console.log('📭 Geen bestaande locaties gevonden');
+            updateStatus('connected', '✅ Verbonden (geen chauffeurs)');
+        }
+    } catch (err) {
+        console.error('❌ Fout bij laden:', err);
+        updateStatus('error', '❌ Fout: ' + err.message);
+    }
+}
+
+// ===== REALTIME LISTENER (FALLBACK) =====
+function startRealtimeListener() {
+    if (channel) {
+        console.log('⚠️ Realtime listener bestaat al, wordt vervangen');
+        channel.unsubscribe();
+        channel = null;
+    }
+
+    console.log('📡 Verbinden met Supabase Realtime (fallback)...');
+
+    channel = supabase
+        .channel('locations_test_changes')
+        .on(
+            'postgres_changes',
+            {
+                event: '*',
+                schema: 'public',
+                table: TABLE_NAME
+            },
+            (payload) => {
+                console.log('📩 Realtime event ontvangen:', payload.eventType);
+
+                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    const data = payload.new;
+                    if (data && data.latitude && data.longitude) {
+                        updateMarker(
+                            data.driver_id,
+                            data.latitude,
+                            data.longitude,
+                            data.driver_name
+                        );
+                    }
+                } else if (payload.eventType === 'DELETE') {
+                    const data = payload.old;
+                    if (data && data.driver_id) {
+                        removeMarker(data.driver_id);
+                    }
+                }
+            }
+        )
+        .subscribe((status) => {
+            console.log('🔗 Realtime status:', status);
+        });
+}
+
+// ===== POLLING (HOOFDMETHODE) =====
+function startPolling() {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+    }
+
+    console.log(`🔄 Polling gestart (elke ${POLL_INTERVAL/1000} seconden)`);
+    
+    // Direct laden
+    laadBestaandeLocaties();
+
+    // En daarna elke X seconden
+    pollInterval = setInterval(() => {
+        console.log('🔄 Polling update...');
+        laadBestaandeLocaties();
+    }, POLL_INTERVAL);
+}
+
 // ===== FORCEER REFRESH =====
 async function forceRefresh() {
     console.log('🔄 Forceer refresh...');
@@ -336,151 +466,24 @@ async function forceRefresh() {
     showToast('✅ Kaart vernieuwd', 'success');
 }
 
-// ===== DATA LADEN =====
-async function laadBestaandeLocaties() {
-    try {
-        console.log('📥 Bestaande locaties laden...');
-        updateStatus('connecting', '🔄 Laden...');
-
-        const { data, error } = await supabase
-            .from(TABLE_NAME)
-            .select('*')
-            .order('last_updated', { ascending: false });
-
-        if (error) {
-            console.error('❌ Fout bij laden:', error);
-            updateStatus('error', '❌ Fout bij laden');
-            return;
-        }
-
-        Object.keys(markers).forEach(id => removeMarker(id));
-
-        if (data && data.length > 0) {
-            const latestByDriver = {};
-            data.forEach(row => {
-                const id = row.driver_id;
-                if (!latestByDriver[id] ||
-                    new Date(row.last_updated) > new Date(latestByDriver[id].last_updated)) {
-                    latestByDriver[id] = row;
-                }
-            });
-
-            let first = null;
-            Object.values(latestByDriver).forEach(row => {
-                if (row.latitude && row.longitude) {
-                    updateMarker(
-                        row.driver_id,
-                        row.latitude,
-                        row.longitude,
-                        row.driver_name
-                    );
-                    if (!first) first = row;
-                }
-            });
-
-            if (first && map) {
-                map.setView([first.latitude, first.longitude], 13);
-            }
-
-            console.log(`✅ ${Object.keys(latestByDriver).length} chauffeurs geladen`);
-            updateStatus('connected', '✅ Verbonden');
-        } else {
-            console.log('📭 Geen bestaande locaties gevonden');
-            updateStatus('connected', '✅ Verbonden (geen chauffeurs)');
-        }
-    } catch (err) {
-        console.error('❌ Fout bij laden:', err);
-        updateStatus('error', '❌ Fout: ' + err.message);
-    }
-}
-
-// ===== REALTIME LISTENER =====
-function startRealtimeListener() {
-    if (channel) {
-        console.log('⚠️ Realtime listener bestaat al, wordt vervangen');
-        channel.unsubscribe();
-        channel = null;
-    }
-
-    console.log('📡 Verbinden met Supabase Realtime...');
-    updateStatus('connecting', '🔄 Verbinden...');
-
-    channel = supabase
-        .channel('locations_test_changes')
-        .on(
-            'postgres_changes',
-            {
-                event: '*',
-                schema: 'public',
-                table: TABLE_NAME
-            },
-            (payload) => {
-                console.log('📩 Event ontvangen:', payload.eventType);
-
-                if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                    const data = payload.new;
-                    if (data && data.latitude && data.longitude) {
-                        updateMarker(
-                            data.driver_id,
-                            data.latitude,
-                            data.longitude,
-                            data.driver_name
-                        );
-                    }
-                } else if (payload.eventType === 'DELETE') {
-                    const data = payload.old;
-                    if (data && data.driver_id) {
-                        removeMarker(data.driver_id);
-                    }
-                }
-            }
-        )
-        .subscribe((status) => {
-            console.log('🔗 Realtime status:', status);
-            if (status === 'SUBSCRIBED') {
-                updateStatus('connected', '✅ Verbonden');
-            } else if (status === 'CHANNEL_ERROR') {
-                updateStatus('error', '❌ Verbindingsfout');
-            }
-        });
-}
-
-// ===== FORCEER REALTIME HERSTART =====
-function forceRealtimeRestart() {
-    console.log('🔄 Forceer Realtime herstart...');
-    
-    if (channel) {
-        channel.unsubscribe();
-        channel = null;
-    }
-    
-    setTimeout(() => {
-        startRealtimeListener();
-        console.log('✅ Realtime herstart');
-    }, 500);
-}
-
-// ===== AUTO CLEANUP - 4 UUR TIMEOUT =====
+// ===== AUTO CLEANUP - 4 UUR =====
 function startAutoCleanup() {
     console.log('⏰ Auto-cleanup ingesteld op 4 uur');
-    console.log('📌 Chauffeurs worden pas verwijderd na 4 uur inactiviteit');
     
     setInterval(() => {
         const now = Date.now();
         const timeout = 14400000; // 4 uur
 
-        let removed = false;
         Object.keys(driverInfo).forEach(id => {
             if (now - driverInfo[id].timestamp > timeout) {
                 console.log(`⏰ Chauffeur ${id} verwijderd (4 uur inactief)`);
                 removeMarker(id);
-                removed = true;
             }
         });
     }, 60000);
 }
 
-// ===== CENTREER FUNCTIES =====
+// ===== CENTREER =====
 function centerOnAllDrivers() {
     if (!map) return;
 
@@ -504,7 +507,7 @@ function centerOnAllDrivers() {
     map.setView(center, 12);
 }
 
-// ===== HERRSTART REALTIME =====
+// ===== RESTART REALTIME =====
 function restartRealtime() {
     console.log('🔄 Realtime herstarten...');
     showToast('🔄 Realtime verbinding wordt herstart...', 'info');
@@ -565,9 +568,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     console.log('✅ Ingelogd als:', auth.user?.email);
 
     initMap();
-    await laadBestaandeLocaties();
     await laadBestemmingen();
+    
+    // Start polling (hoofdmethode)
+    startPolling();
+    
+    // Start Realtime (fallback)
     startRealtimeListener();
+    
+    // Start cleanup
     startAutoCleanup();
 
     if (centerAllBtn) {
@@ -586,14 +595,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         forceUpdateBtn.addEventListener('click', function() {
             console.log('📡 Forceer update...');
             forceRefresh();
-            forceRealtimeRestart();
             showToast('✅ Update geforceerd', 'success');
         });
     }
-
-    // Forceer Realtime herstart elke minuut
-    setTimeout(forceRealtimeRestart, 5000);
-    setInterval(forceRealtimeRestart, 60000);
 
     console.log('✅ Tracker dashboard geïnitialiseerd!');
 });
