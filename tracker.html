@@ -92,6 +92,19 @@
         button.danger:hover {
             background: #d32f2f;
         }
+        .btn-row {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-row button {
+            flex: 1;
+        }
+        .btn-row button:last-child {
+            background: #6c757d;
+        }
+        .btn-row button:last-child:hover {
+            background: #5a6268;
+        }
     </style>
 </head>
 <body>
@@ -101,11 +114,13 @@
 
         <div class="driver-input">
             <label for="driverId">Chauffeur ID:</label>
-            <input type="text" id="driverId" placeholder="bijv. chauffeur-001" value="chauffeur-001">
+            <input type="text" id="driverId" placeholder="bijv. chauffeur-001" value="chauffeur-test">
         </div>
 
-        <button id="startBtn">📍 Start met delen</button>
-        <button id="stopBtn" style="display:none;" class="danger">⏹ Stop met delen</button>
+        <div class="btn-row">
+            <button id="startBtn">📍 Start met delen</button>
+            <button id="stopBtn" style="display:none;" class="danger">⏹ Stop</button>
+        </div>
 
         <div id="status" class="status">Klik op "Start met delen" om te beginnen</div>
         <div id="coords">Wacht op locatie...</div>
@@ -148,6 +163,28 @@
                 Nauwkeurigheid: ${(accuracy || 0).toFixed(0)}m
             `;
             updateCountEl.textContent = `Updates: ${updateCount}`;
+        }
+
+        async function verwijderLocatie() {
+            console.log(`🗑️ Verwijder locatie voor: ${driverId}`);
+            try {
+                // Probeer DELETE
+                const { error } = await supabaseClient
+                    .from(TABLE_NAME)
+                    .delete()
+                    .eq('driver_id', driverId);
+
+                if (error) {
+                    console.error('❌ Fout bij verwijderen:', error);
+                    return false;
+                }
+
+                console.log('✅ Locatie verwijderd');
+                return true;
+            } catch (err) {
+                console.error('❌ Fout:', err);
+                return false;
+            }
         }
 
         async function sendLocation(lat, lng) {
@@ -242,15 +279,25 @@
         async function stopTracking() {
             console.log('⏹ Stop tracking gestart...');
             
-            // Stop GPS
+            // 1. Stop GPS
             if (watchId !== null) {
                 navigator.geolocation.clearWatch(watchId);
-                console.log('📍 WatchId cleared:', watchId);
                 watchId = null;
-            } else {
-                console.warn('⚠️ Geen actieve watchId gevonden');
+                console.log('📍 GPS gestopt');
             }
             
+            // 2. Verwijder locatie uit database
+            const verwijderd = await verwijderLocatie();
+            
+            if (verwijderd) {
+                showStatus('✅ Tracking gestopt en locatie verwijderd', 'active');
+                console.log('✅ Locatie verwijderd uit database');
+            } else {
+                showStatus('⚠️ Tracking gestopt, maar locatie niet verwijderd', 'error');
+                console.warn('⚠️ Locatie kon niet worden verwijderd');
+            }
+            
+            // 3. Reset UI
             isTracking = false;
             startBtn.style.display = 'block';
             stopBtn.style.display = 'none';
@@ -259,39 +306,16 @@
             updateCount = 0;
             updateCountEl.textContent = 'Updates: 0';
             
-            // Verwijder de locatie uit de database met een DELETE
-            try {
-                console.log(`🗑️ Verwijder locatie voor driver_id: ${driverId}`);
-                
-                const { data, error } = await supabaseClient
-                    .from(TABLE_NAME)
-                    .delete()
-                    .eq('driver_id', driverId)
-                    .select();
-                
-                if (error) {
-                    console.error('❌ Fout bij verwijderen locatie:', error);
-                    showStatus('⚠️ Fout bij verwijderen locatie: ' + error.message, 'error');
-                    return;
+            // 4. Extra check: probeer nog een keer te verwijderen na 1 seconde
+            setTimeout(async () => {
+                const nogEenKeer = await verwijderLocatie();
+                if (nogEenKeer) {
+                    console.log('✅ Extra verwijdering geslaagd');
                 }
-                
-                console.log('✅ Locatie verwijderd, data:', data);
-                showStatus('✅ Tracking gestopt en locatie verwijderd', 'active');
-                
-                // Forceer een extra DELETE (soms helpt het om het nog een keer te proberen)
-                await supabaseClient
-                    .from(TABLE_NAME)
-                    .delete()
-                    .eq('driver_id', driverId);
-                
-                console.log('🗑️ Locatie definitief verwijderd');
-                
-            } catch (err) {
-                console.error('❌ Fout bij verwijderen:', err);
-                showStatus('⚠️ Tracking gestopt, maar fout bij verwijderen', 'error');
-            }
+            }, 1000);
         }
 
+        // Event listeners
         startBtn.addEventListener('click', startTracking);
         stopBtn.addEventListener('click', stopTracking);
 
