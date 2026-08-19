@@ -2,254 +2,116 @@
 <html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracker - Locatie Delen</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Tracker</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        body {
+        /* Minimalistische, onopvallende interface */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
             font-family: 'Segoe UI', Arial, sans-serif;
-            padding: 20px;
             background: #f5f5f5;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 20px;
         }
         .container {
-            max-width: 500px;
+            max-width: 400px;
             width: 100%;
-            margin: 0 auto;
             background: white;
-            padding: 25px;
+            padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
         }
-        h1 {
-            color: #333;
-            text-align: center;
-            font-size: 24px;
-            margin-bottom: 5px;
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4CAF50;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
         }
-        .subtitle {
-            text-align: center;
-            color: #666;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .status-text {
             font-size: 14px;
-            margin-bottom: 20px;
-        }
-        .status {
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 8px;
-            background: #e8f4fd;
-            border-left: 4px solid #2196F3;
-            text-align: center;
-            font-weight: 500;
-            transition: all 0.3s ease;
-        }
-        .status.active {
-            background: #e8f5e9;
-            border-left-color: #4CAF50;
-        }
-        .status.error {
-            background: #ffebee;
-            border-left-color: #f44336;
-        }
-        .status.warning {
-            background: #fff8e1;
-            border-left-color: #ff9800;
-        }
-        .info {
-            font-size: 13px;
             color: #666;
-            text-align: center;
-            margin: 5px 0;
-        }
-        #coords {
-            font-family: 'Courier New', monospace;
-            font-size: 15px;
-            background: #f0f0f0;
-            padding: 12px;
-            border-radius: 8px;
             text-align: center;
             margin: 10px 0;
-            word-break: break-all;
         }
-        .driver-input {
-            margin: 15px 0;
-        }
-        .driver-input label {
-            display: block;
-            font-weight: 600;
-            margin-bottom: 5px;
-            color: #333;
-        }
-        .driver-input input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 16px;
-            transition: border-color 0.3s;
-        }
-        .driver-input input:focus {
-            outline: none;
-            border-color: #2196F3;
-        }
-        .driver-input input:disabled {
-            background: #f5f5f5;
+        .info-text {
+            font-size: 12px;
             color: #999;
+            text-align: center;
         }
-        .btn-row {
-            display: flex;
-            gap: 10px;
-            margin: 15px 0;
-        }
-        .btn-row button {
-            flex: 1;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .btn-start {
-            background: #2196F3;
-            color: white;
-        }
-        .btn-start:hover {
-            background: #1976D2;
-        }
-        .btn-start:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .btn-stop {
-            background: #f44336;
-            color: white;
-        }
-        .btn-stop:hover {
-            background: #d32f2f;
-        }
-        .btn-stop:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-        .btn-refresh {
-            background: #6c757d;
-            color: white;
-        }
-        .btn-refresh:hover {
-            background: #5a6268;
-        }
-        .stats {
-            display: flex;
-            justify-content: space-between;
-            font-size: 13px;
-            color: #666;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #eee;
-        }
-        .persistent-badge {
-            display: inline-block;
-            background: #4CAF50;
-            color: white;
-            font-size: 11px;
-            padding: 2px 10px;
-            border-radius: 12px;
-            margin-left: 8px;
-        }
-        @media (max-width: 480px) {
-            .container { padding: 15px; }
-            .btn-row { flex-direction: column; }
-            .btn-row button { padding: 12px; }
-        }
+        /* Verborgen elementen */
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📍 Tracker</h1>
-        <p class="subtitle">Deel jouw locatie in real-time <span class="persistent-badge">🔄 Permanent</span></p>
-
-        <div class="driver-input">
-            <label for="driverId">🔑 Chauffeur ID:</label>
-            <input type="text" id="driverId" placeholder="bijv. chauffeur-001" value="">
+        <!-- Minimale, neutrale interface -->
+        <div style="text-align: center; padding: 10px 0;">
+            <span class="status-dot"></span>
+            <span class="status-text" id="statusText">Actief</span>
         </div>
-
-        <div class="btn-row">
-            <button id="startBtn" class="btn-start">📍 Start met delen</button>
-            <button id="stopBtn" class="btn-stop" style="display:none;">⏹ Stop</button>
-            <button id="refreshBtn" class="btn-refresh" title="Herstart tracking">🔄</button>
-        </div>
-
-        <div id="status" class="status">Klik op "Start met delen" om te beginnen</div>
-        <div id="coords">Wacht op locatie...</div>
-        <div class="stats">
-            <span id="updateCount">📤 Updates: 0</span>
-            <span id="sessionInfo">🟢 Actief</span>
+        <div class="info-text" id="infoText">📍 Locatie wordt gedeeld</div>
+        
+        <!-- Verborgen inputs (alleen voor admin) -->
+        <div class="hidden">
+            <input type="text" id="driverId" value="Tablet">
+            <button id="startBtn">Start</button>
+            <button id="stopBtn">Stop</button>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         // ============================================================
-        // 🔑 CONFIGURATIE
+        // 🔑 CONFIGURATIE - STIL OP DE ACHTERGROND
         // ============================================================
         const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
         const TABLE_NAME = 'locations_test';
         const STORAGE_KEY = 'tracker_driver_id';
-        const UPDATE_INTERVAL = 3000; // 3 seconden
+        
+        // Vaste chauffeur ID (kan ook uit localStorage komen)
+        const DRIVER_ID = 'Tablet';
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         // ============================================================
-        // 📦 STATE
+        // 📦 STATE - GEEN VISUELE FEEDBACK
         // ============================================================
         let watchId = null;
         let updateCount = 0;
         let isTracking = false;
-        let driverId = '';
-        let intervalId = null;
         let lastLocation = null;
+        let intervalId = null;
+        let reconnectAttempts = 0;
 
         // ============================================================
-        // 🎯 DOM ELEMENTEN
+        // 🎯 DOM ELEMENTEN (minimaal)
         // ============================================================
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const refreshBtn = document.getElementById('refreshBtn');
-        const driverIdInput = document.getElementById('driverId');
-        const statusEl = document.getElementById('status');
-        const coordsEl = document.getElementById('coords');
-        const updateCountEl = document.getElementById('updateCount');
-        const sessionInfoEl = document.getElementById('sessionInfo');
+        const statusText = document.getElementById('statusText');
+        const infoText = document.getElementById('infoText');
 
         // ============================================================
-        // 📋 FUNCTIES
+        // 📋 FUNCTIES - GEEN POPUPS, GEEN MELDINGEN
         // ============================================================
-        function showStatus(message, type) {
-            statusEl.textContent = message;
-            statusEl.className = 'status';
-            if (type) statusEl.classList.add(type);
-        }
-
-        function updateUI(latitude, longitude, accuracy) {
-            coordsEl.innerHTML = `
-                📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>
-                🎯 Nauwkeurigheid: ${(accuracy || 0).toFixed(0)}m
-            `;
-            updateCountEl.textContent = `📤 Updates: ${updateCount}`;
-        }
-
-        function updateSessionInfo(status) {
-            sessionInfoEl.textContent = status;
+        function updateStatus(active) {
+            // Alleen de status-dot en tekst updaten (geen popups)
+            if (active) {
+                statusText.textContent = 'Actief';
+                infoText.textContent = '📍 Locatie wordt gedeeld';
+            } else {
+                statusText.textContent = 'Inactief';
+                infoText.textContent = '⏸️ Niet actief';
+            }
         }
 
         async function sendLocation(lat, lng) {
@@ -257,11 +119,11 @@
                 const { data: existing, error: checkError } = await supabaseClient
                     .from(TABLE_NAME)
                     .select('driver_id')
-                    .eq('driver_id', driverId)
+                    .eq('driver_id', DRIVER_ID)
                     .maybeSingle();
 
                 if (checkError) {
-                    console.error('❌ Check error:', checkError);
+                    console.warn('⚠️ Check error:', checkError.message);
                     return false;
                 }
 
@@ -274,13 +136,13 @@
                             longitude: lng,
                             last_updated: new Date().toISOString()
                         })
-                        .eq('driver_id', driverId);
+                        .eq('driver_id', DRIVER_ID);
                 } else {
                     result = await supabaseClient
                         .from(TABLE_NAME)
                         .insert({
-                            driver_id: driverId,
-                            driver_name: `Chauffeur ${driverId}`,
+                            driver_id: DRIVER_ID,
+                            driver_name: `Chauffeur ${DRIVER_ID}`,
                             latitude: lat,
                             longitude: lng,
                             last_updated: new Date().toISOString()
@@ -288,165 +150,145 @@
                 }
 
                 if (result.error) {
-                    console.error('❌ Supabase fout:', result.error);
+                    console.warn('⚠️ Send error:', result.error.message);
                     return false;
                 }
                 return true;
             } catch (err) {
-                console.error('❌ Fout:', err);
+                console.warn('⚠️ Send exception:', err.message);
                 return false;
             }
         }
 
-        async function stopTracking() {
-            console.log('⏹ Stop tracking gestart...');
-
-            // Stop GPS
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-            }
-
-            // Stop interval
-            if (intervalId) {
-                clearInterval(intervalId);
-                intervalId = null;
-            }
-
-            isTracking = false;
-            localStorage.removeItem(STORAGE_KEY);
-
-            startBtn.style.display = 'block';
-            stopBtn.style.display = 'none';
-            driverIdInput.disabled = false;
-
-            showStatus('⏹ Tracking gestopt', '');
-            coordsEl.textContent = 'Wacht op locatie...';
-            updateCount = 0;
-            updateCountEl.textContent = '📤 Updates: 0';
-            updateSessionInfo('🔴 Gestopt');
-
-            // Verwijder locatie uit database
-            try {
-                await supabaseClient
-                    .from(TABLE_NAME)
-                    .delete()
-                    .eq('driver_id', driverId);
-                console.log('🗑️ Locatie verwijderd');
-            } catch (err) {
-                console.warn('⚠️ Kon locatie niet verwijderen:', err);
-            }
-        }
-
         function startTracking() {
-            driverId = driverIdInput.value.trim();
-            if (!driverId) {
-                showStatus('⚠️ Vul een chauffeur ID in', 'error');
-                return;
-            }
+            if (isTracking) return;
 
             if (!navigator.geolocation) {
-                showStatus('❌ Geolocatie wordt niet ondersteund', 'error');
+                console.warn('⚠️ Geolocatie niet beschikbaar');
                 return;
             }
 
-            // Sla driverId op voor permanente verbinding
-            localStorage.setItem(STORAGE_KEY, driverId);
-
-            showStatus('📍 Locatie wordt opgehaald...', 'active');
-            startBtn.style.display = 'none';
-            stopBtn.style.display = 'block';
-            driverIdInput.disabled = true;
+            console.log('📍 Tracking gestart (stil)');
             isTracking = true;
-            updateCount = 0;
-            updateSessionInfo('🟢 Tracking actief');
+            updateStatus(true);
 
-            // Start GPS
+            // GPS starten
             watchId = navigator.geolocation.watchPosition(
                 async (position) => {
                     const { latitude, longitude, accuracy } = position.coords;
                     lastLocation = { latitude, longitude, accuracy };
                     updateCount++;
-                    updateUI(latitude, longitude, accuracy);
-
+                    
                     const success = await sendLocation(latitude, longitude);
                     if (success) {
-                        showStatus(`✅ Locatie verzonden (${updateCount})`, 'active');
+                        reconnectAttempts = 0; // Reset bij succes
                     }
                 },
                 (error) => {
-                    console.warn('⚠️ GPS Error:', error.message);
-                    showStatus(`⚠️ GPS: ${error.message}`, 'warning');
+                    // Stil afhandelen - geen meldingen
+                    console.warn('⚠️ GPS error:', error.message);
+                    
+                    // Probeer opnieuw met andere instellingen
+                    if (error.code === 3) { // TIMEOUT
+                        navigator.geolocation.getCurrentPosition(
+                            (pos) => {
+                                sendLocation(pos.coords.latitude, pos.coords.longitude);
+                            },
+                            () => {},
+                            { enableHighAccuracy: false, timeout: 5000 }
+                        );
+                    }
                 },
                 {
-                    enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 5000
+                    enableHighAccuracy: false,
+                    timeout: 30000,
+                    maximumAge: 10000
                 }
             );
 
-            // Start interval om de locatie te blijven sturen (backup)
+            // Heartbeat interval (elke 10 seconden)
             if (intervalId) clearInterval(intervalId);
             intervalId = setInterval(async () => {
                 if (!isTracking) return;
                 if (!lastLocation) return;
 
-                // Stuur de laatste locatie opnieuw als heart beat
-                const { latitude, longitude } = lastLocation;
-                const success = await sendLocation(latitude, longitude);
-                if (success) {
-                    console.log('💓 Heartbeat verzonden');
+                try {
+                    const { latitude, longitude } = lastLocation;
+                    await sendLocation(latitude, longitude);
+                    console.log('💓 Heartbeat');
+                } catch (err) {
+                    console.warn('⚠️ Heartbeat failed:', err.message);
                 }
-            }, UPDATE_INTERVAL);
+            }, 10000);
+
+            // Reconnect check (elke 30 seconden)
+            setInterval(async () => {
+                if (!isTracking) return;
+                
+                try {
+                    const { data, error } = await supabaseClient
+                        .from(TABLE_NAME)
+                        .select('driver_id')
+                        .eq('driver_id', DRIVER_ID)
+                        .maybeSingle();
+
+                    if (error) {
+                        reconnectAttempts++;
+                        if (reconnectAttempts > 3 && lastLocation) {
+                            // Probeer opnieuw te verbinden
+                            console.log('🔄 Reconnect poging');
+                            await sendLocation(lastLocation.latitude, lastLocation.longitude);
+                            reconnectAttempts = 0;
+                        }
+                    } else {
+                        reconnectAttempts = 0;
+                    }
+                } catch (err) {
+                    console.warn('⚠️ Connection check failed:', err.message);
+                }
+            }, 30000);
+        }
+
+        function stopTracking() {
+            if (!isTracking) return;
+            
+            console.log('📍 Tracking gestopt');
+            isTracking = false;
+            updateStatus(false);
+
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+
+            // Verwijder locatie uit database (stil)
+            try {
+                supabaseClient
+                    .from(TABLE_NAME)
+                    .delete()
+                    .eq('driver_id', DRIVER_ID)
+                    .then(() => console.log('🗑️ Locatie verwijderd'))
+                    .catch(() => {});
+            } catch (err) {
+                // Stil afhandelen
+            }
         }
 
         // ============================================================
-        // 🔄 PERMANENTE VERBINDING - Auto-herstart
+        // 🚀 START - AUTOMATISCH OP DE ACHTERGROND
         // ============================================================
-        function checkPersistentSession() {
-            const savedDriverId = localStorage.getItem(STORAGE_KEY);
-            if (savedDriverId) {
-                console.log(`🔄 Permanente sessie gevonden voor: ${savedDriverId}`);
-                driverIdInput.value = savedDriverId;
-                // Start automatisch na korte vertraging
-                setTimeout(() => {
-                    startTracking();
-                }, 500);
-            }
-        }
+        console.log('✅ Tracker geladen (stille modus)');
 
-        // ============================================================
-        // 🎯 EVENT LISTENERS
-        // ============================================================
-        startBtn.addEventListener('click', startTracking);
-        stopBtn.addEventListener('click', stopTracking);
+        // Start automatisch na 1 seconde
+        setTimeout(() => {
+            startTracking();
+        }, 1000);
 
-        refreshBtn.addEventListener('click', async () => {
-            if (isTracking) {
-                await stopTracking();
-                setTimeout(() => startTracking(), 500);
-            } else {
-                startTracking();
-            }
-        });
-
-        driverIdInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                if (!isTracking) startTracking();
-            }
-        });
-
-        // ============================================================
-        // 🚀 INITIALISATIE
-        // ============================================================
-        console.log('✅ Tracker geladen (permanente verbinding)');
-        console.log('🔗 Supabase URL:', SUPABASE_URL);
-
-        // Check voor permanente sessie
-        checkPersistentSession();
-
-        // Cleanup bij pagina sluiten
+        // Bij pagina sluiten: netjes stoppen (geen meldingen)
         window.addEventListener('beforeunload', function() {
             if (watchId !== null) {
                 navigator.geolocation.clearWatch(watchId);
@@ -455,6 +297,17 @@
                 clearInterval(intervalId);
             }
         });
+
+        // ============================================================
+        // 🔧 ADMIN FUNCTIES (via console)
+        // ============================================================
+        // Voor admin: in de console kun je de tracking beheren
+        window.tracker = {
+            start: startTracking,
+            stop: stopTracking,
+            status: () => isTracking ? 'Actief' : 'Inactief',
+            count: () => updateCount
+        };
     </script>
 </body>
 </html>
