@@ -565,7 +565,7 @@ function resetFilters() {
     laadRegistraties();
 }
 
-// ===== EXCEL EXPORT (MET ALLE COMBINATIES) =====
+// ===== EXCEL EXPORT (MET FILTERS EN BEVROZEN RIJ - FALLBACK) =====
 async function exportExcel() {
     const huidigeData = getHuidigeGefilterdeData();
     
@@ -578,7 +578,6 @@ async function exportExcel() {
         showToast(`📊 ${huidigeData.length} registraties worden geëxporteerd...`, 'info');
         
         const excelData = huidigeData.map(reg => {
-            // Bepaal de combinatie weergave voor Excel
             let combinatieDisplay = '';
             if (reg.combinatie_lijst && reg.combinatie_lijst.length > 0) {
                 const namen = reg.combinatie_lijst.map(combo => {
@@ -604,20 +603,32 @@ async function exportExcel() {
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(excelData);
         
-        // Kolombreedtes instellen
+        // ===== KOLOMBREEDTES =====
         ws['!cols'] = [
             { wch: 15 },  // Datum
-            { wch: 30 },  // Ziekenhuis
+            { wch: 35 },  // Ziekenhuis
             { wch: 12 },  // Type
             { wch: 15 },  // Gewicht
-            { wch: 40 },  // Combinatie (breder voor meerdere combinaties)
+            { wch: 45 },  // Combinatie
             { wch: 12 },  // Aantal
-            { wch: 30 }   // Opmerkingen
+            { wch: 35 }   // Opmerkingen
         ];
+        
+        // ===== BEVROZEN RIJ (EERSTE RIJ) =====
+        try {
+            ws['!freeze'] = 'A2';
+        } catch (e) {
+            console.warn('⚠️ Bevroren rij niet ondersteund in deze versie');
+        }
         
         XLSX.utils.book_append_sheet(wb, ws, 'Registraties');
         
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const wbout = XLSX.write(wb, { 
+            bookType: 'xlsx', 
+            type: 'array',
+            bookSST: false
+        });
+        
         const blob = new Blob([wbout], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
         
