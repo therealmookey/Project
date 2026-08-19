@@ -29,6 +29,7 @@ const trackerStatus = document.getElementById('trackerStatus');
 const centerAllBtn = document.getElementById('centerAllBtn');
 const refreshBtn = document.getElementById('refreshTrackerBtn');
 const restartRealtimeBtn = document.getElementById('restartRealtimeBtn');
+const forceUpdateBtn = document.getElementById('forceUpdateBtn');
 const driversUl = document.getElementById('trackerDriversUl');
 
 console.log('✅ DOM elementen gevonden');
@@ -444,6 +445,21 @@ function startRealtimeListener() {
         });
 }
 
+// ===== FORCEER REALTIME HERSTART =====
+function forceRealtimeRestart() {
+    console.log('🔄 Forceer Realtime herstart...');
+    
+    if (channel) {
+        channel.unsubscribe();
+        channel = null;
+    }
+    
+    setTimeout(() => {
+        startRealtimeListener();
+        console.log('✅ Realtime herstart');
+    }, 500);
+}
+
 // ===== AUTO CLEANUP - 4 UUR TIMEOUT =====
 function startAutoCleanup() {
     console.log('⏰ Auto-cleanup ingesteld op 4 uur');
@@ -516,7 +532,6 @@ export {
     map
 };
 
-// Maak ook globaal beschikbaar voor console debugging
 window.trackerDashboard = {
     initMap,
     laadBestaandeLocaties,
@@ -536,8 +551,9 @@ window.trackerDashboard = {
 
 console.log('✅ Tracker dashboard exports beschikbaar');
 
-// ===== INITIALISATIE =====
-
+// ============================================================
+// INITIALISATIE
+// ============================================================
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔄 Tracker dashboard initialiseren...');
 
@@ -565,6 +581,19 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (restartRealtimeBtn) {
         restartRealtimeBtn.addEventListener('click', restartRealtime);
     }
+
+    if (forceUpdateBtn) {
+        forceUpdateBtn.addEventListener('click', function() {
+            console.log('📡 Forceer update...');
+            forceRefresh();
+            forceRealtimeRestart();
+            showToast('✅ Update geforceerd', 'success');
+        });
+    }
+
+    // Forceer Realtime herstart elke minuut
+    setTimeout(forceRealtimeRestart, 5000);
+    setInterval(forceRealtimeRestart, 60000);
 
     console.log('✅ Tracker dashboard geïnitialiseerd!');
 });

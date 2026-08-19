@@ -196,7 +196,6 @@
                     document.getElementById('lastLocation').textContent = `${row.latitude.toFixed(6)}, ${row.longitude.toFixed(6)}`;
                     document.getElementById('lastUpdate').textContent = formatDate(row.last_updated);
                     
-                    // Check of de tracker actief is (update < 30 sec)
                     const lastUpdate = new Date(row.last_updated);
                     const secondsAgo = Math.floor((Date.now() - lastUpdate.getTime()) / 1000);
                     
