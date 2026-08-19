@@ -239,9 +239,10 @@
             );
         }
 
-        function stopTracking() {
+        async function stopTracking() {
             console.log('⏹ Stop tracking gestart...');
             
+            // Stop GPS
             if (watchId !== null) {
                 navigator.geolocation.clearWatch(watchId);
                 console.log('📍 WatchId cleared:', watchId);
@@ -250,11 +251,29 @@
                 console.warn('⚠️ Geen actieve watchId gevonden');
             }
             
+            // Verwijder de locatie uit de database
+            try {
+                const { error } = await supabaseClient
+                    .from(TABLE_NAME)
+                    .delete()
+                    .eq('driver_id', driverId);
+                
+                if (error) {
+                    console.error('❌ Fout bij verwijderen locatie:', error);
+                    showStatus('⚠️ Tracking gestopt, maar locatie kon niet worden verwijderd', 'error');
+                } else {
+                    console.log('🗑️ Locatie verwijderd voor:', driverId);
+                    showStatus('✅ Tracking gestopt en locatie verwijderd', 'active');
+                }
+            } catch (err) {
+                console.error('❌ Fout:', err);
+                showStatus('⚠️ Tracking gestopt, maar fout bij verwijderen', 'error');
+            }
+            
             isTracking = false;
             startBtn.style.display = 'block';
             stopBtn.style.display = 'none';
             driverIdInput.disabled = false;
-            showStatus('⏹ Tracking gestopt', '');
             coordsEl.textContent = 'Wacht op locatie...';
             updateCount = 0;
             updateCountEl.textContent = 'Updates: 0';
