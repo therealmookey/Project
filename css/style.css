@@ -4437,3 +4437,12 @@ hr {
         align-items: flex-start;
     }
 }
+/* ===== NAVIGATIE MODULES - STANDAARD VERBORGEN ===== */
+.nav-links a:not(.always-visible) {
+    display: none !important;
+}
+
+/* Alleen dashboard en profiel zijn altijd zichtbaar */
+.nav-links a.always-visible {
+    display: inline-block !important;
+}

@@ -25,18 +25,11 @@ const CACHE_TTL = 60000; // 60 seconden
 
 // ===== PAGINA BEVEILIGING =====
 
-/**
- * Check of de huidige pagina beschermd is
- * @returns {boolean}
- */
 export function isBeschermdePagina() {
     const huidigePagina = window.location.pathname.split('/').pop();
     return BESCHERMDE_PAGINAS.includes(huidigePagina);
 }
 
-/**
- * Redirect naar login als niet ingelogd
- */
 export async function checkPageAuth() {
     if (!isBeschermdePagina()) return;
     
@@ -53,7 +46,6 @@ export async function checkPageAuth() {
             return;
         }
         
-        // Check ook of de gebruiker is goedgekeurd
         const { data: userData, error } = await supabase
             .from('gebruikers_rollen')
             .select('status')
@@ -73,11 +65,6 @@ export async function checkPageAuth() {
 
 // ===== MODULE RECHTEN (MET CACHE) =====
 
-/**
- * Check of een gebruiker toegang heeft tot een module
- * @param {string} moduleSleutel 
- * @returns {Promise<boolean>}
- */
 export async function heeftModuleToegang(moduleSleutel) {
     if (!supabase) return false;
     
@@ -85,13 +72,11 @@ export async function heeftModuleToegang(moduleSleutel) {
         const user = await getCurrentUser();
         if (!user) return false;
         
-        // Gebruik cache als die nog geldig is
         const now = Date.now();
         if (moduleRightsCache && (now - moduleRightsCacheTime) < CACHE_TTL) {
             return moduleRightsCache[moduleSleutel] || false;
         }
         
-        // Haal alle rechten in één keer op
         const { data: rollen } = await supabase
             .from('gebruikers_rollen')
             .select('rol')
@@ -100,7 +85,6 @@ export async function heeftModuleToegang(moduleSleutel) {
         
         if (rollen && rollen.rol === 'admin') {
             moduleRightsCache = {};
-            // Admin heeft overal toegang
             ['adressen', 'planning', 'registraties', 'stock', 'admin', 'analytics', 'modules', 'tracker'].forEach(key => {
                 moduleRightsCache[key] = true;
             });
@@ -108,7 +92,6 @@ export async function heeftModuleToegang(moduleSleutel) {
             return true;
         }
         
-        // Haal alle module rechten in één query
         const { data: rechten, error } = await supabase
             .from('gebruikers_module_rechten')
             .select('module_sleutel, actief')
@@ -119,19 +102,16 @@ export async function heeftModuleToegang(moduleSleutel) {
             return false;
         }
         
-        // Bouw cache
         moduleRightsCache = {};
         rechten.forEach(r => {
             moduleRightsCache[r.module_sleutel] = r.actief;
         });
         moduleRightsCacheTime = now;
         
-        // Check of de module in de cache zit
         if (moduleRightsCache[moduleSleutel] !== undefined) {
             return moduleRightsCache[moduleSleutel];
         }
         
-        // Fallback: check standaard waarde
         const { data: module, error: modError } = await supabase
             .from('modules')
             .select('standaard_aan')
@@ -151,20 +131,22 @@ export async function heeftModuleToegang(moduleSleutel) {
     }
 }
 
-/**
- * Filter navigatie links op basis van module rechten
- */
+// ===== FILTER NAVIGATIE (VERBETERD) =====
 export async function filterNavigatieModules() {
     try {
-        const navLinks = document.querySelectorAll('.nav-links a');
+        // Alle links ophalen (behalve always-visible)
+        const navLinks = document.querySelectorAll('.nav-links a:not(.always-visible)');
+        
+        // Eerst alle links verbergen
+        navLinks.forEach(link => {
+            link.style.display = 'none';
+        });
+        
+        // Dan alleen de links tonen waar de gebruiker rechten voor heeft
         for (const link of navLinks) {
             const href = link.getAttribute('href');
             if (!href) continue;
             
-            // Altijd zichtbaar
-            if (href === 'dashboard.html' || href === 'profiel.html') continue;
-            
-            // Bepaal module sleutel op basis van href
             let moduleSleutel = '';
             if (href.includes('admin')) moduleSleutel = 'admin';
             else if (href.includes('analytics')) moduleSleutel = 'analytics';
@@ -177,7 +159,12 @@ export async function filterNavigatieModules() {
             else continue;
             
             const heeftToegang = await heeftModuleToegang(moduleSleutel);
-            link.style.display = heeftToegang ? 'inline-block' : 'none';
+            if (heeftToegang) {
+                link.style.display = 'inline-block';
+                console.log(`✅ Module zichtbaar: ${moduleSleutel}`);
+            } else {
+                console.log(`🔒 Module verborgen: ${moduleSleutel}`);
+            }
         }
     } catch (err) {
         console.error('Fout bij filteren navigatie modules:', err);
@@ -186,9 +173,6 @@ export async function filterNavigatieModules() {
 
 // ===== NAVIGATIE LADEN =====
 
-/**
- * Laad de navigatiebalk van een externe HTML file
- */
 export async function laadNavigatie() {
     const placeholder = document.getElementById('navigatie-placeholder');
     if (!placeholder) return;
@@ -199,7 +183,12 @@ export async function laadNavigatie() {
         const html = await response.text();
         placeholder.innerHTML = html;
         
-        // Filter modules op rechten
+        // Eerst ALLE niet-always-visible links verbergen
+        document.querySelectorAll('.nav-links a:not(.always-visible)').forEach(link => {
+            link.style.display = 'none';
+        });
+        
+        // Daarna filteren op rechten
         await filterNavigatieModules();
         
         // Uitlog knop
@@ -212,7 +201,7 @@ export async function laadNavigatie() {
             });
         }
         
-        console.log('✅ Navigatie geladen!');
+        console.log('✅ Navigatie geladen en gefilterd!');
         
     } catch (error) {
         console.error('Fout bij laden navigatie:', error);
@@ -222,10 +211,6 @@ export async function laadNavigatie() {
 
 // ===== AUTH HELPERS =====
 
-/**
- * Check of gebruiker is ingelogd
- * @returns {Promise<boolean>}
- */
 export async function checkAuth() {
     if (!supabase) return false;
     

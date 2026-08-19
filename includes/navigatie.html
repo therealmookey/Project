@@ -2,16 +2,19 @@
     <div class="nav-container">
         <a href="dashboard.html" class="nav-logo">🏥 Project</a>
         <div class="nav-links">
-            <a href="dashboard.html">Dashboard</a>
-            <a href="adressen.html">Adressen</a>
-            <a href="planning.html">Planning</a>
+            <!-- Deze zijn ALTIJD zichtbaar -->
+            <a href="dashboard.html" class="always-visible">Dashboard</a>
+            <a href="profiel.html" class="always-visible">Mijn profiel</a>
+            
+            <!-- Deze worden gefilterd op rechten -->
+            <a href="adressen.html" id="navAdressen">Adressen</a>
+            <a href="planning.html" id="navPlanning">Planning</a>
             <a href="admin.html" id="adminLink">👑 Admin</a>
             <a href="modules.html" id="navModules">⚙️ Modules</a>
-            <a href="registraties.html">📋 Registraties</a>
-            <a href="stock.html">📦 Stock</a>
+            <a href="registraties.html" id="navRegistraties">📋 Registraties</a>
+            <a href="stock.html" id="navStock">📦 Stock</a>
             <a href="analytics.html" id="analyticsLink">📊 Analytics</a>
-            <a href="tracker-dashboard.html" id="trackerLink">🗺️ Live tracking</a>
-            <a href="profiel.html">Mijn profiel</a>
+            <a href="tracker-dashboard.html" id="trackerLink">🗺️ Live Tracking</a>
             
             <!-- Dark mode slider -->
             <div class="theme-switch-wrapper">
