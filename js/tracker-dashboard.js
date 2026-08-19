@@ -14,6 +14,7 @@ console.log('✅ Imports geladen!');
 let map = null;
 let markers = {};
 let driverInfo = {};
+let destinationMarkers = [];
 let channel = null;
 let isInitialized = false;
 
@@ -41,12 +42,13 @@ function initMap() {
 
     map = L.map('trackerMap').setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
+    // Standaard OpenStreetMap kaart
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Custom marker
+    // Custom marker voor chauffeurs
     const customIcon = L.divIcon({
         className: 'tracker-marker',
         html: `<div style="
@@ -82,7 +84,94 @@ function initMap() {
     return map;
 }
 
-// ===== MARKER FUNCTIES =====
+// ===== BESTEMMINGEN (PLANNING VAN VANDAAG) =====
+async function laadBestemmingen() {
+    try {
+        const vandaag = new Date().toISOString().split('T')[0];
+        console.log(`📅 Bestemmingen laden voor: ${vandaag}`);
+
+        const { data: planningen, error } = await supabase
+            .from('planningen')
+            .select(`
+                id,
+                adres_id,
+                adres:adres_id (id, instelling_naam, straat, postcode, plaats, latitude, longitude)
+            `)
+            .eq('datum', vandaag)
+            .in('status', ['gepland', 'bevestigd']);
+
+        if (error) {
+            console.error('❌ Fout bij laden bestemmingen:', error);
+            return;
+        }
+
+        if (!planningen || planningen.length === 0) {
+            console.log('📭 Geen bestemmingen gevonden voor vandaag');
+            return;
+        }
+
+        console.log(`📍 ${planningen.length} bestemmingen geladen voor vandaag`);
+        tekenBestemmingen(planningen);
+
+    } catch (err) {
+        console.error('❌ Fout bij laden bestemmingen:', err);
+    }
+}
+
+function tekenBestemmingen(planningen) {
+    // Verwijder oude bestemmingsmarkers
+    destinationMarkers.forEach(marker => {
+        if (map) map.removeLayer(marker);
+    });
+    destinationMarkers = [];
+
+    // Icoon voor bestemmingen (groene vlag)
+    const destinationIcon = L.divIcon({
+        className: 'destination-marker',
+        html: `<div style="
+            width: 28px;
+            height: 28px;
+            background: #28a745;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        ">
+            🏁
+        </div>`,
+        iconSize: [28, 28],
+        iconAnchor: [14, 28],
+        popupAnchor: [0, -28]
+    });
+
+    planningen.forEach(planning => {
+        const adres = planning.adres;
+        if (!adres || !adres.latitude || !adres.longitude) {
+            console.warn(`⚠️ Geen coördinaten voor adres: ${adres?.instelling_naam}`);
+            return;
+        }
+
+        const marker = L.marker([adres.latitude, adres.longitude], {
+            icon: destinationIcon
+        })
+        .addTo(map)
+        .bindPopup(`
+            <b>📍 ${escapeHtml(adres.instelling_naam)}</b><br>
+            ${escapeHtml(adres.straat)}<br>
+            ${escapeHtml(adres.postcode)} ${escapeHtml(adres.plaats)}<br>
+            🕐 Planning voor vandaag
+        `);
+
+        destinationMarkers.push(marker);
+    });
+
+    console.log(`✅ ${destinationMarkers.length} bestemmingsmarkers getekend`);
+}
+
+// ===== MARKER FUNCTIES VOOR CHAUFFEURS =====
 function updateMarker(driverId, lat, lng, name = null) {
     if (!map) return;
 
@@ -191,7 +280,6 @@ async function verwijderChauffeur(driverId) {
     }
 
     try {
-        // Verwijder uit de database
         const { error } = await supabase
             .from(TABLE_NAME)
             .delete()
@@ -203,18 +291,15 @@ async function verwijderChauffeur(driverId) {
             return;
         }
 
-        // Verwijder van de kaart
         if (markers[driverId]) {
             map.removeLayer(markers[driverId]);
             delete markers[driverId];
         }
         delete driverInfo[driverId];
 
-        // Forceer een update van de UI
         updateDriverList();
         updateCount();
 
-        // Extra: verwijder ook uit de database met een aparte query (voor de zekerheid)
         await supabase
             .from(TABLE_NAME)
             .delete()
@@ -234,7 +319,6 @@ async function forceRefresh() {
     console.log('🔄 Forceer refresh...');
     showToast('🔄 Vernieuwen...', 'info');
 
-    // Verwijder alle markers
     Object.keys(markers).forEach(id => {
         if (markers[id]) {
             map.removeLayer(markers[id]);
@@ -243,8 +327,14 @@ async function forceRefresh() {
     markers = {};
     driverInfo = {};
 
-    // Herlaad de data
+    // Verwijder ook bestemmingsmarkers
+    destinationMarkers.forEach(marker => {
+        if (map) map.removeLayer(marker);
+    });
+    destinationMarkers = [];
+
     await laadBestaandeLocaties();
+    await laadBestemmingen();
 
     showToast('✅ Kaart vernieuwd', 'success');
 }
@@ -266,7 +356,6 @@ async function laadBestaandeLocaties() {
             return;
         }
 
-        // Verwijder alle bestaande markers
         Object.keys(markers).forEach(id => removeMarker(id));
 
         if (data && data.length > 0) {
@@ -400,7 +489,6 @@ function centerOnAllDrivers() {
 }
 
 // ===== INITIALISATIE =====
-
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔄 Tracker dashboard initialiseren...');
 
@@ -411,11 +499,22 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     console.log('✅ Ingelogd als:', auth.user?.email);
 
+    // 1. Kaart initialiseren
     initMap();
+
+    // 2. Bestaande chauffeurs laden
     await laadBestaandeLocaties();
+
+    // 3. Bestemmingen laden (planning van vandaag)
+    await laadBestemmingen();
+
+    // 4. Realtime listener starten
     startRealtimeListener();
+
+    // 5. Auto cleanup starten (verwijder oude chauffeurs)
     startAutoCleanup();
 
+    // 6. Event listeners voor knoppen
     if (centerAllBtn) {
         centerAllBtn.addEventListener('click', centerOnAllDrivers);
     }
