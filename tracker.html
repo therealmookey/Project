@@ -173,7 +173,6 @@
             updateStatus(true);
             updateCount = 0;
 
-            // === GPS ===
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(
                     async (position) => {
@@ -212,7 +211,6 @@
                 updateCount++;
             }
 
-            // === Heartbeat ===
             if (intervalId) clearInterval(intervalId);
             intervalId = setInterval(async () => {
                 if (!isTracking) return;
@@ -233,7 +231,7 @@
                 }
             }, 3000);
 
-            // === Auto-herstart ===
+            // Auto-herstart bij langdurige inactiviteit
             setInterval(() => {
                 if (!isTracking) return;
                 const now = Date.now();
@@ -311,6 +309,38 @@
         }
 
         // ============================================================
+        // PAGE VISIBILITY API - Herstart bij terugkeer
+        // ============================================================
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                console.log('📱 Tabblad weer zichtbaar, check tracker...');
+                if (!isTracking) {
+                    console.log('🔄 Tracker was gestopt, herstarten...');
+                    startTracking();
+                } else if (lastLocation) {
+                    sendLocation(lastLocation.latitude, lastLocation.longitude);
+                }
+            } else {
+                console.log('📱 Tabblad naar achtergrond');
+            }
+        });
+
+        // ============================================================
+        // NETWERK STATUS
+        // ============================================================
+        window.addEventListener('online', function() {
+            console.log('🌐 Internet verbinding hersteld');
+            if (!isTracking) {
+                console.log('🔄 Tracker herstarten na verbinding...');
+                startTracking();
+            }
+        });
+
+        window.addEventListener('offline', function() {
+            console.warn('⚠️ Internet verbinding verloren');
+        });
+
+        // ============================================================
         // START
         // ============================================================
         console.log('✅ Tracker geladen');
@@ -322,6 +352,29 @@
             if (watchId !== null) navigator.geolocation.clearWatch(watchId);
             if (intervalId) clearInterval(intervalId);
         });
+    </script>
+
+    <!-- ============================================================
+    SERVICE WORKER REGISTRATIE
+    ============================================================ -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/Project/sw.js')
+                .then((registration) => {
+                    console.log('✅ Service Worker geregistreerd');
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data && event.data.type === 'sync') {
+                            console.log('📩 Sync bericht ontvangen, herstart tracker...');
+                            if (window.tracker && window.tracker.start) {
+                                window.tracker.start();
+                            }
+                        }
+                    });
+                })
+                .catch((error) => {
+                    console.warn('⚠️ Service Worker registratie mislukt:', error);
+                });
+        }
     </script>
 </body>
 </html>
