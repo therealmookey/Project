@@ -46,6 +46,7 @@ function initMap() {
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
+    // Custom marker
     const customIcon = L.divIcon({
         className: 'tracker-marker',
         html: `<div style="
@@ -190,6 +191,7 @@ async function verwijderChauffeur(driverId) {
     }
 
     try {
+        // Verwijder uit de database
         const { error } = await supabase
             .from(TABLE_NAME)
             .delete()
@@ -201,17 +203,50 @@ async function verwijderChauffeur(driverId) {
             return;
         }
 
-        removeMarker(driverId);
-        showToast(`✅ Chauffeur "${driverId}" verwijderd`, 'success');
+        // Verwijder van de kaart
+        if (markers[driverId]) {
+            map.removeLayer(markers[driverId]);
+            delete markers[driverId];
+        }
+        delete driverInfo[driverId];
+
+        // Forceer een update van de UI
         updateDriverList();
         updateCount();
 
+        // Extra: verwijder ook uit de database met een aparte query (voor de zekerheid)
+        await supabase
+            .from(TABLE_NAME)
+            .delete()
+            .eq('driver_id', driverId);
+
+        showToast(`✅ Chauffeur "${driverId}" verwijderd`, 'success');
         console.log(`🗑️ Chauffeur ${driverId} verwijderd`);
 
     } catch (err) {
         console.error('❌ Fout:', err);
         showToast('❌ Fout: ' + err.message, 'error');
     }
+}
+
+// ===== FORCEER REFRESH =====
+async function forceRefresh() {
+    console.log('🔄 Forceer refresh...');
+    showToast('🔄 Vernieuwen...', 'info');
+
+    // Verwijder alle markers
+    Object.keys(markers).forEach(id => {
+        if (markers[id]) {
+            map.removeLayer(markers[id]);
+        }
+    });
+    markers = {};
+    driverInfo = {};
+
+    // Herlaad de data
+    await laadBestaandeLocaties();
+
+    showToast('✅ Kaart vernieuwd', 'success');
 }
 
 // ===== DATA LADEN =====
@@ -231,6 +266,7 @@ async function laadBestaandeLocaties() {
             return;
         }
 
+        // Verwijder alle bestaande markers
         Object.keys(markers).forEach(id => removeMarker(id));
 
         if (data && data.length > 0) {
@@ -385,7 +421,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     if (refreshBtn) {
-        refreshBtn.addEventListener('click', laadBestaandeLocaties);
+        refreshBtn.addEventListener('click', forceRefresh);
     }
 
     console.log('✅ Tracker dashboard geïnitialiseerd!');

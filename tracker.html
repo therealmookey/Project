@@ -251,25 +251,6 @@
                 console.warn('⚠️ Geen actieve watchId gevonden');
             }
             
-            // Verwijder de locatie uit de database
-            try {
-                const { error } = await supabaseClient
-                    .from(TABLE_NAME)
-                    .delete()
-                    .eq('driver_id', driverId);
-                
-                if (error) {
-                    console.error('❌ Fout bij verwijderen locatie:', error);
-                    showStatus('⚠️ Tracking gestopt, maar locatie kon niet worden verwijderd', 'error');
-                } else {
-                    console.log('🗑️ Locatie verwijderd voor:', driverId);
-                    showStatus('✅ Tracking gestopt en locatie verwijderd', 'active');
-                }
-            } catch (err) {
-                console.error('❌ Fout:', err);
-                showStatus('⚠️ Tracking gestopt, maar fout bij verwijderen', 'error');
-            }
-            
             isTracking = false;
             startBtn.style.display = 'block';
             stopBtn.style.display = 'none';
@@ -277,6 +258,38 @@
             coordsEl.textContent = 'Wacht op locatie...';
             updateCount = 0;
             updateCountEl.textContent = 'Updates: 0';
+            
+            // Verwijder de locatie uit de database met een DELETE
+            try {
+                console.log(`🗑️ Verwijder locatie voor driver_id: ${driverId}`);
+                
+                const { data, error } = await supabaseClient
+                    .from(TABLE_NAME)
+                    .delete()
+                    .eq('driver_id', driverId)
+                    .select();
+                
+                if (error) {
+                    console.error('❌ Fout bij verwijderen locatie:', error);
+                    showStatus('⚠️ Fout bij verwijderen locatie: ' + error.message, 'error');
+                    return;
+                }
+                
+                console.log('✅ Locatie verwijderd, data:', data);
+                showStatus('✅ Tracking gestopt en locatie verwijderd', 'active');
+                
+                // Forceer een extra DELETE (soms helpt het om het nog een keer te proberen)
+                await supabaseClient
+                    .from(TABLE_NAME)
+                    .delete()
+                    .eq('driver_id', driverId);
+                
+                console.log('🗑️ Locatie definitief verwijderd');
+                
+            } catch (err) {
+                console.error('❌ Fout bij verwijderen:', err);
+                showStatus('⚠️ Tracking gestopt, maar fout bij verwijderen', 'error');
+            }
         }
 
         startBtn.addEventListener('click', startTracking);
