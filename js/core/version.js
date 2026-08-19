@@ -5,7 +5,7 @@
 // ===== VERSIE INFORMATIE =====
 export const VERSION = {
     // Semantische versie (MAJOR.MINOR.PATCH)
-    number: '3.0.1',
+    number: '4.0.0',
     
     // Build datum (automatisch gegenereerd)
     buildDate: new Date().toISOString().replace('T', ' ').substring(0, 16),
