@@ -72,7 +72,8 @@
         const TABLE_NAME = 'locations_test';
         const COMMAND_TABLE = 'tracker_commands';
         const DRIVER_ID = 'Tablet';
-        const HEARTBEAT_INTERVAL = 5000;
+        const FALLBACK_LAT = 51.0;
+        const FALLBACK_LNG = 4.0;
 
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -101,6 +102,20 @@
             } else {
                 statusText.textContent = 'Inactief';
                 infoText.textContent = '⏸️ Niet actief';
+            }
+        }
+
+        async function getIPLocation() {
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                const data = await response.json();
+                if (data.latitude && data.longitude) {
+                    return { latitude: data.latitude, longitude: data.longitude };
+                }
+                return null;
+            } catch (err) {
+                console.warn('⚠️ IP locatie mislukt:', err.message);
+                return null;
             }
         }
 
@@ -153,39 +168,84 @@
         function startTracking() {
             if (isTracking) return;
 
-            if (!navigator.geolocation) {
-                console.warn('⚠️ Geolocatie niet beschikbaar');
-                return;
-            }
-
             console.log('📍 Tracking gestart');
             isTracking = true;
             updateStatus(true);
             updateCount = 0;
 
-            watchId = navigator.geolocation.watchPosition(
-                async (position) => {
-                    const { latitude, longitude } = position.coords;
-                    lastLocation = { latitude, longitude };
-                    updateCount++;
-                    await sendLocation(latitude, longitude);
-                },
-                (error) => {
-                    console.warn('⚠️ GPS error:', error.message);
-                },
-                {
-                    enableHighAccuracy: false,
-                    timeout: 30000,
-                    maximumAge: 5000
-                }
-            );
+            // === GPS ===
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(
+                    async (position) => {
+                        const { latitude, longitude } = position.coords;
+                        lastLocation = { latitude, longitude, timestamp: Date.now() };
+                        updateCount++;
+                        await sendLocation(latitude, longitude);
+                        console.log('📍 GPS update #' + updateCount);
+                    },
+                    async (error) => {
+                        console.warn('⚠️ GPS error:', error.message);
+                        if (error.code === 3) {
+                            console.log('📍 Gebruik fallback locatie');
+                            const ipLocation = await getIPLocation();
+                            if (ipLocation) {
+                                await sendLocation(ipLocation.latitude, ipLocation.longitude);
+                                lastLocation = { ...ipLocation, timestamp: Date.now() };
+                                updateCount++;
+                            } else {
+                                await sendLocation(FALLBACK_LAT, FALLBACK_LNG);
+                                lastLocation = { latitude: FALLBACK_LAT, longitude: FALLBACK_LNG, timestamp: Date.now() };
+                                updateCount++;
+                            }
+                        }
+                    },
+                    {
+                        enableHighAccuracy: false,
+                        timeout: 30000,
+                        maximumAge: 60000
+                    }
+                );
+            } else {
+                console.warn('⚠️ Geolocatie niet beschikbaar, gebruik fallback');
+                sendLocation(FALLBACK_LAT, FALLBACK_LNG);
+                lastLocation = { latitude: FALLBACK_LAT, longitude: FALLBACK_LNG, timestamp: Date.now() };
+                updateCount++;
+            }
 
+            // === Heartbeat ===
             if (intervalId) clearInterval(intervalId);
             intervalId = setInterval(async () => {
-                if (!isTracking || !lastLocation) return;
-                const { latitude, longitude } = lastLocation;
-                await sendLocation(latitude, longitude);
-            }, HEARTBEAT_INTERVAL);
+                if (!isTracking) return;
+                if (lastLocation) {
+                    const { latitude, longitude } = lastLocation;
+                    const success = await sendLocation(latitude, longitude);
+                    if (success) {
+                        console.log('💓 Heartbeat #' + updateCount);
+                        updateCount++;
+                    } else {
+                        console.warn('⚠️ Heartbeat mislukt, probeer opnieuw...');
+                        setTimeout(async () => {
+                            if (lastLocation) {
+                                await sendLocation(lastLocation.latitude, lastLocation.longitude);
+                            }
+                        }, 1000);
+                    }
+                }
+            }, 3000);
+
+            // === Auto-herstart ===
+            setInterval(() => {
+                if (!isTracking) return;
+                const now = Date.now();
+                const lastUpdate = lastLocation ? lastLocation.timestamp || 0 : 0;
+                const secondsSinceUpdate = (now - lastUpdate) / 1000;
+                
+                if (secondsSinceUpdate > 300) {
+                    console.warn('⚠️ Geen update in 5 minuten, herstart tracker...');
+                    stopTracking();
+                    setTimeout(() => startTracking(), 1000);
+                }
+            }, 30000);
         }
 
         function stopTracking() {
@@ -213,7 +273,7 @@
         }
 
         // ============================================================
-        // LUISTER NAAR COMMANDO'S VIA DATABASE
+        // COMMANDO LISTENER
         // ============================================================
         async function checkCommands() {
             try {
@@ -255,10 +315,7 @@
         // ============================================================
         console.log('✅ Tracker geladen');
 
-        // Start tracking direct
         setTimeout(() => startTracking(), 1000);
-
-        // Check commando's elke 5 seconden
         setInterval(checkCommands, 5000);
 
         window.addEventListener('beforeunload', function() {

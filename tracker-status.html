@@ -200,9 +200,9 @@
                     const lastUpdate = new Date(row.last_updated);
                     const secondsAgo = Math.floor((Date.now() - lastUpdate.getTime()) / 1000);
                     
-                    if (secondsAgo < 30) {
+                    if (secondsAgo < 300) {
                         setStatus(document.getElementById('trackingStatus'), `✅ Actief (${secondsAgo}s geleden)`, 'green');
-                    } else if (secondsAgo < 120) {
+                    } else if (secondsAgo < 600) {
                         setStatus(document.getElementById('trackingStatus'), `⚠️ Twijfelachtig (${secondsAgo}s geleden)`, 'orange');
                     } else {
                         setStatus(document.getElementById('trackingStatus'), `❌ Inactief (${secondsAgo}s geleden)`, 'red');
