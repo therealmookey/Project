@@ -4437,12 +4437,22 @@ hr {
         align-items: flex-start;
     }
 }
-/* ===== NAVIGATIE MODULES - STANDAARD VERBORGEN ===== */
-.nav-links a:not(.always-visible) {
+/* ===== NAVIGATIE - MODULES STANDAARD VERBORGEN ===== */
+.nav-links .module-link {
     display: none !important;
 }
 
 /* Alleen dashboard en profiel zijn altijd zichtbaar */
-.nav-links a.always-visible {
+.nav-links .always-visible {
     display: inline-block !important;
+}
+
+/* Dark mode blijft zoals het was */
+[data-theme="dark"] .nav-links .always-visible {
+    color: #d0d0d0;
+}
+
+[data-theme="dark"] .nav-links .always-visible:hover {
+    background-color: #2a2a4e;
+    color: #f0f0f0;
 }
