@@ -63,7 +63,7 @@ export async function checkPageAuth() {
     }
 }
 
-// ===== MODULE RECHTEN (MET CACHE) =====
+// ===== MODULE RECHTEN =====
 
 export async function heeftModuleToegang(moduleSleutel) {
     if (!supabase) return false;
@@ -131,32 +131,21 @@ export async function heeftModuleToegang(moduleSleutel) {
     }
 }
 
-// ===== FILTER NAVIGATIE (VERBETERD) =====
+// ===== FILTER NAVIGATIE MODULES =====
 export async function filterNavigatieModules() {
     try {
-        // Alle links ophalen (behalve always-visible)
-        const navLinks = document.querySelectorAll('.nav-links a:not(.always-visible)');
+        // Alle module links ophalen
+        const moduleLinks = document.querySelectorAll('.module-link');
         
         // Eerst alle links verbergen
-        navLinks.forEach(link => {
+        moduleLinks.forEach(link => {
             link.style.display = 'none';
         });
         
-        // Dan alleen de links tonen waar de gebruiker rechten voor heeft
-        for (const link of navLinks) {
-            const href = link.getAttribute('href');
-            if (!href) continue;
-            
-            let moduleSleutel = '';
-            if (href.includes('admin')) moduleSleutel = 'admin';
-            else if (href.includes('analytics')) moduleSleutel = 'analytics';
-            else if (href.includes('modules')) moduleSleutel = 'modules';
-            else if (href.includes('tracker')) moduleSleutel = 'tracker';
-            else if (href.includes('adressen')) moduleSleutel = 'adressen';
-            else if (href.includes('planning')) moduleSleutel = 'planning';
-            else if (href.includes('registraties')) moduleSleutel = 'registraties';
-            else if (href.includes('stock')) moduleSleutel = 'stock';
-            else continue;
+        // Dan per link checken of de gebruiker toegang heeft
+        for (const link of moduleLinks) {
+            const moduleSleutel = link.dataset.module;
+            if (!moduleSleutel) continue;
             
             const heeftToegang = await heeftModuleToegang(moduleSleutel);
             if (heeftToegang) {
@@ -183,12 +172,7 @@ export async function laadNavigatie() {
         const html = await response.text();
         placeholder.innerHTML = html;
         
-        // Eerst ALLE niet-always-visible links verbergen
-        document.querySelectorAll('.nav-links a:not(.always-visible)').forEach(link => {
-            link.style.display = 'none';
-        });
-        
-        // Daarna filteren op rechten
+        // Filter modules op rechten
         await filterNavigatieModules();
         
         // Uitlog knop
