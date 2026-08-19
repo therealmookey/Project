@@ -19,6 +19,7 @@ let channel = null;
 let isInitialized = false;
 let pollInterval = null;
 let lastKnownData = {};
+let isFirstLoad = true; // Alleen bij eerste keer centreren
 
 // ===== CONSTANTEN =====
 const TABLE_NAME = 'locations_test';
@@ -318,8 +319,7 @@ async function verwijderChauffeur(driverId) {
 // ===== DATA LADEN (POLLING) =====
 async function laadBestaandeLocaties() {
     try {
-        console.log('📥 Bestaande locaties laden (polling)...');
-        updateStatus('connecting', '🔄 Laden...');
+        console.log('📥 Bestaande locaties laden...');
 
         const { data, error } = await supabase
             .from(TABLE_NAME)
@@ -362,9 +362,14 @@ async function laadBestaandeLocaties() {
                 }
             });
 
-            const first = Object.values(latestByDriver)[0];
-            if (first && map) {
-                map.setView([first.latitude, first.longitude], 13);
+            // ===== CENTREER ALLEEN BIJ EERSTE LADING =====
+            if (isFirstLoad) {
+                const first = Object.values(latestByDriver)[0];
+                if (first && map) {
+                    map.setView([first.latitude, first.longitude], 13);
+                    isFirstLoad = false;
+                    console.log('📍 Kaart gecentreerd op eerste chauffeur (eenmalig)');
+                }
             }
 
             console.log(`✅ ${Object.keys(latestByDriver).length} chauffeurs geladen`);
@@ -437,7 +442,6 @@ function startPolling() {
 
     // En daarna elke X seconden
     pollInterval = setInterval(() => {
-        console.log('🔄 Polling update...');
         laadBestaandeLocaties();
     }, POLL_INTERVAL);
 }
@@ -460,6 +464,9 @@ async function forceRefresh() {
     });
     destinationMarkers = [];
 
+    // Reset de first load flag zodat het opnieuw centreert
+    isFirstLoad = true;
+    
     await laadBestaandeLocaties();
     await laadBestemmingen();
 
