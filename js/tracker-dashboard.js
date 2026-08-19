@@ -46,7 +46,6 @@ function initMap() {
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Custom marker
     const customIcon = L.divIcon({
         className: 'tracker-marker',
         html: `<div style="
@@ -74,7 +73,6 @@ function initMap() {
 
     map._customIcon = customIcon;
 
-    // Kaart resize fix na laden
     setTimeout(() => {
         if (map) map.invalidateSize();
     }, 500);
@@ -149,9 +147,21 @@ function updateDriverList() {
                 <span class="driver-dot"></span>
                 <span class="driver-name">${escapeHtml(info.name)}</span>
                 <span class="driver-time">${info.time || ''}</span>
+                <button class="btn btn-danger btn-small verwijder-chauffeur-btn" 
+                        data-driver="${id}" 
+                        title="Verwijder chauffeur">
+                    ✖
+                </button>
             </li>
         `;
     }).join('');
+
+    document.querySelectorAll('.verwijder-chauffeur-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const driverId = this.dataset.driver;
+            verwijderChauffeur(driverId);
+        });
+    });
 }
 
 function updateStatus(status, message) {
@@ -165,6 +175,42 @@ function updateStatus(status, message) {
         trackerStatus.classList.add('badge-warning');
     } else if (status === 'error') {
         trackerStatus.classList.add('badge-danger');
+    }
+}
+
+// ===== VERWIJDER CHAUFFEUR =====
+async function verwijderChauffeur(driverId) {
+    if (!driverId) {
+        showToast('⚠️ Geen chauffeur ID opgegeven', 'error');
+        return;
+    }
+
+    if (!confirm(`Weet je zeker dat je chauffeur "${driverId}" wilt verwijderen?`)) {
+        return;
+    }
+
+    try {
+        const { error } = await supabase
+            .from(TABLE_NAME)
+            .delete()
+            .eq('driver_id', driverId);
+
+        if (error) {
+            console.error('❌ Fout bij verwijderen:', error);
+            showToast('❌ Fout bij verwijderen: ' + error.message, 'error');
+            return;
+        }
+
+        removeMarker(driverId);
+        showToast(`✅ Chauffeur "${driverId}" verwijderd`, 'success');
+        updateDriverList();
+        updateCount();
+
+        console.log(`🗑️ Chauffeur ${driverId} verwijderd`);
+
+    } catch (err) {
+        console.error('❌ Fout:', err);
+        showToast('❌ Fout: ' + err.message, 'error');
     }
 }
 
@@ -185,7 +231,6 @@ async function laadBestaandeLocaties() {
             return;
         }
 
-        // Verwijder alle bestaande markers
         Object.keys(markers).forEach(id => removeMarker(id));
 
         if (data && data.length > 0) {
@@ -323,7 +368,6 @@ function centerOnAllDrivers() {
 document.addEventListener('DOMContentLoaded', async function() {
     console.log('🔄 Tracker dashboard initialiseren...');
 
-    // Auth check
     const auth = await requireAuth('index.html');
     if (!auth.isAuthenticated) {
         console.warn('⚠️ Niet ingelogd, redirect...');
@@ -331,26 +375,15 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
     console.log('✅ Ingelogd als:', auth.user?.email);
 
-    // Init kaart
     initMap();
-
-    // Laad data
     await laadBestaandeLocaties();
-
-    // Start realtime
     startRealtimeListener();
-
-    // Start cleanup
     startAutoCleanup();
 
-    // ===== EVENT LISTENERS =====
-
-    // Alle chauffeurs knop
     if (centerAllBtn) {
         centerAllBtn.addEventListener('click', centerOnAllDrivers);
     }
 
-    // Refresh knop
     if (refreshBtn) {
         refreshBtn.addEventListener('click', laadBestaandeLocaties);
     }

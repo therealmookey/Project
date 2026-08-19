@@ -112,7 +112,6 @@
         <div id="updateCount" class="info">Updates: 0</div>
     </div>
 
-    <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <script>
@@ -120,7 +119,6 @@
         const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
 
-        // Maak de client aan (gebruik const, niet let)
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const TABLE_NAME = 'locations_test';
 
@@ -135,8 +133,6 @@
         const statusEl = document.getElementById('status');
         const coordsEl = document.getElementById('coords');
         const updateCountEl = document.getElementById('updateCount');
-
-        // ===== FUNCTIES =====
 
         function showStatus(message, type) {
             statusEl.textContent = message;
@@ -156,19 +152,41 @@
 
         async function sendLocation(lat, lng) {
             try {
-                const { error } = await supabaseClient
+                const { data: existing, error: checkError } = await supabaseClient
                     .from(TABLE_NAME)
-                    .upsert({
-                        driver_id: driverId,
-                        driver_name: `Chauffeur ${driverId}`,
-                        latitude: lat,
-                        longitude: lng,
-                        last_updated: new Date().toISOString()
-                    });
+                    .select('driver_id')
+                    .eq('driver_id', driverId)
+                    .maybeSingle();
 
-                if (error) {
-                    console.error('Supabase fout:', error);
-                    showStatus('❌ Fout bij verzenden: ' + error.message, 'error');
+                if (checkError) {
+                    console.error('Fout bij checken:', checkError);
+                }
+
+                let result;
+                if (existing) {
+                    result = await supabaseClient
+                        .from(TABLE_NAME)
+                        .update({
+                            latitude: lat,
+                            longitude: lng,
+                            last_updated: new Date().toISOString()
+                        })
+                        .eq('driver_id', driverId);
+                } else {
+                    result = await supabaseClient
+                        .from(TABLE_NAME)
+                        .insert({
+                            driver_id: driverId,
+                            driver_name: `Chauffeur ${driverId}`,
+                            latitude: lat,
+                            longitude: lng,
+                            last_updated: new Date().toISOString()
+                        });
+                }
+
+                if (result.error) {
+                    console.error('Supabase fout:', result.error);
+                    showStatus('❌ Fout bij verzenden: ' + result.error.message, 'error');
                     return false;
                 }
                 return true;
@@ -222,24 +240,29 @@
         }
 
         function stopTracking() {
-            if (watchId) {
+            console.log('⏹ Stop tracking gestart...');
+            
+            if (watchId !== null) {
                 navigator.geolocation.clearWatch(watchId);
+                console.log('📍 WatchId cleared:', watchId);
                 watchId = null;
+            } else {
+                console.warn('⚠️ Geen actieve watchId gevonden');
             }
+            
             isTracking = false;
             startBtn.style.display = 'block';
             stopBtn.style.display = 'none';
             driverIdInput.disabled = false;
             showStatus('⏹ Tracking gestopt', '');
             coordsEl.textContent = 'Wacht op locatie...';
+            updateCount = 0;
+            updateCountEl.textContent = 'Updates: 0';
         }
-
-        // ===== EVENT LISTENERS =====
 
         startBtn.addEventListener('click', startTracking);
         stopBtn.addEventListener('click', stopTracking);
 
-        // Enter toets op driverId veld
         driverIdInput.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -249,7 +272,6 @@
 
         console.log('✅ Tracker geladen');
         console.log('🔗 Supabase URL:', SUPABASE_URL);
-        console.log('📡 Supabase client:', supabaseClient);
     </script>
 </body>
 </html>
