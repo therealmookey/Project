@@ -47,20 +47,28 @@
         .status-value.red { color: #f44336; }
         .status-value.orange { color: #ff9800; }
         .status-value.blue { color: #2196F3; }
-        .refresh-btn {
-            width: 100%;
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn-row .btn {
+            flex: 1;
             padding: 12px;
-            background: #2196F3;
-            color: white;
             border: none;
             border-radius: 8px;
             font-size: 16px;
+            font-weight: 600;
             cursor: pointer;
-            margin-top: 15px;
+            color: white;
+            transition: all 0.3s ease;
         }
-        .refresh-btn:hover {
-            background: #1976D2;
-        }
+        .btn-refresh { background: #2196F3; }
+        .btn-refresh:hover { background: #1976D2; }
+        .btn-start { background: #4CAF50; }
+        .btn-start:hover { background: #388E3C; }
+        .btn-stop { background: #f44336; }
+        .btn-stop:hover { background: #d32f2f; }
         .last-update {
             text-align: center;
             color: #999;
@@ -73,6 +81,16 @@
             border-radius: 6px;
             font-family: monospace;
             font-size: 14px;
+        }
+        .note {
+            background: #fff8e1;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #856404;
+            margin-top: 15px;
+            text-align: center;
+            border-left: 4px solid #ffc107;
         }
         .hidden { display: none; }
     </style>
@@ -116,8 +134,17 @@
             <span class="status-value" id="gpsStatus">Controleren...</span>
         </div>
         
-        <button class="refresh-btn" onclick="loadStatus()">🔄 Ververs status</button>
+        <div class="btn-row">
+            <button class="btn btn-refresh" onclick="loadStatus()">🔄 Ververs</button>
+            <button class="btn btn-start" onclick="startTracker()">▶ Start</button>
+            <button class="btn btn-stop" onclick="stopTracker()">⏹ Stop</button>
+        </div>
+        
         <div class="last-update" id="lastRefresh">Laatst ververst: -</div>
+        
+        <div class="note">
+            💡 <strong>Tip:</strong> Zorg dat <code>tracker.html</code> open staat op de tablet!
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -165,21 +192,37 @@
             });
         }
 
+        function startTracker() {
+            if (window.tracker && window.tracker.start) {
+                window.tracker.start();
+                loadStatus();
+                alert('✅ Tracker gestart!');
+            } else {
+                alert('⚠️ Tracker module niet gevonden.\n\nOpen eerst tracker.html op de tablet.');
+            }
+        }
+
+        function stopTracker() {
+            if (window.tracker && window.tracker.stop) {
+                window.tracker.stop();
+                loadStatus();
+                alert('⏹ Tracker gestopt!');
+            } else {
+                alert('⚠️ Tracker module niet gevonden.');
+            }
+        }
+
         async function loadStatus() {
             console.log('🔄 Status laden...');
             lastRefreshEl.textContent = 'Laatst ververst: ' + new Date().toLocaleTimeString('nl-NL');
 
-            // 1. Chauffeur ID
             driverIdEl.textContent = DRIVER_ID;
 
-            // 2. Check tracking status via window.tracker
             try {
                 if (window.tracker) {
                     const status = window.tracker.status ? window.tracker.status() : 'Onbekend';
                     const isActive = status === 'Actief';
                     setStatus(trackingStatusEl, status, isActive ? 'green' : 'orange');
-                    
-                    // Aantal updates
                     const count = window.tracker.count ? window.tracker.count() : 0;
                     updateCountEl.textContent = count;
                 } else {
@@ -189,7 +232,6 @@
                 setStatus(trackingStatusEl, 'Fout: ' + err.message, 'red');
             }
 
-            // 3. Check database voor laatste locatie
             try {
                 const { data, error } = await supabaseClient
                     .from(TABLE_NAME)
@@ -214,7 +256,6 @@
                 setStatus(dbStatusEl, '❌ Fout: ' + err.message, 'red');
             }
 
-            // 4. Check GPS (als browser het toestaat)
             try {
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
@@ -229,29 +270,12 @@
                 setStatus(gpsStatusEl, '❌ Niet beschikbaar', 'red');
             }
         }
-// Voeg dit toe aan tracker-status.html om live updates te zien
-setInterval(async () => {
-    const { data } = await supabase
-        .from('locations_test')
-        .select('*')
-        .eq('driver_id', 'Tablet')
-        .order('last_updated', { ascending: false })
-        .limit(1);
-    
-    if (data && data.length > 0) {
-        console.log('📩 Laatste update:', data[0].last_updated);
-        console.log('📍 Locatie:', data[0].latitude, data[0].longitude);
-    }
-}, 5000);
+
         // ============================================================
-        // START - Automatisch laden
+        // START
         // ============================================================
         console.log('📡 Tracker status pagina geladen');
-
-        // Laad status bij openen
         loadStatus();
-
-        // Auto-refresh elke 30 seconden
         setInterval(loadStatus, 30000);
     </script>
 </body>
