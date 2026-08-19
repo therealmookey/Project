@@ -3,6 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <!-- Cache control -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Tracker</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -185,6 +189,12 @@
         .hidden {
             display: none !important;
         }
+        .version-tag {
+            text-align: center;
+            font-size: 10px;
+            color: #ccc;
+            margin-top: 15px;
+        }
     </style>
 </head>
 <body>
@@ -225,6 +235,8 @@
             <span id="updateCount">📤 Updates: 0</span>
             <span id="sessionStatus">⏸️ Gestopt</span>
         </div>
+
+        <div class="version-tag">v4.0.0</div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -357,10 +369,7 @@
         }
 
         async function sendLocation(lat, lng) {
-            if (!driverId) {
-                console.warn('⚠️ Geen driver ID');
-                return false;
-            }
+            if (!driverId) return false;
 
             try {
                 const { data: existing, error: checkError } = await supabaseClient
@@ -433,7 +442,6 @@
                         updateCount++;
                         await sendLocation(latitude, longitude);
                         updateCoords(latitude, longitude, accuracy);
-                        console.log(`📍 GPS update #${updateCount} - ${driverId}`);
                     },
                     async (error) => {
                         console.warn('⚠️ GPS error:', error.message);
@@ -444,22 +452,12 @@
                                 lastLocation = { ...ipLocation, timestamp: Date.now() };
                                 updateCount++;
                                 updateCoords(ipLocation.latitude, ipLocation.longitude, 5000);
-                            } else {
-                                await sendLocation(FALLBACK_LAT, FALLBACK_LNG);
-                                lastLocation = { latitude: FALLBACK_LAT, longitude: FALLBACK_LNG, timestamp: Date.now() };
-                                updateCount++;
-                                updateCoords(FALLBACK_LAT, FALLBACK_LNG, 5000);
                             }
                         }
                     },
-                    {
-                        enableHighAccuracy: false,
-                        timeout: 30000,
-                        maximumAge: 60000
-                    }
+                    { enableHighAccuracy: false, timeout: 30000, maximumAge: 60000 }
                 );
             } else {
-                console.warn('⚠️ Geolocatie niet beschikbaar, gebruik fallback');
                 sendLocation(FALLBACK_LAT, FALLBACK_LNG);
                 lastLocation = { latitude: FALLBACK_LAT, longitude: FALLBACK_LNG, timestamp: Date.now() };
                 updateCount++;
@@ -468,12 +466,8 @@
 
             if (intervalId) clearInterval(intervalId);
             intervalId = setInterval(async () => {
-                if (!isTracking) return;
-                if (lastLocation) {
-                    const { latitude, longitude } = lastLocation;
-                    await sendLocation(latitude, longitude);
-                    console.log(`💓 Heartbeat - ${driverId}`);
-                }
+                if (!isTracking || !lastLocation) return;
+                await sendLocation(lastLocation.latitude, lastLocation.longitude);
             }, 5000);
         }
 
@@ -484,8 +478,6 @@
             isTracking = false;
             setStatus(false, 'Gestopt');
             coordsEl.textContent = 'Wacht op locatie...';
-            updateCount = 0;
-            updateCountEl.textContent = '📤 Updates: 0';
 
             if (watchId !== null) {
                 navigator.geolocation.clearWatch(watchId);
@@ -500,22 +492,19 @@
                 .from(TABLE_NAME)
                 .delete()
                 .eq('driver_id', driverId)
-                .then(() => console.log(`🗑️ Locatie verwijderd voor: ${driverId}`))
+                .then(() => console.log(`🗑️ Locatie verwijderd`))
                 .catch(() => {});
-            
-            driverIdInput.focus();
         }
 
-        function changeDriver() {
+        function changeDriverId() {
             if (isTracking) {
                 stopTracking();
             }
-            // Verwijder de opgeslagen ID
-            localStorage.removeItem(STORAGE_KEY);
-            hideSaved();
             driverIdInput.value = '';
             driverIdInput.disabled = false;
             driverIdInput.focus();
+            localStorage.removeItem(STORAGE_KEY);
+            hideSaved();
             showToast('🔄 Voer een nieuwe ID in en klik op Start');
         }
 
@@ -524,11 +513,9 @@
             hideSaved();
             driverIdInput.value = '';
             driverIdInput.disabled = false;
-            if (isTracking) {
-                stopTracking();
-            }
+            if (isTracking) stopTracking();
             driverIdInput.focus();
-            showToast('🗑️ Opgeslagen ID verwijderd');
+            showToast('✅ Opgeslagen ID verwijderd');
         }
 
         function loadSaved() {
@@ -536,10 +523,7 @@
             if (saved) {
                 driverIdInput.value = saved;
                 showSaved(saved);
-                // Start automatisch
-                setTimeout(() => {
-                    startTracking();
-                }, 500);
+                setTimeout(() => startTracking(), 500);
             }
         }
 
@@ -548,38 +532,12 @@
         // ============================================================
         startBtn.addEventListener('click', startTracking);
         stopBtn.addEventListener('click', stopTracking);
-        changeBtn.addEventListener('click', changeDriver);
+        changeBtn.addEventListener('click', changeDriverId);
         clearSavedBtn.addEventListener('click', clearSaved);
 
         driverIdInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !isTracking) {
                 e.preventDefault();
-                if (!isTracking) {
-                    startTracking();
-                }
-            }
-        });
-
-        // ============================================================
-        // PAGE VISIBILITY
-        // ============================================================
-        document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'visible') {
-                console.log('📱 Tabblad weer zichtbaar');
-                if (!isTracking && driverId) {
-                    console.log('🔄 Tracker herstarten...');
-                    startTracking();
-                }
-            }
-        });
-
-        // ============================================================
-        // NETWERK STATUS
-        // ============================================================
-        window.addEventListener('online', function() {
-            console.log('🌐 Internet verbinding hersteld');
-            if (!isTracking && driverId) {
-                console.log('🔄 Tracker herstarten na verbinding...');
                 startTracking();
             }
         });
@@ -587,9 +545,34 @@
         // ============================================================
         // START
         // ============================================================
-        console.log('✅ Tracker geladen (flexibele ID)');
+        console.log('✅ Tracker v4.0.0 geladen');
+
+        // Laad opgeslagen ID en start
         loadSaved();
 
+        // Auto-herstart bij zichtbaar
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible' && !isTracking) {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    driverIdInput.value = saved;
+                    startTracking();
+                }
+            }
+        });
+
+        // Bij online komen
+        window.addEventListener('online', function() {
+            if (!isTracking) {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    driverIdInput.value = saved;
+                    startTracking();
+                }
+            }
+        });
+
+        // Cleanup bij sluiten
         window.addEventListener('beforeunload', function() {
             if (watchId !== null) navigator.geolocation.clearWatch(watchId);
             if (intervalId) clearInterval(intervalId);
