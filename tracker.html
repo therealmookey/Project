@@ -86,40 +86,101 @@
             background: #ccc;
             cursor: not-allowed;
         }
+        button.danger {
+            background: #f44336;
+        }
+        button.danger:hover {
+            background: #d32f2f;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>📍 Tracker</h1>
         <p class="info">Deel jouw locatie in real-time</p>
-        
+
         <div class="driver-input">
             <label for="driverId">Chauffeur ID:</label>
             <input type="text" id="driverId" placeholder="bijv. chauffeur-001" value="chauffeur-001">
         </div>
 
-        <button id="startBtn" onclick="startTracking()">📍 Start met delen</button>
-        <button id="stopBtn" onclick="stopTracking()" style="display:none; background:#f44336;">⏹ Stop met delen</button>
+        <button id="startBtn">📍 Start met delen</button>
+        <button id="stopBtn" style="display:none;" class="danger">⏹ Stop met delen</button>
 
         <div id="status" class="status">Klik op "Start met delen" om te beginnen</div>
         <div id="coords">Wacht op locatie...</div>
         <div id="updateCount" class="info">Updates: 0</div>
     </div>
 
+    <!-- Supabase CDN -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
     <script>
-        // 🔑 Vul hier jouw Supabase credentials in
-        const SUPABASE_URL = 'https://jouw-project.supabase.co';  // Vervang dit
-        const SUPABASE_KEY = 'jouw-anon-key';                     // Vervang dit
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        
+        // 🔑 Supabase credentials
+        const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
+
+        // Maak de client aan (gebruik const, niet let)
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const TABLE_NAME = 'locations_test';
+
         let watchId = null;
         let updateCount = 0;
         let isTracking = false;
+        let driverId = '';
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const driverIdInput = document.getElementById('driverId');
+        const statusEl = document.getElementById('status');
+        const coordsEl = document.getElementById('coords');
+        const updateCountEl = document.getElementById('updateCount');
+
+        // ===== FUNCTIES =====
+
+        function showStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = 'status';
+            if (type) {
+                statusEl.classList.add(type);
+            }
+        }
+
+        function updateUI(latitude, longitude, accuracy) {
+            coordsEl.innerHTML = `
+                📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>
+                Nauwkeurigheid: ${(accuracy || 0).toFixed(0)}m
+            `;
+            updateCountEl.textContent = `Updates: ${updateCount}`;
+        }
+
+        async function sendLocation(lat, lng) {
+            try {
+                const { error } = await supabaseClient
+                    .from(TABLE_NAME)
+                    .upsert({
+                        driver_id: driverId,
+                        driver_name: `Chauffeur ${driverId}`,
+                        latitude: lat,
+                        longitude: lng,
+                        last_updated: new Date().toISOString()
+                    });
+
+                if (error) {
+                    console.error('Supabase fout:', error);
+                    showStatus('❌ Fout bij verzenden: ' + error.message, 'error');
+                    return false;
+                }
+                return true;
+            } catch (err) {
+                console.error('Fout:', err);
+                showStatus('❌ Fout: ' + err.message, 'error');
+                return false;
+            }
+        }
 
         function startTracking() {
-            const driverId = document.getElementById('driverId').value.trim();
+            driverId = driverIdInput.value.trim();
             if (!driverId) {
                 alert('Vul een chauffeur ID in');
                 return;
@@ -131,41 +192,21 @@
             }
 
             showStatus('📍 Locatie wordt opgehaald...', 'active');
-            document.getElementById('startBtn').style.display = 'none';
-            document.getElementById('stopBtn').style.display = 'block';
-            document.getElementById('driverId').disabled = true;
+            startBtn.style.display = 'none';
+            stopBtn.style.display = 'block';
+            driverIdInput.disabled = true;
             isTracking = true;
+            updateCount = 0;
 
             watchId = navigator.geolocation.watchPosition(
                 async (position) => {
                     const { latitude, longitude } = position.coords;
                     updateCount++;
-                    
-                    document.getElementById('coords').innerHTML = 
-                        `📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>Nauwkeurigheid: ${position.coords.accuracy.toFixed(0)}m`;
-                    document.getElementById('updateCount').textContent = `Updates: ${updateCount}`;
-                    
-                    showStatus(`✅ Locatie verzonden (${updateCount})`, 'active');
+                    updateUI(latitude, longitude, position.coords.accuracy);
 
-                    // Stuur naar Supabase
-                    try {
-                        const { error } = await supabase
-                            .from('locations_test')
-                            .upsert({
-                                driver_id: driverId,
-                                driver_name: `Chauffeur ${driverId}`,
-                                latitude: latitude,
-                                longitude: longitude,
-                                last_updated: new Date().toISOString()
-                            });
-
-                        if (error) {
-                            console.error('Supabase fout:', error);
-                            showStatus('❌ Fout bij verzenden: ' + error.message, 'error');
-                        }
-                    } catch (err) {
-                        console.error('Fout:', err);
-                        showStatus('❌ Fout: ' + err.message, 'error');
+                    const success = await sendLocation(latitude, longitude);
+                    if (success) {
+                        showStatus(`✅ Locatie verzonden (${updateCount})`, 'active');
                     }
                 },
                 (error) => {
@@ -186,21 +227,29 @@
                 watchId = null;
             }
             isTracking = false;
-            document.getElementById('startBtn').style.display = 'block';
-            document.getElementById('stopBtn').style.display = 'none';
-            document.getElementById('driverId').disabled = false;
+            startBtn.style.display = 'block';
+            stopBtn.style.display = 'none';
+            driverIdInput.disabled = false;
             showStatus('⏹ Tracking gestopt', '');
-            document.getElementById('coords').textContent = 'Wacht op locatie...';
+            coordsEl.textContent = 'Wacht op locatie...';
         }
 
-        function showStatus(message, type) {
-            const statusEl = document.getElementById('status');
-            statusEl.textContent = message;
-            statusEl.className = 'status';
-            if (type) {
-                statusEl.classList.add(type);
+        // ===== EVENT LISTENERS =====
+
+        startBtn.addEventListener('click', startTracking);
+        stopBtn.addEventListener('click', stopTracking);
+
+        // Enter toets op driverId veld
+        driverIdInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                startTracking();
             }
-        }
+        });
+
+        console.log('✅ Tracker geladen');
+        console.log('🔗 Supabase URL:', SUPABASE_URL);
+        console.log('📡 Supabase client:', supabaseClient);
     </script>
 </body>
 </html>
