@@ -2,44 +2,54 @@
 // MAIN - Hoofdbestand (wordt op alle pagina's geladen)
 // ============================================================
 
-// Importeer core modules
-import { laadNavigatie, checkPageAuth, filterNavigatieModules } from './core/navigation.js';
+import { laadNavigatie, checkPageAuth } from './core/navigation.js';
 import { initTheme } from './core/theme.js';
 import { addVersionBadge } from './core/version.js';
 
 console.log('📦 main.js geladen');
 
-// ===== SNEL START: Toon pagina direct =====
-// Verberg alle modules eerst (voorkom flits)
-document.addEventListener('DOMContentLoaded', function() {
-    // 1. Thema direct toepassen (geen flits)
-    initTheme();
+// ===== FUNCTIE: Alles initialiseren =====
+function initializeApp() {
+    console.log('🔄 Applicatie initialiseren...');
     
-    // 2. Versie badge (altijd zichtbaar)
-    addVersionBadge();
-    
-    // 3. Navigatie laden (asynchroon)
+    // 1. Navigatie laden (eerst, zodat de checkbox bestaat)
     if (document.getElementById('navigatie-placeholder')) {
-        laadNavigatie().then(() => {
-            // Na laden van navigatie: filter modules op rechten
-            filterNavigatieModules();
-        });
+        laadNavigatie();
+        console.log('✅ Navigatie geladen');
     }
     
-    // 4. Auth check (asynchroon, niet blokkerend)
-    checkPageAuth();
+    // 2. Thema initialiseren (na navigatie, zodat checkbox bestaat)
+    setTimeout(() => {
+        initTheme();
+        console.log('✅ Thema geïnitialiseerd');
+    }, 100);
     
-    console.log('✅ main.js init voltooid');
+    // 3. Versie badge toevoegen
+    addVersionBadge();
+    console.log('✅ Versie badge toegevoegd');
+    
+    // 4. Auth check (alleen voor beschermde pagina's)
+    checkPageAuth();
+    console.log('✅ Auth check uitgevoerd');
+}
+
+// ===== INITIALISATIE BIJ PAGINA LADEN =====
+
+// Wacht tot de DOM klaar is
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    // DOM is al geladen
+    initializeApp();
+}
+
+// Ook bij volledige pagina load (voor de zekerheid)
+window.addEventListener('load', function() {
+    // Controleer of alles is geïnitialiseerd
+    if (!document.documentElement.hasAttribute('data-theme')) {
+        console.warn('⚠️ Thema niet geïnitialiseerd bij load, opnieuw proberen...');
+        initTheme();
+    }
 });
 
-// Als DOM al geladen is, voer direct uit
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    initTheme();
-    addVersionBadge();
-    if (document.getElementById('navigatie-placeholder')) {
-        laadNavigatie().then(() => {
-            filterNavigatieModules();
-        });
-    }
-    checkPageAuth();
-}
+console.log('✅ main.js geladen en klaar voor gebruik');
