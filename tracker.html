@@ -35,33 +35,42 @@
             font-size: 13px;
             margin-bottom: 20px;
         }
-        .status-dot {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #4CAF50;
-            margin-right: 8px;
-            animation: pulse 2s infinite;
+        .status-box {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
         }
-        .status-dot.inactive {
+        .status-box.inactive {
+            background: #f0f0f0;
+            color: #999;
+        }
+        .status-box.active {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 2px solid #4CAF50;
+        }
+        .status-box .dot {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        .status-box .dot.inactive {
             background: #999;
-            animation: none;
+        }
+        .status-box .dot.active {
+            background: #4CAF50;
+            animation: pulse 1.5s infinite;
         }
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
-        }
-        .status-text {
-            font-size: 14px;
-            color: #666;
-            text-align: center;
-            margin: 10px 0;
-        }
-        .info-text {
-            font-size: 12px;
-            color: #999;
-            text-align: center;
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
         }
         .driver-input {
             margin: 15px 0;
@@ -81,10 +90,15 @@
             font-size: 16px;
             transition: border-color 0.3s;
             box-sizing: border-box;
+            background: white;
         }
         .driver-input input:focus {
             outline: none;
             border-color: #2196F3;
+        }
+        .driver-input input:disabled {
+            background: #f5f5f5;
+            color: #666;
         }
         .btn-row {
             display: flex;
@@ -108,45 +122,68 @@
         .btn-start:hover {
             background: #1976D2;
         }
+        .btn-start:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
         .btn-stop {
             background: #f44336;
         }
         .btn-stop:hover {
             background: #d32f2f;
         }
-        .btn-update {
+        .btn-stop:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-change {
             background: #FF9800;
         }
-        .btn-update:hover {
+        .btn-change:hover {
             background: #F57C00;
+        }
+        .info-text {
+            font-size: 12px;
+            color: #999;
+            text-align: center;
+            margin: 5px 0;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            min-height: 40px;
+            word-break: break-all;
         }
         .stats {
             display: flex;
             justify-content: space-between;
-            font-size: 13px;
+            font-size: 12px;
             color: #666;
             margin-top: 10px;
             padding-top: 10px;
             border-top: 1px solid #eee;
         }
-        .saved-driver {
-            background: #f0f7fa;
+        .saved-info {
+            background: #e3f2fd;
             padding: 8px 12px;
             border-radius: 6px;
             font-size: 13px;
-            color: #2c7da0;
-            margin-top: 10px;
+            color: #0d47a1;
+            margin: 10px 0;
             display: none;
             align-items: center;
             justify-content: space-between;
         }
-        .saved-driver .clear-btn {
+        .saved-info .clear-btn {
             background: none;
             border: none;
             color: #f44336;
             cursor: pointer;
             font-size: 16px;
             padding: 0 5px;
+            font-weight: bold;
+        }
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
@@ -155,32 +192,38 @@
         <h1>📍 Tracker</h1>
         <p class="subtitle">Deel jouw locatie in real-time</p>
 
-        <!-- Chauffeur ID input -->
+        <!-- Chauffeur ID -->
         <div class="driver-input">
             <label for="driverId">🔑 Chauffeur ID:</label>
             <input type="text" id="driverId" placeholder="Bijv. chauffeur-001, tablet-01" value="">
         </div>
 
-        <!-- Opgeslagen chauffeur -->
-        <div class="saved-driver" id="savedDriver">
-            <span>💾 Opgeslagen: <strong id="savedDriverName"></strong></span>
-            <button class="clear-btn" id="clearSavedDriver" title="Verwijder opgeslagen ID">✖</button>
+        <!-- Opgeslagen ID info -->
+        <div class="saved-info" id="savedInfo">
+            <span>💾 Opgeslagen: <strong id="savedName"></strong></span>
+            <button class="clear-btn" id="clearSavedBtn">✖</button>
         </div>
 
+        <!-- Status box -->
+        <div class="status-box inactive" id="statusBox">
+            <span class="dot inactive" id="statusDot"></span>
+            <span id="statusLabel">Niet actief</span>
+        </div>
+
+        <!-- Coördinaten -->
+        <div class="info-text" id="coords">Wacht op locatie...</div>
+
+        <!-- Knoppen -->
         <div class="btn-row">
-            <button id="startBtn" class="btn-start">📍 Start</button>
-            <button id="updateBtn" class="btn-update" style="display:none;">🔄 Wijzig ID</button>
-            <button id="stopBtn" class="btn-stop" style="display:none;">⏹ Stop</button>
+            <button id="startBtn" class="btn-start">▶ Start</button>
+            <button id="changeBtn" class="btn-change hidden">🔄 Wijzig ID</button>
+            <button id="stopBtn" class="btn-stop hidden">⏹ Stop</button>
         </div>
 
-        <div id="status" class="status-text">
-            <span class="status-dot inactive" id="statusDot"></span>
-            <span id="statusText">Klaar</span>
-        </div>
-        <div id="coords" class="info-text">Wacht op locatie...</div>
+        <!-- Statistieken -->
         <div class="stats">
             <span id="updateCount">📤 Updates: 0</span>
-            <span id="sessionInfo">⏸️ Gestopt</span>
+            <span id="sessionStatus">⏸️ Gestopt</span>
         </div>
     </div>
 
@@ -192,7 +235,6 @@
         const SUPABASE_URL = 'https://jcdqcgviossmrvlgsiqd.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_BhTGDyLsGeHEMConkTeqcg_LHK5pLoG';
         const TABLE_NAME = 'locations_test';
-        const COMMAND_TABLE = 'tracker_commands';
         const FALLBACK_LAT = 51.0;
         const FALLBACK_LNG = 4.0;
         const STORAGE_KEY = 'tracker_driver_id';
@@ -215,41 +257,44 @@
         const driverIdInput = document.getElementById('driverId');
         const startBtn = document.getElementById('startBtn');
         const stopBtn = document.getElementById('stopBtn');
-        const updateBtn = document.getElementById('updateBtn');
+        const changeBtn = document.getElementById('changeBtn');
+        const statusBox = document.getElementById('statusBox');
         const statusDot = document.getElementById('statusDot');
-        const statusText = document.getElementById('statusText');
+        const statusLabel = document.getElementById('statusLabel');
         const coordsEl = document.getElementById('coords');
         const updateCountEl = document.getElementById('updateCount');
-        const sessionInfoEl = document.getElementById('sessionInfo');
-        const savedDriverEl = document.getElementById('savedDriver');
-        const savedDriverName = document.getElementById('savedDriverName');
-        const clearSavedDriverBtn = document.getElementById('clearSavedDriver');
+        const sessionStatusEl = document.getElementById('sessionStatus');
+        const savedInfo = document.getElementById('savedInfo');
+        const savedName = document.getElementById('savedName');
+        const clearSavedBtn = document.getElementById('clearSavedBtn');
 
         // ============================================================
-        // FUNCTIES
+        // UI FUNCTIES
         // ============================================================
-        function updateStatus(active, message) {
+        function setStatus(active, message) {
             if (active) {
-                statusDot.className = 'status-dot';
-                statusText.textContent = message || 'Actief';
-                sessionInfoEl.textContent = '🟢 Actief';
-                startBtn.style.display = 'none';
-                stopBtn.style.display = 'block';
-                updateBtn.style.display = 'block';
+                statusBox.className = 'status-box active';
+                statusDot.className = 'dot active';
+                statusLabel.textContent = message || 'Actief';
+                sessionStatusEl.textContent = '🟢 Actief';
+                startBtn.classList.add('hidden');
+                stopBtn.classList.remove('hidden');
+                changeBtn.classList.remove('hidden');
                 driverIdInput.disabled = true;
             } else {
-                statusDot.className = 'status-dot inactive';
-                statusText.textContent = message || 'Gestopt';
-                sessionInfoEl.textContent = '⏸️ Gestopt';
-                startBtn.style.display = 'block';
-                stopBtn.style.display = 'none';
-                updateBtn.style.display = 'none';
+                statusBox.className = 'status-box inactive';
+                statusDot.className = 'dot inactive';
+                statusLabel.textContent = message || 'Niet actief';
+                sessionStatusEl.textContent = '⏸️ Gestopt';
+                startBtn.classList.remove('hidden');
+                stopBtn.classList.add('hidden');
+                changeBtn.classList.add('hidden');
                 driverIdInput.disabled = false;
                 driverIdInput.focus();
             }
         }
 
-        function updateUI(latitude, longitude, accuracy) {
+        function updateCoords(latitude, longitude, accuracy) {
             coordsEl.innerHTML = `
                 📍 ${latitude.toFixed(6)}, ${longitude.toFixed(6)}<br>
                 🎯 Nauwkeurigheid: ${(accuracy || 0).toFixed(0)}m
@@ -257,6 +302,46 @@
             updateCountEl.textContent = `📤 Updates: ${updateCount}`;
         }
 
+        function showSaved(id) {
+            savedInfo.style.display = 'flex';
+            savedName.textContent = id;
+        }
+
+        function hideSaved() {
+            savedInfo.style.display = 'none';
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #333;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-size: 14px;
+                z-index: 9999;
+                max-width: 90%;
+                text-align: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.opacity = '1'; }, 50);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ============================================================
+        // CORE FUNCTIES
+        // ============================================================
         async function getIPLocation() {
             try {
                 const response = await fetch('https://ipapi.co/json/');
@@ -327,17 +412,18 @@
 
             driverId = driverIdInput.value.trim();
             if (!driverId) {
-                alert('⚠️ Vul een chauffeur ID in!');
+                showToast('⚠️ Vul een chauffeur ID in!');
+                driverIdInput.focus();
                 return;
             }
 
             localStorage.setItem(STORAGE_KEY, driverId);
-            showSavedDriver(driverId);
+            showSaved(driverId);
 
             console.log(`📍 Tracking gestart voor: ${driverId}`);
             isTracking = true;
             updateCount = 0;
-            updateStatus(true, `Actief - ${driverId}`);
+            setStatus(true, `Actief - ${driverId}`);
 
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(
@@ -346,24 +432,23 @@
                         lastLocation = { latitude, longitude, timestamp: Date.now() };
                         updateCount++;
                         await sendLocation(latitude, longitude);
-                        updateUI(latitude, longitude, accuracy);
+                        updateCoords(latitude, longitude, accuracy);
                         console.log(`📍 GPS update #${updateCount} - ${driverId}`);
                     },
                     async (error) => {
                         console.warn('⚠️ GPS error:', error.message);
                         if (error.code === 3) {
-                            console.log('📍 Gebruik fallback locatie');
                             const ipLocation = await getIPLocation();
                             if (ipLocation) {
                                 await sendLocation(ipLocation.latitude, ipLocation.longitude);
                                 lastLocation = { ...ipLocation, timestamp: Date.now() };
                                 updateCount++;
-                                updateUI(ipLocation.latitude, ipLocation.longitude, 5000);
+                                updateCoords(ipLocation.latitude, ipLocation.longitude, 5000);
                             } else {
                                 await sendLocation(FALLBACK_LAT, FALLBACK_LNG);
                                 lastLocation = { latitude: FALLBACK_LAT, longitude: FALLBACK_LNG, timestamp: Date.now() };
                                 updateCount++;
-                                updateUI(FALLBACK_LAT, FALLBACK_LNG, 5000);
+                                updateCoords(FALLBACK_LAT, FALLBACK_LNG, 5000);
                             }
                         }
                     },
@@ -378,7 +463,7 @@
                 sendLocation(FALLBACK_LAT, FALLBACK_LNG);
                 lastLocation = { latitude: FALLBACK_LAT, longitude: FALLBACK_LNG, timestamp: Date.now() };
                 updateCount++;
-                updateUI(FALLBACK_LAT, FALLBACK_LNG, 5000);
+                updateCoords(FALLBACK_LAT, FALLBACK_LNG, 5000);
             }
 
             if (intervalId) clearInterval(intervalId);
@@ -397,8 +482,10 @@
             
             console.log(`📍 Tracking gestopt voor: ${driverId}`);
             isTracking = false;
-            updateStatus(false, 'Gestopt');
+            setStatus(false, 'Gestopt');
             coordsEl.textContent = 'Wacht op locatie...';
+            updateCount = 0;
+            updateCountEl.textContent = '📤 Updates: 0';
 
             if (watchId !== null) {
                 navigator.geolocation.clearWatch(watchId);
@@ -415,118 +502,63 @@
                 .eq('driver_id', driverId)
                 .then(() => console.log(`🗑️ Locatie verwijderd voor: ${driverId}`))
                 .catch(() => {});
+            
+            driverIdInput.focus();
         }
 
-        function updateDriverId() {
-            // Stop tracking, maar behoud de locatie
+        function changeDriver() {
             if (isTracking) {
                 stopTracking();
             }
-            // Leeg het veld zodat de gebruiker een nieuwe ID kan invoeren
-            driverIdInput.value = '';
-            driverIdInput.disabled = false;
-            driverIdInput.focus();
             // Verwijder de opgeslagen ID
             localStorage.removeItem(STORAGE_KEY);
-            savedDriverEl.style.display = 'none';
-            showToast('🔄 Voer een nieuwe chauffeur ID in en klik op Start');
+            hideSaved();
+            driverIdInput.value = '';
+            driverIdInput.disabled = false;
+            driverIdInput.focus();
+            showToast('🔄 Voer een nieuwe ID in en klik op Start');
         }
 
-        // ============================================================
-        // OPGESLAGEN CHAUFFEUR
-        // ============================================================
-        function showSavedDriver(id) {
-            savedDriverEl.style.display = 'flex';
-            savedDriverName.textContent = id;
-        }
-
-        function clearSavedDriver() {
+        function clearSaved() {
             localStorage.removeItem(STORAGE_KEY);
-            savedDriverEl.style.display = 'none';
+            hideSaved();
             driverIdInput.value = '';
             driverIdInput.disabled = false;
             if (isTracking) {
                 stopTracking();
             }
             driverIdInput.focus();
+            showToast('🗑️ Opgeslagen ID verwijderd');
         }
 
-        function loadSavedDriver() {
+        function loadSaved() {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 driverIdInput.value = saved;
-                showSavedDriver(saved);
+                showSaved(saved);
+                // Start automatisch
+                setTimeout(() => {
+                    startTracking();
+                }, 500);
             }
         }
 
         // ============================================================
-        // TOAST MELDING
+        // EVENT LISTENERS
         // ============================================================
-        function showToast(message) {
-            const toast = document.createElement('div');
-            toast.style.cssText = `
-                position: fixed;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: #333;
-                color: white;
-                padding: 12px 24px;
-                border-radius: 8px;
-                font-size: 14px;
-                z-index: 9999;
-                max-width: 90%;
-                text-align: center;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-                opacity: 0;
-                transition: opacity 0.3s ease;
-            `;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '1'; }, 50);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
+        startBtn.addEventListener('click', startTracking);
+        stopBtn.addEventListener('click', stopTracking);
+        changeBtn.addEventListener('click', changeDriver);
+        clearSavedBtn.addEventListener('click', clearSaved);
 
-        // ============================================================
-        // COMMANDO LISTENER
-        // ============================================================
-        async function checkCommands() {
-            try {
-                const { data, error } = await supabaseClient
-                    .from(COMMAND_TABLE)
-                    .select('*')
-                    .eq('driver_id', driverId)
-                    .eq('executed', false)
-                    .order('created_at', { ascending: true })
-                    .limit(1);
-
-                if (error) {
-                    console.warn('⚠️ Commando check error:', error.message);
-                    return;
+        driverIdInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (!isTracking) {
+                    startTracking();
                 }
-
-                if (data && data.length > 0) {
-                    const command = data[0];
-                    console.log(`📩 Commando ontvangen voor ${driverId}:`, command.command);
-
-                    if (command.command === 'start') {
-                        startTracking();
-                    } else if (command.command === 'stop') {
-                        stopTracking();
-                    }
-
-                    await supabaseClient
-                        .from(COMMAND_TABLE)
-                        .update({ executed: true })
-                        .eq('id', command.id);
-                }
-            } catch (err) {
-                console.warn('⚠️ Commando check exception:', err.message);
             }
-        }
+        });
 
         // ============================================================
         // PAGE VISIBILITY
@@ -553,43 +585,10 @@
         });
 
         // ============================================================
-        // EVENT LISTENERS
-        // ============================================================
-        startBtn.addEventListener('click', startTracking);
-        stopBtn.addEventListener('click', stopTracking);
-        updateBtn.addEventListener('click', updateDriverId);
-        clearSavedDriverBtn.addEventListener('click', clearSavedDriver);
-
-        driverIdInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                if (!isTracking) {
-                    startTracking();
-                }
-            }
-        });
-
-        // ============================================================
         // START
         // ============================================================
         console.log('✅ Tracker geladen (flexibele ID)');
-
-        // Laad opgeslagen chauffeur
-        loadSavedDriver();
-
-        // Start automatisch als er een opgeslagen ID is
-        if (localStorage.getItem(STORAGE_KEY)) {
-            setTimeout(() => {
-                startTracking();
-            }, 1000);
-        }
-
-        // Commando listener
-        setInterval(() => {
-            if (driverId) {
-                checkCommands();
-            }
-        }, 5000);
+        loadSaved();
 
         window.addEventListener('beforeunload', function() {
             if (watchId !== null) navigator.geolocation.clearWatch(watchId);
