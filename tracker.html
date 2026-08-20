@@ -4,13 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#2196F3">
+    
+    <!-- PWA meta tags -->
     <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <!-- PWA Manifest -->
     <link rel="manifest" href="/Project/manifest.json">
     
-    <!-- Fallback icon voor als er geen icoon is -->
+    <!-- Favicon (geen 404 meer) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
+    
+    <!-- Fallback icon voor iOS -->
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📍</text></svg>">
     
     <title>Tracker</title>
@@ -260,7 +266,6 @@
                     console.warn('⚠️ Service Worker registratie mislukt:', err);
                 });
 
-            // Luister naar berichten van de Service Worker
             navigator.serviceWorker.addEventListener('message', (event) => {
                 console.log('📩 Bericht van Service Worker:', event.data);
                 
@@ -576,7 +581,6 @@
             localStorage.setItem('tracker_last_heartbeat', lastHeartbeat.toString());
         }
 
-        // Check of de tracker nog leeft
         setInterval(() => {
             if (isTracking) {
                 const elapsed = (Date.now() - lastHeartbeat) / 1000;
@@ -588,7 +592,6 @@
             }
         }, 30000);
 
-        // Herstart bij terugkeer
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'visible') {
                 console.log('📱 Pagina weer zichtbaar');
@@ -600,7 +603,6 @@
                         setTimeout(() => startTracking(), 500);
                     }
                 } else {
-                    // Stuur een heartbeat
                     if (lastLocation) {
                         sendLocation(lastLocation.latitude, lastLocation.longitude);
                         updateHeartbeat();
@@ -609,7 +611,6 @@
             }
         });
 
-        // Herstart bij paginaload (cache)
         window.addEventListener('pageshow', function(event) {
             if (event.persisted) {
                 console.log('📱 Pagina hersteld uit cache');
@@ -621,7 +622,6 @@
             }
         });
 
-        // Herstart bij online komen
         window.addEventListener('online', function() {
             console.log('🌐 Internet verbinding hersteld');
             if (!isTracking) {
