@@ -5,6 +5,7 @@
 const CACHE_NAME = 'tracker-v2';
 const FILES_TO_CACHE = [
     '/Project/tracker.html',
+    '/Project/manifest.json',  // <-- TOEGEVOEGD
     '/Project/js/config.js',
     '/Project/js/core/supabase.js'
 ];
@@ -73,7 +74,6 @@ self.addEventListener('message', (event) => {
     console.log('📩 Service Worker: Bericht ontvangen:', event.data);
     
     if (event.data && event.data.type === 'ping') {
-        // Stuur een pong terug
         event.source.postMessage({
             type: 'pong',
             timestamp: Date.now(),
@@ -83,7 +83,6 @@ self.addEventListener('message', (event) => {
     }
     
     if (event.data && event.data.type === 'get-clients') {
-        // Stuur een lijst van clients terug
         self.clients.matchAll().then(clients => {
             event.source.postMessage({
                 type: 'clients-list',
@@ -92,6 +91,20 @@ self.addEventListener('message', (event) => {
                     url: c.url,
                     type: c.type
                 }))
+            });
+        });
+    }
+    
+    // <-- NIEUW: Luister naar 'tracker-status' berichten
+    if (event.data && event.data.type === 'tracker-status') {
+        // Stuur de status van de tracker terug
+        self.clients.matchAll().then(clients => {
+            clients.forEach(client => {
+                client.postMessage({
+                    type: 'tracker-status-response',
+                    status: event.data.status || 'onbekend',
+                    timestamp: Date.now()
+                });
             });
         });
     }
@@ -112,7 +125,6 @@ async function syncTracker() {
     console.log('🔄 Service Worker: Background sync gestart');
     
     try {
-        // Stuur een bericht naar alle clients om de tracker te herstarten
         const clients = await self.clients.matchAll({
             includeUncontrolled: true,
             type: 'window'
@@ -156,13 +168,15 @@ self.addEventListener('push', (event) => {
     console.log('📨 Service Worker: Push ontvangen:', event.data?.text());
     
     const data = event.data?.json() || {};
-    const title = data.title || 'Tracker Update';
+    const title = data.title || '📍 Tracker Update';
     const options = {
         body: data.body || 'De tracker is nog steeds actief',
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
+        icon: '/Project/icons/icon-192.png',  // <-- AANGEPAST
+        badge: '/Project/icons/icon-192.png',  // <-- AANGEPAST
         vibrate: [200, 100, 200],
-        data: data
+        data: data,
+        requireInteraction: true,  // <-- NIEUW: Blijft zichtbaar tot interactie
+        tag: 'tracker-notification'  // <-- NIEUW: Vervangt oude meldingen
     };
     
     event.waitUntil(
@@ -184,13 +198,34 @@ self.addEventListener('notificationclick', (event) => {
             includeUncontrolled: true
         }).then((clientList) => {
             if (clientList.length > 0) {
-                // Focus op de eerste client
                 return clientList[0].focus();
             }
-            // Open een nieuwe client
             return self.clients.openWindow('/Project/tracker.html');
         })
     );
 });
+
+// ============================================================
+// PERIODISCHE CHECK (NIEUW)
+// ============================================================
+// Check elke 5 minuten of de tracker nog actief is
+setInterval(async () => {
+    try {
+        const clients = await self.clients.matchAll({
+            includeUncontrolled: true,
+            type: 'window'
+        });
+        
+        if (clients.length === 0) {
+            console.log('⏰ Service Worker: Geen clients, tracker gestopt');
+            // Stuur een push notificatie (als geconfigureerd)
+            // of log de status
+        } else {
+            console.log(`💓 Service Worker: ${clients.length} clients actief`);
+        }
+    } catch (err) {
+        console.warn('⚠️ Service Worker: Check fout:', err);
+    }
+}, 300000); // 5 minuten
 
 console.log('✅ Service Worker: Geladen en klaar');
