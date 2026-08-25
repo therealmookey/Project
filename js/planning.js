@@ -485,7 +485,7 @@ async function verwijderPlanning(id) {
 }
 
 // ============================================================
-// PDF GENERATIE PER DAG
+// PDF GENERATIE PER DAG (Hersteld)
 // ============================================================
 async function genereerPDFVoorDag(datum) {
   const planningen = allePlanningen.filter(p => p.datum === datum);
@@ -500,89 +500,170 @@ async function genereerPDFVoorDag(datum) {
 
     const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
 
-    let html = `
-      <html>
-      <head>
-        <style>
-          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; }
-          h1 { color: #2c7da0; border-bottom: 2px solid #2c7da0; padding-bottom: 10px; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-          .header p { color: #666; margin: 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th { background-color: #2c7da0; color: white; padding: 10px; text-align: left; }
-          td { padding: 10px; border-bottom: 1px solid #ddd; }
-          .status-gepland { color: #856404; background: #fff3cd; padding: 2px 8px; border-radius: 4px; }
-          .status-uitgevoerd { color: #155724; background: #d4edda; padding: 2px 8px; border-radius: 4px; }
-          .status-geannuleerd { color: #721c24; background: #f8d7da; padding: 2px 8px; border-radius: 4px; }
-          .footer { margin-top: 30px; color: #999; font-size: 12px; text-align: center; border-top: 1px solid #ddd; padding-top: 10px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>📅 Route-overzicht</h1>
-          <p>${formatDateLong(datum)}</p>
-        </div>
-        <p><strong>Totaal ritten:</strong> ${sortedPlanningen.length}</p>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Ziekenhuis</th>
-              <th>Adres</th>
-              <th>Type</th>
-              <th>Details</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
+    // Bouw de HTML voor de PDF
+    const pdfContent = document.createElement('div');
+    pdfContent.style.padding = '20px';
+    pdfContent.style.fontFamily = "'Segoe UI', Arial, sans-serif";
+    pdfContent.style.backgroundColor = 'white';
+    pdfContent.style.color = '#333';
 
+    // Header
+    const header = document.createElement('div');
+    header.style.display = 'flex';
+    header.style.justifyContent = 'space-between';
+    header.style.alignItems = 'center';
+    header.style.borderBottom = '2px solid #2c7da0';
+    header.style.paddingBottom = '10px';
+    header.style.marginBottom = '20px';
+    header.innerHTML = `
+      <h1 style="color: #2c7da0; margin: 0;">📅 Route-overzicht</h1>
+      <p style="color: #666; margin: 0; font-size: 14px;">${formatDateLong(datum)}</p>
+    `;
+    pdfContent.appendChild(header);
+
+    // Totaal
+    const total = document.createElement('p');
+    total.style.fontSize = '14px';
+    total.style.marginBottom = '15px';
+    total.innerHTML = `<strong>Totaal ritten:</strong> ${sortedPlanningen.length}`;
+    pdfContent.appendChild(total);
+
+    // Tabel
+    const table = document.createElement('table');
+    table.style.width = '100%';
+    table.style.borderCollapse = 'collapse';
+    table.style.marginTop = '10px';
+    table.style.fontSize = '13px';
+
+    // Tabel header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headerRow.style.backgroundColor = '#2c7da0';
+    headerRow.style.color = 'white';
+    ['#', 'Ziekenhuis', 'Adres', 'Type', 'Details', 'Status'].forEach(text => {
+      const th = document.createElement('th');
+      th.textContent = text;
+      th.style.padding = '10px';
+      th.style.textAlign = 'left';
+      th.style.border = '1px solid #2c7da0';
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Tabel body
+    const tbody = document.createElement('tbody');
     sortedPlanningen.forEach((planning, index) => {
-      const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
-                          (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
-      const typeIcon = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
+      const tr = document.createElement('tr');
+      tr.style.borderBottom = '1px solid #ddd';
+
+      // # kolom
+      const td1 = document.createElement('td');
+      td1.textContent = index + 1;
+      td1.style.padding = '8px 10px';
+      td1.style.border = '1px solid #ddd';
+      tr.appendChild(td1);
+
+      // Ziekenhuis kolom
+      const td2 = document.createElement('td');
+      td2.innerHTML = `<strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong>`;
+      td2.style.padding = '8px 10px';
+      td2.style.border = '1px solid #ddd';
+      tr.appendChild(td2);
+
+      // Adres kolom
+      const td3 = document.createElement('td');
+      td3.textContent = `${planning.adres?.straat || ''}, ${planning.adres?.plaats || ''}`;
+      td3.style.padding = '8px 10px';
+      td3.style.border = '1px solid #ddd';
+      tr.appendChild(td3);
+
+      // Type kolom
+      const td4 = document.createElement('td');
+      td4.textContent = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
+      td4.style.padding = '8px 10px';
+      td4.style.border = '1px solid #ddd';
+      tr.appendChild(td4);
+
+      // Details kolom
+      const td5 = document.createElement('td');
       let details = '';
       if (planning.type === 'ophaling' && planning.aantal_tonnen) {
         details = `${planning.aantal_tonnen} ton(nen)`;
       } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
         details = `${planning.aantal_lege_tonnen} lege ton(nen)`;
       }
+      td5.textContent = details || '-';
+      td5.style.padding = '8px 10px';
+      td5.style.border = '1px solid #ddd';
+      tr.appendChild(td5);
 
-      html += `
-        <tr>
-          <td>${index + 1}</td>
-          <td><strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong></td>
-          <td>${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</td>
-          <td>${typeIcon}</td>
-          <td>${details}</td>
-          <td><span class="${statusClass}">${planning.status || 'gepland'}</span></td>
-        </tr>
-      `;
+      // Status kolom
+      const td6 = document.createElement('td');
+      const statusSpan = document.createElement('span');
+      const status = planning.status || 'gepland';
+      statusSpan.textContent = status;
+      statusSpan.style.padding = '2px 8px';
+      statusSpan.style.borderRadius = '4px';
+      if (status === 'gepland') {
+        statusSpan.style.backgroundColor = '#fff3cd';
+        statusSpan.style.color = '#856404';
+      } else if (status === 'uitgevoerd') {
+        statusSpan.style.backgroundColor = '#d4edda';
+        statusSpan.style.color = '#155724';
+      } else {
+        statusSpan.style.backgroundColor = '#f8d7da';
+        statusSpan.style.color = '#721c24';
+      }
+      td6.appendChild(statusSpan);
+      td6.style.padding = '8px 10px';
+      td6.style.border = '1px solid #ddd';
+      tr.appendChild(td6);
+
+      tbody.appendChild(tr);
     });
+    table.appendChild(tbody);
+    pdfContent.appendChild(table);
 
-    html += `
-          </tbody>
-        </table>
-        <div class="footer">
-          <p>Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
-        </div>
-      </body>
-      </html>
-    `;
+    // Footer
+    const footer = document.createElement('div');
+    footer.style.marginTop = '30px';
+    footer.style.paddingTop = '10px';
+    footer.style.borderTop = '1px solid #ddd';
+    footer.style.textAlign = 'center';
+    footer.style.color = '#999';
+    footer.style.fontSize = '12px';
+    footer.textContent = `Gegenereerd op ${new Date().toLocaleString('nl-NL')}`;
+    pdfContent.appendChild(footer);
 
+    // PDF opties
     const opt = {
       margin: 1,
       filename: `route_${datum}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true,
+        letterRendering: true,
+        width: pdfContent.scrollWidth,
+        height: pdfContent.scrollHeight
+      },
+      jsPDF: { 
+        unit: 'in', 
+        format: 'a4', 
+        orientation: 'portrait' 
+      },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
+    // Tijdelijke container
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
     tempContainer.style.top = '-9999px';
-    tempContainer.innerHTML = html;
+    tempContainer.style.width = '794px'; // A4 breedte in pixels
+    tempContainer.style.backgroundColor = 'white';
+    tempContainer.appendChild(pdfContent);
     document.body.appendChild(tempContainer);
 
     await html2pdf().set(opt).from(tempContainer).save();
