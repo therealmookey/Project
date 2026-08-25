@@ -129,15 +129,34 @@ function getLabelFormatter(periode) {
 // ============================================================
 async function laadKPI() {
   console.log('📊 KPI dashboard laden...');
+  
+  // Controleer of de elementen bestaan
+  const elements = {
+    totaalOphalingen: document.getElementById('kpiTotaalOphalingen'),
+    totaalGewicht: document.getElementById('kpiTotaalGewicht'),
+    gemiddeldGewicht: document.getElementById('kpiGemiddeldGewicht'),
+    ziekenhuizen: document.getElementById('kpiZiekenhuizen'),
+    rittenWeek: document.getElementById('kpiRittenWeek'),
+    opstartenMaand: document.getElementById('kpiOpstartenMaand')
+  };
+
+  const missingElements = Object.keys(elements).filter(key => !elements[key]);
+  if (missingElements.length > 0) {
+    console.warn('⚠️ KPI elementen niet gevonden:', missingElements);
+    return;
+  }
+
   try {
+    // Totaal ophalingen
     const { count: totaalOphalingen, error: err1 } = await supabase
       .from('ophaalregistraties')
       .select('*', { count: 'exact', head: true })
       .eq('type', 'ophaling');
-    if (!err1 && kpiTotaalOphalingen) {
-      kpiTotaalOphalingen.textContent = totaalOphalingen || 0;
+    if (!err1 && elements.totaalOphalingen) {
+      elements.totaalOphalingen.textContent = totaalOphalingen || 0;
     }
 
+    // Gewicht data
     const { data: gewichtData, error: err2 } = await supabase
       .from('ophaalregistraties')
       .select('gewicht')
@@ -145,17 +164,19 @@ async function laadKPI() {
     if (!err2 && gewichtData) {
       const totaalGewicht = gewichtData.reduce((sum, r) => sum + (r.gewicht || 0), 0);
       const gemiddeldGewicht = totaalOphalingen > 0 ? totaalGewicht / totaalOphalingen : 0;
-      if (kpiTotaalGewicht) kpiTotaalGewicht.textContent = totaalGewicht.toFixed(0);
-      if (kpiGemiddeldGewicht) kpiGemiddeldGewicht.textContent = gemiddeldGewicht.toFixed(1);
+      if (elements.totaalGewicht) elements.totaalGewicht.textContent = totaalGewicht.toFixed(0);
+      if (elements.gemiddeldGewicht) elements.gemiddeldGewicht.textContent = gemiddeldGewicht.toFixed(1);
     }
 
+    // Aantal ziekenhuizen
     const { count: ziekenhuizen, error: err3 } = await supabase
       .from('adressen')
       .select('*', { count: 'exact', head: true });
-    if (!err3 && kpiZiekenhuizen) {
-      kpiZiekenhuizen.textContent = ziekenhuizen || 0;
+    if (!err3 && elements.ziekenhuizen) {
+      elements.ziekenhuizen.textContent = ziekenhuizen || 0;
     }
 
+    // Ritten deze week
     const vandaag = new Date();
     const weekStart = new Date(vandaag);
     weekStart.setDate(vandaag.getDate() - vandaag.getDay());
@@ -169,10 +190,11 @@ async function laadKPI() {
       .select('*', { count: 'exact', head: true })
       .gte('datum', weekStartStr)
       .lt('datum', weekEindStr);
-    if (!err4 && kpiRittenWeek) {
-      kpiRittenWeek.textContent = rittenWeek || 0;
+    if (!err4 && elements.rittenWeek) {
+      elements.rittenWeek.textContent = rittenWeek || 0;
     }
 
+    // Opstarten deze maand
     const maandStart = new Date(vandaag.getFullYear(), vandaag.getMonth(), 1);
     const maandStartStr = maandStart.toISOString().split('T')[0];
     const maandEind = new Date(vandaag.getFullYear(), vandaag.getMonth() + 1, 0);
@@ -184,9 +206,10 @@ async function laadKPI() {
       .eq('type', 'opstart')
       .gte('registratiedatum', maandStartStr)
       .lte('registratiedatum', maandEindStr);
-    if (!err5 && kpiOpstartenMaand) {
-      kpiOpstartenMaand.textContent = opstartenMaand || 0;
+    if (!err5 && elements.opstartenMaand) {
+      elements.opstartenMaand.textContent = opstartenMaand || 0;
     }
+
     console.log('✅ KPI dashboard geladen');
   } catch (err) {
     console.error('❌ Fout bij laden KPI:', err);
@@ -811,8 +834,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   await laadVoorraadWaarschuwingen();
   await laadFrequentieChart();
   await laadActiviteitenLog();
-  
-  // ===== ZIEKENHUIS OVERZICHT =====
   await laadZiekenhuisOverzicht();
 
   setupFilterListeners();

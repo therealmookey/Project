@@ -26,17 +26,87 @@
       <p>Overzicht van alle statistieken en rapportages</p>
     </div>
 
-    <!-- KPI Dashboard -->
+    <!-- ===== KPI DASHBOARD ===== -->
     <div class="kpi-grid">
-      <!-- ... KPI kaarten ... -->
+      <div class="kpi-card">
+        <div class="kpi-icon">📦</div>
+        <div class="kpi-content">
+          <span class="kpi-label">Totaal ophalingen</span>
+          <span class="kpi-value" id="kpiTotaalOphalingen">-</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">⚖️</div>
+        <div class="kpi-content">
+          <span class="kpi-label">Totaal gewicht (kg)</span>
+          <span class="kpi-value" id="kpiTotaalGewicht">-</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">⚖️</div>
+        <div class="kpi-content">
+          <span class="kpi-label">Gemiddeld gewicht (kg)</span>
+          <span class="kpi-value" id="kpiGemiddeldGewicht">-</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">🏥</div>
+        <div class="kpi-content">
+          <span class="kpi-label">Actieve ziekenhuizen</span>
+          <span class="kpi-value" id="kpiZiekenhuizen">-</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">📅</div>
+        <div class="kpi-content">
+          <span class="kpi-label">Ritten deze week</span>
+          <span class="kpi-value" id="kpiRittenWeek">-</span>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">🔄</div>
+        <div class="kpi-content">
+          <span class="kpi-label">Opstarten deze maand</span>
+          <span class="kpi-value" id="kpiOpstartenMaand">-</span>
+        </div>
+      </div>
     </div>
 
-    <!-- Filters -->
+    <!-- ===== FILTERS ===== -->
     <div class="analytics-filters">
-      <!-- ... filters ... -->
+      <div class="filter-row">
+        <div class="filter-item">
+          <label>🏥 Ziekenhuis</label>
+          <select id="analyticsZiekenhuisFilter" class="form-input">
+            <option value="alles">Alle ziekenhuizen</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>📅 Periode</label>
+          <select id="analyticsPeriodeFilter" class="form-input">
+            <option value="wekelijks">Wekelijks</option>
+            <option value="maandelijks" selected>Maandelijks</option>
+            <option value="jaarlijks">Jaarlijks</option>
+            <option value="aangepast">Aangepaste periode</option>
+          </select>
+        </div>
+        <div class="filter-item" id="analyticsDatumVanafGroup" style="display: none;">
+          <label>Vanaf</label>
+          <input type="date" id="analyticsDatumVanaf" class="form-input">
+        </div>
+        <div class="filter-item" id="analyticsDatumTotGroup" style="display: none;">
+          <label>Tot</label>
+          <input type="date" id="analyticsDatumTot" class="form-input">
+        </div>
+        <div class="filter-item filter-buttons">
+          <button id="analyticsFilterBtn" class="btn btn-primary">🔍 Filter</button>
+          <button id="analyticsResetBtn" class="btn btn-secondary">↺ Reset</button>
+          <button id="analyticsExportBtn" class="btn btn-success">📊 Export Excel</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Grafieken -->
+    <!-- ===== GRAFIEKEN ===== -->
     <div class="analytics-grid">
       <div class="analytics-card full-width">
         <h3>📈 Maandelijkse ophalingen trend</h3>
@@ -61,7 +131,7 @@
       </div>
     </div>
 
-    <!-- Frequentie grafiek -->
+    <!-- ===== FREQUENTIE GRAFIEK ===== -->
     <div class="analytics-grid">
       <div class="analytics-card full-width">
         <div class="analytics-card-header">
@@ -74,7 +144,7 @@
       </div>
     </div>
 
-    <!-- Activiteitenlog -->
+    <!-- ===== ACTIVITEITENLOG ===== -->
     <div class="analytics-grid">
       <div class="analytics-card full-width">
         <h3>📋 Activiteitenlog</h3>
