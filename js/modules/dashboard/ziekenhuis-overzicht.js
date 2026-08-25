@@ -1,5 +1,5 @@
 // ============================================================
-// MODULE - ZIEKENHUIS OVERZICHT (Vereenvoudigd)
+// MODULE - ZIEKENHUIS OVERZICHT (Aangepast voor nieuwe statussen)
 // ============================================================
 console.log('🏥 Ziekenhuis overzicht module geladen!');
 
@@ -19,8 +19,17 @@ function formatDate(date) {
 }
 
 function toonZiekenhuisKaart(item, statusType) {
-  const statusClass = statusType === 'actief' ? 'status-actief' : 
-                      (statusType === 'onvoldoende' ? 'status-onvoldoende' : 'status-geen');
+  // Bepaal de CSS-klasse op basis van de status
+  let statusClass = 'status-';
+  if (item.status === '✅ Actief') {
+    statusClass += 'actief';
+  } else if (item.status === '⚠️ Onvoldoende ophalingen' || item.status === '⚠️ Onvoldoende intervallen') {
+    statusClass += 'onvoldoende';
+  } else if (item.status === '❌ Geen ophalingen') {
+    statusClass += 'geen';
+  } else {
+    statusClass += 'onbekend';
+  }
 
   let contactInfo = '';
   if (item.telefoon || item.contactpersoon_naam) {
@@ -40,26 +49,32 @@ function toonZiekenhuisKaart(item, statusType) {
   }
 
   let dataInfo = '';
-  if (statusType === 'actief') {
+  if (item.status === '✅ Actief') {
     dataInfo = `
       <div class="data-info">
         <span>📦 ${item.aantal_ophalingen} ophalingen</span>
-        <span>📊 Gem. interval: ${item.gemiddeld_betrouwbaar_interval} dagen</span>
-        <span>⚖️ ${item.totaal_gewicht || 0} kg</span>
-        <span>📅 Laatste: ${formatDate(item.laatste_ophaling)}</span>
+        ${item.gemiddeld_betrouwbaar_interval ? `<span>📊 Gem. interval: ${item.gemiddeld_betrouwbaar_interval} dagen</span>` : ''}
+        ${item.totaal_gewicht ? `<span>⚖️ ${item.totaal_gewicht} kg</span>` : ''}
+        ${item.laatste_ophaling ? `<span>📅 Laatste: ${formatDate(item.laatste_ophaling)}</span>` : ''}
+        ${item.rendabiliteit ? `<span>📈 ${item.rendabiliteit}</span>` : ''}
       </div>
     `;
-  } else if (statusType === 'onvoldoende') {
+  } else if (item.status === '⚠️ Onvoldoende ophalingen' || item.status === '⚠️ Onvoldoende intervallen') {
     dataInfo = `
       <div class="data-info">
         <span>📦 ${item.aantal_ophalingen || 0} ophalingen</span>
-        <span>${item.status_toelichting || 'Onvoldoende data voor betrouwbare voorspelling.'}</span>
+        ${item.laatste_ophaling ? `<span>📅 Laatste: ${formatDate(item.laatste_ophaling)}</span>` : ''}
+        ${item.dagen_sinds_laatste ? `<span>⏳ ${item.dagen_sinds_laatste} dagen geleden</span>` : ''}
+        ${item.rendabiliteit ? `<span>📈 ${item.rendabiliteit}</span>` : ''}
+        <span class="status-toelichting">${escapeHtml(item.status_toelichting || '')}</span>
       </div>
     `;
   } else {
+    // '❌ Geen ophalingen' of onbekend
     dataInfo = `
       <div class="data-info">
         <span>${item.status_toelichting || 'Nog geen ophalingen geregistreerd.'}</span>
+        ${item.rendabiliteit ? `<span>📈 ${item.rendabiliteit}</span>` : ''}
       </div>
     `;
   }
@@ -106,9 +121,10 @@ export async function laadZiekenhuisOverzicht() {
       return;
     }
 
-    // Groepeer op status
+    // Groepeer op status (exacte tekst van de view)
     const actief = data.filter(item => item.status === '✅ Actief');
-    const onvoldoende = data.filter(item => item.status === '⚠️ Onvoldoende data');
+    const onvoldoendeOphalingen = data.filter(item => item.status === '⚠️ Onvoldoende ophalingen');
+    const onvoldoendeIntervallen = data.filter(item => item.status === '⚠️ Onvoldoende intervallen');
     const geenData = data.filter(item => item.status === '❌ Geen ophalingen');
 
     let html = `
@@ -121,7 +137,7 @@ export async function laadZiekenhuisOverzicht() {
         <!-- Samenvatting badges -->
         <div class="status-badges">
           <span class="badge status-actief">✅ ${actief.length} actief</span>
-          <span class="badge status-onvoldoende">⚠️ ${onvoldoende.length} onvoldoende data</span>
+          <span class="badge status-onvoldoende">⚠️ ${onvoldoendeOphalingen.length + onvoldoendeIntervallen.length} onvoldoende</span>
           <span class="badge status-geen">❌ ${geenData.length} geen ophalingen</span>
         </div>
     `;
@@ -144,15 +160,15 @@ export async function laadZiekenhuisOverzicht() {
       `;
     }
 
-    // SECTIE 2: Onvoldoende data
-    if (onvoldoende.length > 0) {
+    // SECTIE 2: Onvoldoende ophalingen
+    if (onvoldoendeOphalingen.length > 0) {
       html += `
         <div class="status-sectie">
           <details open>
-            <summary><strong>⚠️ Onvoldoende data</strong> (${onvoldoende.length})</summary>
+            <summary><strong>⚠️ Onvoldoende ophalingen</strong> (${onvoldoendeOphalingen.length})</summary>
             <div class="ziekenhuis-lijst">
       `;
-      onvoldoende.forEach(item => {
+      onvoldoendeOphalingen.forEach(item => {
         html += toonZiekenhuisKaart(item, 'onvoldoende');
       });
       html += `
@@ -162,7 +178,25 @@ export async function laadZiekenhuisOverzicht() {
       `;
     }
 
-    // SECTIE 3: Geen ophalingen
+    // SECTIE 3: Onvoldoende intervallen
+    if (onvoldoendeIntervallen.length > 0) {
+      html += `
+        <div class="status-sectie">
+          <details open>
+            <summary><strong>⚠️ Onvoldoende intervallen</strong> (${onvoldoendeIntervallen.length})</summary>
+            <div class="ziekenhuis-lijst">
+      `;
+      onvoldoendeIntervallen.forEach(item => {
+        html += toonZiekenhuisKaart(item, 'onvoldoende');
+      });
+      html += `
+            </div>
+          </details>
+        </div>
+      `;
+    }
+
+    // SECTIE 4: Geen ophalingen
     if (geenData.length > 0) {
       html += `
         <div class="status-sectie">
