@@ -563,7 +563,20 @@ async function initAdmin() {
 
   console.log('✅ Admin rechten bevestigd');
 
-  // Laad admin panel data
+  // 🔥 STAP 1: Reset zoektermen direct
+  huidigeUserZoekterm = '';
+  huidigeChauffeurZoekterm = '';
+  
+  // 🔥 STAP 2: Leeg het zoekveld
+  if (searchUserInput) {
+    searchUserInput.value = '';
+  }
+  if (searchChauffeurInput) {
+    searchChauffeurInput.value = '';
+  }
+  console.log('🔍 Zoektermen gereset');
+
+  // 🔥 STAP 3: Laad de data (alleen hier, niet nog een keer later)
   await laadGebruikers();
   await laadChauffeurs();
   await laadStatistieken();
