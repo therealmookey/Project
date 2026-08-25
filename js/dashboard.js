@@ -94,6 +94,15 @@ document.addEventListener('DOMContentLoaded', function() {
             alert(`📊 Statistieken\n\n📍 Aantal adressen: ${adresCount || 0}\n📅 Aantal planningen: ${planningCount || 0}`);
         });
     }
+	// ============================================================
+// ZIEKENHUIS OVERZICHT
+// ============================================================
+import { laadZiekenhuisOverzicht } from './modules/dashboard/ziekenhuis-overzicht.js';
+
+// Laad het ziekenhuisoverzicht
+document.addEventListener('DOMContentLoaded', () => {
+  laadZiekenhuisOverzicht();
+});
 
     // Filter voor voorspellingen
     const filterSelect = document.getElementById('voorspellingFilter');
