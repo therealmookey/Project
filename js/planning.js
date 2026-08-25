@@ -1,5 +1,5 @@
 // ============================================================
-// PLANNING - Planning pagina (originele functionaliteit)
+// PLANNING - Planning pagina
 // ============================================================
 console.log('🚀 planning.js wordt geladen...');
 
@@ -13,14 +13,11 @@ console.log('✅ Imports geladen!');
 let allePlanningen = [];
 let alleAdressen = [];
 let currentPlanningId = null;
-let sortableInstances = [];
-let isOptimizing = false;
 
 // ===== DOM ELEMENTEN =====
 const planningLijst = document.getElementById('planningLijst');
 const newPlanningBtn = document.getElementById('newPlanningBtn');
 const refreshPlanningBtn = document.getElementById('refreshPlanningBtn');
-const aiOptimizeBtn = document.getElementById('aiOptimizeBtn');
 const planningPopup = document.getElementById('planningPopup');
 const planningPopupTitle = document.getElementById('planningPopupTitle');
 const typeSelect = document.getElementById('typeSelect');
@@ -47,23 +44,7 @@ function setValue(id, value) {
 
 function formatDate(date) {
   if (!date) return '-';
-  const d = new Date(date);
-  return d.toLocaleDateString('nl-NL', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
-}
-
-function formatDateLong(date) {
-  if (!date) return '-';
-  const d = new Date(date);
-  return d.toLocaleDateString('nl-NL', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  });
+  return new Date(date).toLocaleDateString('nl-NL');
 }
 
 // ===== ADRESSEN LADEN =====
@@ -87,81 +68,38 @@ async function laadAdressenVoorSelect() {
   }
 }
 
-// ============================================================
-// PLANNINGEN LADEN (Alle dagen, gesorteerd op datum)
-// ============================================================
+// ===== PLANNINGEN LADEN =====
 async function laadPlanningen() {
   console.log('📋 laadPlanningen aangeroepen...');
-  if (!planningLijst) {
-    console.warn('⚠️ planningLijst element niet gevonden');
-    return;
-  }
+  if (!planningLijst) return;
   planningLijst.innerHTML = '<p>Bezig met laden...</p>';
 
   try {
-    // Haal ALLE planningen op (geen datumfilter)
     const { data, error } = await supabase
       .from('planningen')
-      .select('*')
+      .select('*, adres:adres_id (id, instelling_naam, straat, plaats, telefoon, extra_info)')
       .order('datum', { ascending: false })
       .order('dag_volgorde', { ascending: true });
 
-    if (error) {
-      console.error('❌ Fout bij laden:', error);
-      throw error;
-    }
-    
-    console.log('📊 Aantal planningen gevonden:', data?.length || 0);
+    if (error) throw error;
+    allePlanningen = data || [];
 
-    if (!data || data.length === 0) {
-      planningLijst.innerHTML = `
-        <div class="geen-planningen">
-          <p>📅 Geen planningen gevonden</p>
-          <p style="color: #6c757d; font-size: 0.9rem;">Klik op "+ Nieuwe planning" om er een toe te voegen.</p>
-        </div>
-      `;
+    if (allePlanningen.length === 0) {
+      planningLijst.innerHTML = '<p>Geen planningen gevonden. Klik op "+ Nieuwe planning" om er een toe te voegen.</p>';
       return;
     }
 
-    // Haal adressen apart op
-    const adresIds = [...new Set(data.map(p => p.adres_id).filter(id => id))];
-    let adressenMap = {};
-    if (adresIds.length > 0) {
-      const { data: adressen, error: adresError } = await supabase
-        .from('adressen')
-        .select('id, instelling_naam, straat, plaats, telefoon, extra_info')
-        .in('id', adresIds);
-      
-      if (!adresError && adressen) {
-        adressen.forEach(a => {
-          adressenMap[a.id] = a;
-        });
-      }
-    }
-
-    // Voeg adres toe aan elke planning
-    const planningenMetAdres = data.map(p => ({
-      ...p,
-      adres: adressenMap[p.adres_id] || null
-    }));
-
-    allePlanningen = planningenMetAdres;
-
     // Groepeer op datum
     const grouped = {};
-    planningenMetAdres.forEach(p => {
+    allePlanningen.forEach(p => {
       if (!grouped[p.datum]) {
         grouped[p.datum] = [];
       }
       grouped[p.datum].push(p);
     });
 
-    // Sorteer datums (nieuwste eerst)
-    const sortedDates = Object.keys(grouped).sort((a, b) => {
-      return new Date(b) - new Date(a);
-    });
-
     let html = '';
+    const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
 
     for (const datum of sortedDates) {
       const items = grouped[datum];
@@ -176,10 +114,8 @@ async function laadPlanningen() {
           </div>
           <div class="datum-actions">
             <button class="btn btn-primary btn-small pdf-dag-btn" data-datum="${datum}">📄 PDF</button>
-            <button class="btn btn-info btn-small ai-optimize-day-btn" data-datum="${datum}">🤖 Optimaliseer</button>
           </div>
         </div>
-        <div class="planning-sortable-container" data-datum="${datum}">
       `;
 
       items.forEach((planning, index) => {
@@ -189,16 +125,8 @@ async function laadPlanningen() {
         const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
         const volgorde = planning.dag_volgorde || index + 1;
 
-        let extraInfo = '';
-        if (planning.type === 'ophaling' && planning.aantal_tonnen) {
-          extraInfo = `📦 ${planning.aantal_tonnen} ton(nen)`;
-        } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
-          extraInfo = `📦 ${planning.aantal_lege_tonnen} lege ton(nen)`;
-        }
-
         html += `
-          <div class="planning-item sortable-item" data-id="${planning.id}" data-volgorde="${volgorde}" data-datum="${datum}">
-            <div class="drag-handle" title="Sleep om te herordenen">⠿</div>
+          <div class="planning-item" data-id="${planning.id}">
             <div class="planning-info">
               <div class="planning-header">
                 <span class="stop-number-badge">#${volgorde}</span>
@@ -206,10 +134,11 @@ async function laadPlanningen() {
                 <span class="planning-status ${statusClass}">${planning.status || 'gepland'}</span>
               </div>
               <p>📍 ${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</p>
-              <p>📋 ${typeIcon} ${typeLabel} ${extraInfo ? `- ${extraInfo}` : ''}</p>
+              <p>📋 ${typeIcon} ${typeLabel}</p>
+              ${planning.type === 'ophaling' && planning.aantal_tonnen ? `<p>📦 ${planning.aantal_tonnen} ton(nen)</p>` : ''}
+              ${planning.type === 'plaatsing' && planning.aantal_lege_tonnen ? `<p>📦 ${planning.aantal_lege_tonnen} lege ton(nen)</p>` : ''}
               ${planning.adres?.telefoon ? `<p>📞 ${escapeHtml(planning.adres.telefoon)}</p>` : ''}
-              ${planning.adres?.extra_info ? `<p class="planning-extra-info">📝 ${escapeHtml(planning.adres.extra_info)}</p>` : ''}
-              ${planning.opmerkingen ? `<p class="planning-opmerking">💬 ${escapeHtml(planning.opmerkingen)}</p>` : ''}
+              ${planning.opmerkingen ? `<p>📝 ${escapeHtml(planning.opmerkingen)}</p>` : ''}
             </div>
             <div class="planning-buttons">
               <select class="status-select" data-id="${planning.id}">
@@ -217,21 +146,17 @@ async function laadPlanningen() {
                 <option value="uitgevoerd" ${planning.status === 'uitgevoerd' ? 'selected' : ''}>✅ Uitgevoerd</option>
                 <option value="geannuleerd" ${planning.status === 'geannuleerd' ? 'selected' : ''}>❌ Geannuleerd</option>
               </select>
-              <button class="btn btn-secondary edit-planning-btn" data-id="${planning.id}">✏️</button>
-              <button class="btn btn-danger delete-planning-btn" data-id="${planning.id}">🗑️</button>
+              <button class="btn btn-secondary edit-planning-btn" data-id="${planning.id}">✏️ Bewerken</button>
+              <button class="btn btn-danger delete-planning-btn" data-id="${planning.id}">🗑️ Verwijderen</button>
             </div>
           </div>
         `;
       });
-
-      html += `
-        </div>
-      `;
     }
 
     planningLijst.innerHTML = html;
 
-    // Event listeners voor status select
+    // Event listeners
     document.querySelectorAll('.status-select').forEach(select => {
       select.addEventListener('change', async function() {
         const id = this.dataset.id;
@@ -240,17 +165,14 @@ async function laadPlanningen() {
       });
     });
 
-    // Event listeners voor bewerk knoppen
     document.querySelectorAll('.edit-planning-btn').forEach(btn => {
       btn.addEventListener('click', () => bewerkPlanning(btn.dataset.id));
     });
 
-    // Event listeners voor verwijder knoppen
     document.querySelectorAll('.delete-planning-btn').forEach(btn => {
       btn.addEventListener('click', () => verwijderPlanning(btn.dataset.id));
     });
 
-    // Event listeners voor PDF knoppen
     document.querySelectorAll('.pdf-dag-btn').forEach(btn => {
       btn.addEventListener('click', function() {
         const datum = this.dataset.datum;
@@ -258,81 +180,9 @@ async function laadPlanningen() {
       });
     });
 
-    // Event listeners voor AI optimalisatie knoppen
-    document.querySelectorAll('.ai-optimize-day-btn').forEach(btn => {
-      btn.addEventListener('click', function() {
-        const datum = this.dataset.datum;
-        optimizeRouteVoorDag(datum);
-      });
-    });
-
-    // Init sortable voor elke dag
-    initSortable();
-
   } catch (err) {
-    console.error('❌ Fout bij laden planningen:', err);
+    console.error('Fout bij laden planningen:', err);
     planningLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
-  }
-}
-
-// ===== SORTABLE INIT =====
-function initSortable() {
-  // Vernietig oude sortable instances
-  sortableInstances.forEach(instance => {
-    if (instance) instance.destroy();
-  });
-  sortableInstances = [];
-
-  const containers = document.querySelectorAll('.planning-sortable-container');
-  
-  containers.forEach(container => {
-    const sortable = Sortable.create(container, {
-      handle: '.drag-handle',
-      animation: 200,
-      ghostClass: 'sortable-ghost',
-      chosenClass: 'sortable-chosen',
-      dragClass: 'sortable-drag',
-      onEnd: function(evt) {
-        const datum = container.dataset.datum;
-        const items = container.querySelectorAll('.sortable-item');
-        const updates = [];
-        items.forEach((item, index) => {
-          const id = item.dataset.id;
-          const nieuweVolgorde = index + 1;
-          updates.push({ id, volgorde: nieuweVolgorde });
-        });
-        updateRouteOrder(updates, datum);
-      }
-    });
-
-    sortableInstances.push(sortable);
-  });
-}
-
-// ===== ROUTE VOLGORDE UPDATE =====
-async function updateRouteOrder(updates, datum) {
-  try {
-    console.log('🔄 Route volgorde updaten voor', datum, ':', updates);
-    
-    for (const update of updates) {
-      const { error } = await supabase
-        .from('planningen')
-        .update({ dag_volgorde: update.volgorde })
-        .eq('id', update.id);
-      
-      if (error) throw error;
-    }
-
-    await logActie('route volgorde aangepast', 'planning', null, null, { 
-      datum: datum,
-      updates: updates 
-    });
-
-    showToast('✅ Route volgorde opgeslagen!', 'success');
-    laadPlanningen();
-  } catch (err) {
-    console.error('Fout bij updaten route volgorde:', err);
-    showToast('❌ Fout: ' + err.message, 'error');
   }
 }
 
@@ -345,9 +195,7 @@ async function updatePlanningStatus(id, nieuweStatus) {
       .eq('id', id);
 
     if (error) throw error;
-
     await logActie('status gewijzigd', 'planning', id, null, { nieuweStatus });
-
     showToast('✅ Status bijgewerkt!', 'success');
     laadPlanningen();
   } catch (err) {
@@ -392,16 +240,6 @@ async function savePlanning() {
         .update(planningData)
         .eq('id', currentPlanningId);
     } else {
-      const { data: maxData } = await supabase
-        .from('planningen')
-        .select('dag_volgorde')
-        .eq('datum', datum)
-        .order('dag_volgorde', { ascending: false })
-        .limit(1);
-      
-      const maxVolgorde = maxData && maxData.length > 0 ? maxData[0].dag_volgorde : 0;
-      planningData.dag_volgorde = maxVolgorde + 1;
-
       result = await supabase
         .from('planningen')
         .insert([planningData]);
@@ -471,7 +309,6 @@ async function verwijderPlanning(id) {
     if (error) throw error;
 
     await logActie('verwijderd', 'planning', id);
-
     showToast('✅ Planning verwijderd!', 'success');
     laadPlanningen();
   } catch (err) {
@@ -480,9 +317,7 @@ async function verwijderPlanning(id) {
   }
 }
 
-// ============================================================
-// PDF GENERATIE PER DAG (Hersteld met string HTML)
-// ============================================================
+// ===== PDF GENERATIE =====
 async function genereerPDFVoorDag(datum) {
   const planningen = allePlanningen.filter(p => p.datum === datum);
 
@@ -496,100 +331,30 @@ async function genereerPDFVoorDag(datum) {
 
     const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
 
-    // Bouw HTML als string voor de PDF
-    let htmlContent = `
-      <!DOCTYPE html>
+    let html = `
       <html>
       <head>
         <meta charset="UTF-8">
         <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            padding: 40px; 
-            background: white;
-            color: #333;
-          }
-          .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 3px solid #2c7da0;
-            padding-bottom: 15px;
-            margin-bottom: 25px;
-          }
-          .header h1 {
-            color: #2c7da0;
-            font-size: 24px;
-            margin: 0;
-          }
-          .header p {
-            color: #666;
-            font-size: 14px;
-            margin: 0;
-          }
-          .total {
-            font-size: 14px;
-            margin-bottom: 20px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 4px;
-          }
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-          }
-          th {
-            background-color: #2c7da0;
-            color: white;
-            padding: 10px 12px;
-            text-align: left;
-            border: 1px solid #2c7da0;
-          }
-          td {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-          }
-          tr:nth-child(even) {
-            background-color: #f8f9fa;
-          }
-          .status-gepland {
-            background: #fff3cd;
-            color: #856404;
-            padding: 2px 8px;
-            border-radius: 4px;
-          }
-          .status-uitgevoerd {
-            background: #d4edda;
-            color: #155724;
-            padding: 2px 8px;
-            border-radius: 4px;
-          }
-          .status-geannuleerd {
-            background: #f8d7da;
-            color: #721c24;
-            padding: 2px 8px;
-            border-radius: 4px;
-          }
-          .footer {
-            margin-top: 30px;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
-            text-align: center;
-            color: #999;
-            font-size: 11px;
-          }
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          h1 { color: #2c7da0; border-bottom: 2px solid #2c7da0; padding-bottom: 10px; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .header p { color: #666; margin: 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background-color: #2c7da0; color: white; padding: 10px; text-align: left; }
+          td { padding: 10px; border-bottom: 1px solid #ddd; }
+          .status-gepland { color: #856404; }
+          .status-uitgevoerd { color: #155724; }
+          .status-geannuleerd { color: #721c24; }
+          .footer { margin-top: 30px; color: #999; font-size: 12px; text-align: center; border-top: 1px solid #ddd; padding-top: 10px; }
         </style>
       </head>
       <body>
         <div class="header">
           <h1>📅 Route-overzicht</h1>
-          <p>${formatDateLong(datum)}</p>
+          <p>${formatDate(datum)}</p>
         </div>
-        <div class="total">
-          <strong>Totaal ritten:</strong> ${sortedPlanningen.length}
-        </div>
+        <p><strong>Totaal ritten:</strong> ${sortedPlanningen.length}</p>
         <table>
           <thead>
             <tr>
@@ -605,8 +370,6 @@ async function genereerPDFVoorDag(datum) {
     `;
 
     sortedPlanningen.forEach((planning, index) => {
-      const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
-                          (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
       const typeLabel = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
       let details = '';
       if (planning.type === 'ophaling' && planning.aantal_tonnen) {
@@ -615,65 +378,47 @@ async function genereerPDFVoorDag(datum) {
         details = `${planning.aantal_lege_tonnen} lege ton(nen)`;
       }
 
-      htmlContent += `
+      html += `
         <tr>
           <td>${index + 1}</td>
           <td><strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong></td>
           <td>${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</td>
           <td>${typeLabel}</td>
           <td>${details || '-'}</td>
-          <td><span class="${statusClass}">${planning.status || 'gepland'}</span></td>
+          <td class="status-${planning.status || 'gepland'}">${planning.status || 'gepland'}</td>
         </tr>
       `;
     });
 
-    htmlContent += `
+    html += `
           </tbody>
         </table>
         <div class="footer">
           <p>Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
-          <p style="margin-top:5px;">${window.location.origin}</p>
         </div>
       </body>
       </html>
     `;
 
-    // PDF opties
     const opt = {
       margin: 1,
       filename: `route_${datum}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true,
-        letterRendering: true
-      },
-      jsPDF: { 
-        unit: 'in', 
-        format: 'a4', 
-        orientation: 'portrait' 
-      }
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
 
-    // Tijdelijke container voor de PDF inhoud
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
     tempContainer.style.top = '-9999px';
-    tempContainer.style.width = '100%';
-    tempContainer.style.maxWidth = '794px';
-    tempContainer.style.background = 'white';
-    tempContainer.innerHTML = htmlContent;
+    tempContainer.innerHTML = html;
     document.body.appendChild(tempContainer);
-
-    // Wacht kort voor rendering
-    await new Promise(resolve => setTimeout(resolve, 100));
 
     await html2pdf().set(opt).from(tempContainer).save();
     document.body.removeChild(tempContainer);
 
     await logActie('pdf geëxporteerd', 'planning', null, null, { datum: datum });
-
     showToast('✅ PDF succesvol gegenereerd!', 'success');
   } catch (err) {
     console.error('Fout bij PDF generatie:', err);
@@ -681,75 +426,7 @@ async function genereerPDFVoorDag(datum) {
   }
 }
 
-// ============================================================
-// AI OPTIMALISATIE PER DAG
-// ============================================================
-async function optimizeRouteVoorDag(datum) {
-  if (isOptimizing) return;
-  isOptimizing = true;
-  showToast('🤖 Route wordt geoptimaliseerd...', 'info');
-
-  try {
-    const planningen = allePlanningen.filter(p => p.datum === datum);
-    
-    if (!planningen || planningen.length === 0) {
-      showToast('⚠️ Geen ritten om te optimaliseren', 'warning');
-      isOptimizing = false;
-      return;
-    }
-
-    const startpunt = { lat: 51.0589, lng: 4.3740 };
-
-    function berekenAfstand(lat1, lng1, lat2, lng2) {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLng = (lng2 - lng1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLng/2) * Math.sin(dLng/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c;
-    }
-
-    const rittenMetAfstand = planningen.map(rit => {
-      const adres = rit.adres;
-      let afstand = Infinity;
-      if (adres && adres.latitude && adres.longitude) {
-        afstand = berekenAfstand(startpunt.lat, startpunt.lng, adres.latitude, adres.longitude);
-      }
-      return { ...rit, afstand };
-    });
-
-    rittenMetAfstand.sort((a, b) => a.afstand - b.afstand);
-
-    for (let i = 0; i < rittenMetAfstand.length; i++) {
-      const rit = rittenMetAfstand[i];
-      const { error: updateError } = await supabase
-        .from('planningen')
-        .update({ dag_volgorde: i + 1 })
-        .eq('id', rit.id);
-      
-      if (updateError) throw updateError;
-    }
-
-    await logActie('route geoptimaliseerd', 'planning', null, null, { 
-      datum: datum,
-      aantal_ritten: rittenMetAfstand.length 
-    });
-
-    showToast('✅ Route geoptimaliseerd!', 'success');
-    laadPlanningen();
-  } catch (err) {
-    console.error('Fout bij optimalisatie:', err);
-    showToast('❌ Fout bij optimalisatie: ' + err.message, 'error');
-  } finally {
-    isOptimizing = false;
-  }
-}
-
-// ============================================================
-// INITIALISATIE
-// ============================================================
+// ===== INITIALISATIE =====
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('🔄 DOMContentLoaded event triggered');
 
@@ -782,20 +459,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (refreshPlanningBtn) {
     refreshPlanningBtn.addEventListener('click', laadPlanningen);
-  }
-
-  if (aiOptimizeBtn) {
-    aiOptimizeBtn.addEventListener('click', async () => {
-      const data = allePlanningen || [];
-      if (data.length === 0) {
-        showToast('⚠️ Geen ritten om te optimaliseren', 'warning');
-        return;
-      }
-      const recentsteDatum = data.sort((a, b) => new Date(b.datum) - new Date(a.datum))[0]?.datum;
-      if (recentsteDatum) {
-        await optimizeRouteVoorDag(recentsteDatum);
-      }
-    });
   }
 
   if (savePlanningBtn) {
