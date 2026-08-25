@@ -1,10 +1,10 @@
- // ============================================================
+// ============================================================
 // LOGS - Logboek pagina
 // ============================================================
 console.log('📋 logs.js geladen');
 
 import { requireAuth } from './core/auth.js';
-import { showToast, escapeHtml, formatDate } from './core/utils.js';
+import { showToast, escapeHtml } from './core/utils.js';
 import { supabase } from './core/supabase.js';
 
 // ===== STATE =====
@@ -36,6 +36,34 @@ const nextPageBtn = document.getElementById('nextPageBtn');
 const pageInfo = document.getElementById('pageInfo');
 const paginationContainer = document.getElementById('paginationContainer');
 
+// ===== TOEGANGSCONTROLE =====
+async function checkToegang(userId) {
+  try {
+    const { data: rolData, error: rolError } = await supabase
+      .from('gebruikers_rollen')
+      .select('rol')
+      .eq('user_id', userId)
+      .single();
+    if (rolError) throw rolError;
+    
+    if (rolData?.rol === 'admin') {
+      return true;
+    }
+
+    const { data: moduleRecht, error: moduleError } = await supabase
+      .from('gebruikers_module_rechten')
+      .select('actief')
+      .eq('user_id', userId)
+      .eq('module_sleutel', 'logs')
+      .single();
+
+    return moduleRecht?.actief === true;
+  } catch (err) {
+    console.error('Fout bij toegangscontrole:', err);
+    return false;
+  }
+}
+
 // ===== GEBRUIKERS LADEN VOOR FILTER =====
 async function laadGebruikersVoorFilter() {
   try {
@@ -57,18 +85,17 @@ async function laadGebruikersVoorFilter() {
   }
 }
 
-// ===== LOGS LADEN =====
+// ===== LOGS LADEN (zonder join) =====
 async function laadLogs() {
   if (!logLijst) return;
   logLijst.innerHTML = '<p>Bezig met laden...</p>';
 
   try {
-    // Bouw de query
+    // 🔥 VERANDERD: Geen join meer
     let query = supabase
       .from('activiteitenlog')
-      .select('*, user:user_id (gebruikersnaam)', { count: 'exact' });
+      .select('*', { count: 'exact' });
 
-    // Filters toepassen
     if (huidigeFilters.vanaf) {
       query = query.gte('created_at', huidigeFilters.vanaf + 'T00:00:00');
     }
@@ -85,7 +112,6 @@ async function laadLogs() {
       query = query.eq('actie', huidigeFilters.actie);
     }
 
-    // Paginering
     const from = (huidigePagina - 1) * logsPerPagina;
     const to = from + logsPerPagina - 1;
     query = query.range(from, to).order('created_at', { ascending: false });
@@ -96,13 +122,33 @@ async function laadLogs() {
     totaalLogs = count || 0;
     const logs = data || [];
 
+    // 🔥 Gebruikersnamen apart ophalen
+    if (logs.length > 0) {
+      const userIds = [...new Set(logs.map(log => log.user_id).filter(id => id))];
+      let gebruikersMap = {};
+      if (userIds.length > 0) {
+        const { data: gebruikers, error: gError } = await supabase
+          .from('gebruikers_rollen')
+          .select('user_id, gebruikersnaam')
+          .in('user_id', userIds);
+        
+        if (!gError && gebruikers) {
+          gebruikers.forEach(g => {
+            gebruikersMap[g.user_id] = g.gebruikersnaam;
+          });
+        }
+      }
+      logs.forEach(log => {
+        log.user = { gebruikersnaam: gebruikersMap[log.user_id] || log.user_id?.substring(0, 8) || 'Onbekend' };
+      });
+    }
+
     if (logs.length === 0) {
       logLijst.innerHTML = '<p>Geen logs gevonden met de huidige filters.</p>';
       paginationContainer.style.display = 'none';
       return;
     }
 
-    // Toon de logs
     toonLogs(logs);
     toonPaginering();
 
@@ -134,7 +180,8 @@ function toonLogs(logs) {
     'gebruikers': '👤',
     'admin': '👑',
     'auth': '🔐',
-    'analytics': '📊'
+    'analytics': '📊',
+    'logs': '📋'
   };
 
   let html = `
@@ -163,7 +210,7 @@ function toonLogs(logs) {
     });
     const actieIcon = actieIcons[log.actie] || '📌';
     const moduleIcon = moduleIcons[log.module] || '📂';
-    const gebruiker = log.user?.gebruikersnaam || log.user_id?.substring(0, 8) || 'Onbekend';
+    const gebruiker = log.user?.gebruikersnaam || 'Onbekend';
 
     let detailsHtml = '-';
     if (log.details) {
@@ -257,7 +304,7 @@ async function exportLogs() {
     
     let query = supabase
       .from('activiteitenlog')
-      .select('*, user:user_id (gebruikersnaam)');
+      .select('*');
 
     if (huidigeFilters.vanaf) {
       query = query.gte('created_at', huidigeFilters.vanaf + 'T00:00:00');
@@ -285,9 +332,25 @@ async function exportLogs() {
       return;
     }
 
+    // Haal gebruikersnamen op voor de export
+    const userIds = [...new Set(data.map(log => log.user_id).filter(id => id))];
+    let gebruikersMap = {};
+    if (userIds.length > 0) {
+      const { data: gebruikers, error: gError } = await supabase
+        .from('gebruikers_rollen')
+        .select('user_id, gebruikersnaam')
+        .in('user_id', userIds);
+      
+      if (!gError && gebruikers) {
+        gebruikers.forEach(g => {
+          gebruikersMap[g.user_id] = g.gebruikersnaam;
+        });
+      }
+    }
+
     const excelData = data.map(log => ({
       'Datum': new Date(log.created_at).toLocaleString('nl-NL'),
-      'Gebruiker': log.user?.gebruikersnaam || log.user_id || 'Onbekend',
+      'Gebruiker': gebruikersMap[log.user_id] || log.user_id || 'Onbekend',
       'Module': log.module,
       'Actie': log.actie,
       'Entity': log.entity_naam || log.entity_id || '-',
@@ -327,8 +390,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     return;
   }
 
-  // Alleen admins mogen logs zien
-  if (auth.rol !== 'admin') {
+  const heeftToegang = await checkToegang(auth.user.id);
+  if (!heeftToegang) {
     showToast('❌ Je hebt geen toegang tot het logboek', 'error');
     window.location.href = 'dashboard.html';
     return;
@@ -337,7 +400,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   await laadGebruikersVoorFilter();
   await laadLogs();
 
-  // Event listeners
   filterBtn.addEventListener('click', pasFiltersToe);
   resetBtn.addEventListener('click', resetFilters);
   exportBtn.addEventListener('click', exportLogs);
@@ -356,7 +418,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   });
 
-  // Enter toets in filter velden
   document.querySelectorAll('.filter-item input, .filter-item select').forEach(el => {
     el.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
