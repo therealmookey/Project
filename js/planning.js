@@ -4,7 +4,7 @@
 console.log('🚀 planning.js wordt geladen...');
 
 import { requireAuth } from './core/auth.js';
-import { showToast, escapeHtml } from './core/utils.js';
+import { showToast, escapeHtml } from './core/utils.js';  // 🔥 escapeHtml wordt geïmporteerd uit utils.js
 import { supabase, logActie } from './core/supabase.js';
 
 console.log('✅ Imports geladen!');
