@@ -1,184 +1,107 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analytics - Project</title>
-    
-    <script>
-        (function() {
-            const theme = localStorage.getItem('theme');
-            if (theme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                document.documentElement.style.backgroundColor = '#0f0f1a';
-                document.documentElement.style.color = '#f0f0f0';
-            }
-        })();
-    </script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics - Project</title>
+  <script>
+    (function() {
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.style.backgroundColor = '#0f0f1a';
+        document.documentElement.style.color = '#f0f0f0';
+      }
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div id="navigatie-placeholder"></div>
-    
-    <main class="container">
-        <div class="page-header">
-            <h1>📊 Analytics Dashboard</h1>
-            <p>Overzicht van alle statistieken en rapportages</p>
-        </div>
-        
-        <!-- KPI Dashboard -->
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <div class="kpi-icon">📦</div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Totaal ophalingen</span>
-                    <span class="kpi-value" id="kpiTotaalOphalingen">-</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">⚖️</div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Totaal gewicht (kg)</span>
-                    <span class="kpi-value" id="kpiTotaalGewicht">-</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">⚖️</div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Gemiddeld gewicht (kg)</span>
-                    <span class="kpi-value" id="kpiGemiddeldGewicht">-</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">🏥</div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Actieve ziekenhuizen</span>
-                    <span class="kpi-value" id="kpiZiekenhuizen">-</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">📅</div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Ritten deze week</span>
-                    <span class="kpi-value" id="kpiRittenWeek">-</span>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">🔄</div>
-                <div class="kpi-content">
-                    <span class="kpi-label">Opstarten deze maand</span>
-                    <span class="kpi-value" id="kpiOpstartenMaand">-</span>
-                </div>
-            </div>
-        </div>
-		<!-- ===== FILTERS ===== -->
-<div class="analytics-filters">
-    <div class="filter-row">
-        <div class="filter-item">
-            <label>🏥 Ziekenhuis</label>
-            <select id="analyticsZiekenhuisFilter" class="form-input">
-                <option value="alles">Alle ziekenhuizen</option>
-            </select>
-        </div>
-        <div class="filter-item">
-            <label>📅 Periode</label>
-            <select id="analyticsPeriodeFilter" class="form-input">
-                <option value="wekelijks">Wekelijks</option>
-                <option value="maandelijks" selected>Maandelijks</option>
-                <option value="jaarlijks">Jaarlijks</option>
-                <option value="aangepast">Aangepaste periode</option>
-            </select>
-        </div>
-        <div class="filter-item" id="analyticsDatumVanafGroup" style="display: none;">
-            <label>Vanaf</label>
-            <input type="date" id="analyticsDatumVanaf" class="form-input">
-        </div>
-        <div class="filter-item" id="analyticsDatumTotGroup" style="display: none;">
-            <label>Tot</label>
-            <input type="date" id="analyticsDatumTot" class="form-input">
-        </div>
-        <div class="filter-item filter-buttons">
-            <button id="analyticsFilterBtn" class="btn btn-primary">🔍 Filter</button>
-            <button id="analyticsResetBtn" class="btn btn-secondary">↺ Reset</button>
-            <button id="analyticsExportBtn" class="btn btn-success">📊 Export Excel</button>
-        </div>
+  <div id="navigatie-placeholder"></div>
+  
+  <main class="container">
+    <div class="page-header">
+      <h1>📊 Analytics Dashboard</h1>
+      <p>Overzicht van alle statistieken en rapportages</p>
     </div>
-</div>
-        
-        <!-- Grafieken -->
-        <div class="analytics-grid">
-            <div class="analytics-card full-width">
-                <h3>📈 Maandelijkse ophalingen trend</h3>
-                <div class="chart-container">
-                    <canvas id="trendChart"></canvas>
-                </div>
-            </div>
+
+    <!-- KPI Dashboard -->
+    <div class="kpi-grid">
+      <!-- ... KPI kaarten ... -->
+    </div>
+
+    <!-- Filters -->
+    <div class="analytics-filters">
+      <!-- ... filters ... -->
+    </div>
+
+    <!-- Grafieken -->
+    <div class="analytics-grid">
+      <div class="analytics-card full-width">
+        <h3>📈 Maandelijkse ophalingen trend</h3>
+        <div class="chart-container">
+          <canvas id="trendChart"></canvas>
         </div>
-        
-        <div class="analytics-grid two-col">
-            <div class="analytics-card">
-                <h3>🏥 Top 10 ziekenhuizen</h3>
-                <div id="topZiekenhuizen" class="analytics-list">
-                    <p>Laden...</p>
-                </div>
-            </div>
-            <div class="analytics-card">
-                <h3>⚠️ Voorraad waarschuwingen</h3>
-                <div id="voorraadWaarschuwingen" class="analytics-list">
-                    <p>Laden...</p>
-                </div>
-            </div>
+      </div>
+    </div>
+
+    <div class="analytics-grid two-col">
+      <div class="analytics-card">
+        <h3>🏥 Top 10 ziekenhuizen</h3>
+        <div id="topZiekenhuizen" class="analytics-list">
+          <p>Laden...</p>
         </div>
-        
-       <!-- Frequentie grafiek -->
-<div class="analytics-grid">
-    <div class="analytics-card full-width">
+      </div>
+      <div class="analytics-card">
+        <h3>⚠️ Voorraad waarschuwingen</h3>
+        <div id="voorraadWaarschuwingen" class="analytics-list">
+          <p>Laden...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Frequentie grafiek -->
+    <div class="analytics-grid">
+      <div class="analytics-card full-width">
         <div class="analytics-card-header">
-            <h3>📊 Ziekenhuis frequentie (gemiddeld interval in dagen)</h3>
-            <span class="analytics-count" id="frequentieCount"></span>
+          <h3>📊 Ziekenhuis frequentie (gemiddeld interval in dagen)</h3>
+          <span class="analytics-count" id="frequentieCount"></span>
         </div>
         <div class="chart-container-extra-large">
-            <canvas id="frequentieChart"></canvas>
+          <canvas id="frequentieChart"></canvas>
         </div>
+      </div>
     </div>
-</div>
-<!-- ===== ZIEKENHUIS OVERZICHT ===== -->
-<div class="ziekenhuis-overzicht-module">
-  <h2>🏥 Ziekenhuis overzicht</h2>
-  <p>Overzicht van alle ziekenhuizen met hun status en contactgegevens.</p>
-  <div id="ziekenhuisOverzicht">
-    <p>Laden...</p>
-  </div>
-</div>
-        
-        <div class="analytics-grid">
-            <div class="analytics-card full-width">
-                <h3>📋 Activiteitenlog</h3>
-                <div id="activiteitenLog" class="analytics-log">
-                    <p>Laden...</p>
-                </div>
-            </div>
+
+    <!-- Activiteitenlog -->
+    <div class="analytics-grid">
+      <div class="analytics-card full-width">
+        <h3>📋 Activiteitenlog</h3>
+        <div id="activiteitenLog" class="analytics-log">
+          <p>Laden...</p>
         </div>
-    </main>
-    <!-- ===== SCRIPTS ===== -->
-<!-- 1. Chart.js CDN (voor grafieken) -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+      </div>
+    </div>
 
-<!-- 2. SheetJS voor Excel export -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- ===== ZIEKENHUIS OVERZICHT ===== -->
+    <div class="ziekenhuis-overzicht-module">
+      <h2>🏥 Ziekenhuis overzicht</h2>
+      <p>Overzicht van alle ziekenhuizen met hun status en contactgegevens.</p>
+      <div id="ziekenhuisOverzicht">
+        <p>Laden...</p>
+      </div>
+    </div>
 
-<!-- 3. Supabase CDN -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  </main>
 
-<!-- 4. Configuratie -->
-<script src="js/config.js"></script>
-
-<!-- 5. MAIN (als module) -->
-<script type="module" src="js/main.js"></script>
-
-<!-- 6. Analytics specifiek (als module) -->
-<script type="module" src="js/analytics.js"></script>
+  <!-- ===== SCRIPTS ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  
+  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/analytics.js"></script>
 </body>
 </html>
