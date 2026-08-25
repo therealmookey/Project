@@ -31,19 +31,14 @@ function toonZiekenhuisKaart(item, statusType) {
     statusClass += 'onbekend';
   }
 
-  // 🔥 ALLEEN contactgegevens tonen (zonder knop)
-  let contactInfo = '';
-  const heeftContactGegevens = item.telefoon || item.contactpersoon_naam || item.contactpersoon_email;
-
-  if (heeftContactGegevens) {
-    contactInfo = `
-      <div class="contact-info">
-        ${item.contactpersoon_naam ? `<span>👤 ${escapeHtml(item.contactpersoon_naam)}</span>` : ''}
-        ${item.telefoon ? `<span>📞 ${escapeHtml(item.telefoon)}</span>` : ''}
-        ${item.contactpersoon_email ? `<span>✉️ ${escapeHtml(item.contactpersoon_email)}</span>` : ''}
-      </div>
-    `;
-  }
+  // 🔥 Contactgegevens ALTIJD tonen (ook als ze leeg zijn)
+  const contactInfo = `
+    <div class="contact-info">
+      ${item.contactpersoon_naam ? `<span>👤 ${escapeHtml(item.contactpersoon_naam)}</span>` : '<span>👤 Geen contactpersoon</span>'}
+      ${item.telefoon ? `<span>📞 ${escapeHtml(item.telefoon)}</span>` : '<span>📞 Geen telefoon</span>'}
+      ${item.contactpersoon_email ? `<span>✉️ ${escapeHtml(item.contactpersoon_email)}</span>` : '<span>✉️ Geen e-mail</span>'}
+    </div>
+  `;
 
   let dataInfo = '';
   if (statusType === 'actief') {
