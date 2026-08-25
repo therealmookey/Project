@@ -1,115 +1,101 @@
 // ============================================================
-// DASHBOARD - Hoofdscript voor dashboard pagina
+// DASHBOARD - Hoofd dashboard logica
 // ============================================================
+console.log('🚀 dashboard.js wordt geladen...');
 
-// Importeer modules
+import { requireAuth, getGebruikersnaam } from './core/auth.js';
+import { showToast } from './core/utils.js';
+import { supabase } from './core/supabase.js';
+
+// ===== MODULES IMPORTEREN =====
 import { laadAgenda, vorigeMaand, volgendeMaand, gaNaarVandaag } from './modules/dashboard/agenda.js';
-import { laadOphalingAnalyse, setCutoff } from './modules/dashboard/voorspelling.js';
+import { laadOphalingAnalyse } from './modules/dashboard/voorspelling.js';
 import { laadActieLijst } from './modules/dashboard/actie.js';
+import { laadZiekenhuisOverzicht } from './modules/dashboard/ziekenhuis-overzicht.js'; // <-- NIEUW
 
-// ===== DASHBOARD AUTH =====
+console.log('✅ Alle modules geïmporteerd!');
 
-async function checkDashboardAuth() {
-    if (typeof window.supabase === 'undefined') {
-        console.error('Geen Supabase in dashboard');
-        window.location.href = 'index.html';
-        return;
-    }
-
-    const { data: { session }, error } = await window.supabase.auth.getSession();
-    if (error || !session) {
-        console.log('Geen sessie gevonden, terug naar login.');
-        window.location.href = 'index.html';
-    } else {
-        console.log('Sessie is geldig voor:', session.user.email);
-        toonGebruikersnaam(session.user.id);
-        laadAgenda();
-        laadOphalingAnalyse();
-        laadActieLijst();
-    }
-}
-
-function toonGebruikersnaam(userId) {
-    const userEmailSpan = document.getElementById('userEmail');
-    if (!userEmailSpan) return;
-
-    try {
-        window.supabase
-            .from('gebruikers_rollen')
-            .select('gebruikersnaam')
-            .eq('user_id', userId)
-            .single()
-            .then(({ data, error }) => {
-                if (error) {
-                    console.error('Fout bij ophalen gebruikersnaam:', error);
-                    userEmailSpan.textContent = 'Gebruiker';
-                    return;
-                }
-                userEmailSpan.textContent = data?.gebruikersnaam || 'Gebruiker';
-            });
-    } catch (err) {
-        console.error('Fout:', err);
-        userEmailSpan.textContent = 'Gebruiker';
-    }
-}
-
-// ===== INITIALISATIE =====
-
-document.addEventListener('DOMContentLoaded', function() {
-    checkDashboardAuth();
-
-    // Agenda navigatie knoppen
-    const prevBtn = document.getElementById('prevMonthBtn');
-    const nextBtn = document.getElementById('nextMonthBtn');
-    const todayBtn = document.getElementById('todayBtn');
-    const statsBtn = document.getElementById('statsBtn');
-
-    if (prevBtn) {
-        prevBtn.addEventListener('click', vorigeMaand);
-    }
-
-    if (nextBtn) {
-        nextBtn.addEventListener('click', volgendeMaand);
-    }
-
-    if (todayBtn) {
-        todayBtn.addEventListener('click', gaNaarVandaag);
-    }
-
-    if (statsBtn) {
-        statsBtn.addEventListener('click', async function() {
-            if (typeof window.supabase === 'undefined') {
-                alert('Supabase is niet beschikbaar');
-                return;
-            }
-
-            const { count: adresCount } = await window.supabase
-                .from('adressen')
-                .select('*', { count: 'exact', head: true });
-
-            const { count: planningCount } = await window.supabase
-                .from('planningen')
-                .select('*', { count: 'exact', head: true });
-
-            alert(`📊 Statistieken\n\n📍 Aantal adressen: ${adresCount || 0}\n📅 Aantal planningen: ${planningCount || 0}`);
-        });
-    }
-	// ============================================================
-// ZIEKENHUIS OVERZICHT
 // ============================================================
-import { laadZiekenhuisOverzicht } from './modules/dashboard/ziekenhuis-overzicht.js';
+// INITIALISATIE
+// ============================================================
+document.addEventListener('DOMContentLoaded', async function() {
+  console.log('📄 DOM geladen, dashboard start...');
 
-// Laad het ziekenhuisoverzicht
-document.addEventListener('DOMContentLoaded', () => {
-  laadZiekenhuisOverzicht();
-});
+  // 1. Controleer of gebruiker is ingelogd
+  const auth = await requireAuth('index.html');
+  if (!auth.isAuthenticated) {
+    console.warn('⚠️ Niet ingelogd, redirect...');
+    return;
+  }
 
-    // Filter voor voorspellingen
-    const filterSelect = document.getElementById('voorspellingFilter');
-    if (filterSelect) {
-        filterSelect.addEventListener('change', function() {
-            const days = parseInt(this.value);
-            setCutoff(days);
-        });
+  // 2. Toon gebruikersnaam
+  if (auth.user) {
+    const naam = await getGebruikersnaam(auth.user.id);
+    const userEmailEl = document.getElementById('userEmail');
+    if (userEmailEl) {
+      userEmailEl.textContent = naam || auth.user.email || 'Gebruiker';
     }
+  }
+
+  // 3. Laad alle dashboard onderdelen
+  console.log('📊 Dashboard onderdelen laden...');
+
+  // Agenda
+  await laadAgenda();
+
+  // Voorspellingen
+  await laadOphalingAnalyse();
+
+  // Actie lijst (proactief bellen)
+  await laadActieLijst();
+
+  // ZIEKENHUIS OVERZICHT (nieuw)
+  await laadZiekenhuisOverzicht();
+
+  console.log('✅ Dashboard geladen!');
+
+  // ============================================================
+  // EVENT LISTENERS
+  // ============================================================
+
+  // Agenda navigatie
+  const prevBtn = document.getElementById('prevMonthBtn');
+  const nextBtn = document.getElementById('nextMonthBtn');
+  const todayBtn = document.getElementById('todayBtn');
+
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      vorigeMaand();
+    });
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      volgendeMaand();
+    });
+  }
+
+  if (todayBtn) {
+    todayBtn.addEventListener('click', () => {
+      gaNaarVandaag();
+    });
+  }
+
+  // Filter voor voorspellingen
+  const filterEl = document.getElementById('voorspellingFilter');
+  if (filterEl) {
+    filterEl.addEventListener('change', () => {
+      laadOphalingAnalyse();
+    });
+  }
+
+  // Statistieken knop
+  const statsBtn = document.getElementById('statsBtn');
+  if (statsBtn) {
+    statsBtn.addEventListener('click', () => {
+      window.location.href = 'analytics.html';
+    });
+  }
 });
+
+console.log('✅ dashboard.js geladen!');
