@@ -91,13 +91,6 @@ function toDateString(date) {
   return d.toISOString().split('T')[0];
 }
 
-function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
 // ===== ADRESSEN LADEN =====
 async function laadAdressenVoorSelect() {
   try {
@@ -157,51 +150,84 @@ function volgendeDag() {
   updateDateDisplay();
 }
 
-// ===== PLANNINGEN LADEN =====
+// ============================================================
+// PLANNINGEN LADEN (Vereenvoudigde versie zonder join)
+// ============================================================
 async function laadPlanningen() {
   console.log('📋 laadPlanningen aangeroepen...');
-  if (!planningLijst) return;
+  if (!planningLijst) {
+    console.warn('⚠️ planningLijst element niet gevonden');
+    return;
+  }
   planningLijst.innerHTML = '<p>Bezig met laden...</p>';
 
   try {
     const datumStr = toDateString(huidigeDatum);
+    console.log('🔍 Zoeken op datum:', datumStr);
     
+    // Haal planningen op voor de geselecteerde datum
     const { data, error } = await supabase
       .from('planningen')
-      .select('*, adres:adres_id (id, instelling_naam, straat, plaats, telefoon, extra_info)')
+      .select('*')
       .eq('datum', datumStr)
       .order('dag_volgorde', { ascending: true });
 
-    if (error) throw error;
-    allePlanningen = data || [];
+    if (error) {
+      console.error('❌ Fout bij laden:', error);
+      throw error;
+    }
+    
+    console.log('📊 Aantal planningen gevonden:', data?.length || 0);
 
-    if (allePlanningen.length === 0) {
+    if (!data || data.length === 0) {
       planningLijst.innerHTML = `
         <div class="geen-planningen">
           <p>📅 Geen planningen voor ${formatDateLong(huidigeDatum)}</p>
           <p style="color: #6c757d; font-size: 0.9rem;">Klik op "+ Nieuwe planning" om er een toe te voegen.</p>
         </div>
       `;
-      dayActions.style.display = 'none';
+      if (dayActions) dayActions.style.display = 'none';
       if (routeCount) routeCount.textContent = '0 ritten';
       return;
     }
 
-    // 🔥 Sorteer op dag_volgorde (bestaande volgorde behouden)
-    const sortedPlanningen = [...allePlanningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
+    // Haal adressen apart op
+    const adresIds = [...new Set(data.map(p => p.adres_id).filter(id => id))];
+    let adressenMap = {};
+    if (adresIds.length > 0) {
+      const { data: adressen, error: adresError } = await supabase
+        .from('adressen')
+        .select('id, instelling_naam, straat, plaats, telefoon, extra_info')
+        .in('id', adresIds);
+      
+      if (!adresError && adressen) {
+        adressen.forEach(a => {
+          adressenMap[a.id] = a;
+        });
+      }
+    }
 
-    if (routeCount) routeCount.textContent = `${sortedPlanningen.length} ritten`;
-    dayActions.style.display = 'block';
+    // Voeg adres toe aan elke planning
+    const planningenMetAdres = data.map(p => ({
+      ...p,
+      adres: adressenMap[p.adres_id] || null
+    }));
 
+    allePlanningen = planningenMetAdres;
+    
+    if (routeCount) routeCount.textContent = `${planningenMetAdres.length} ritten`;
+    if (dayActions) dayActions.style.display = 'block';
+
+    // Bouw de HTML
     let html = `
       <div class="planning-header-info">
         <span class="planning-datum">📅 ${formatDateLong(huidigeDatum)}</span>
-        <span class="planning-totaal">${sortedPlanningen.length} ritten</span>
+        <span class="planning-totaal">${planningenMetAdres.length} ritten</span>
       </div>
       <div class="planning-sortable-container" id="planningSortableContainer">
     `;
 
-    sortedPlanningen.forEach((planning, index) => {
+    planningenMetAdres.forEach((planning, index) => {
       const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
                           (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
       const typeIcon = planning.type === 'ophaling' ? '📦' : '🚚';
@@ -249,7 +275,7 @@ async function laadPlanningen() {
 
     planningLijst.innerHTML = html;
 
-    // Event listeners
+    // Event listeners voor status select
     document.querySelectorAll('.status-select').forEach(select => {
       select.addEventListener('change', async function() {
         const id = this.dataset.id;
@@ -258,10 +284,12 @@ async function laadPlanningen() {
       });
     });
 
+    // Event listeners voor bewerk knoppen
     document.querySelectorAll('.edit-planning-btn').forEach(btn => {
       btn.addEventListener('click', () => bewerkPlanning(btn.dataset.id));
     });
 
+    // Event listeners voor verwijder knoppen
     document.querySelectorAll('.delete-planning-btn').forEach(btn => {
       btn.addEventListener('click', () => verwijderPlanning(btn.dataset.id));
     });
@@ -270,7 +298,7 @@ async function laadPlanningen() {
     initSortable();
 
   } catch (err) {
-    console.error('Fout bij laden planningen:', err);
+    console.error('❌ Fout bij laden planningen:', err);
     planningLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
   }
 }
@@ -321,7 +349,7 @@ async function updateRouteOrder(updates) {
       if (error) throw error;
     }
 
-    // 🔥 LOG: Route volgorde aangepast
+    // LOG: Route volgorde aangepast
     await logActie('route volgorde aangepast', 'planning', null, null, { 
       datum: toDateString(huidigeDatum),
       updates: updates 
@@ -345,7 +373,7 @@ async function updatePlanningStatus(id, nieuweStatus) {
 
     if (error) throw error;
 
-    // 🔥 LOG: Status gewijzigd
+    // LOG: Status gewijzigd
     await logActie('status gewijzigd', 'planning', id, null, { nieuweStatus });
 
     showToast('✅ Status bijgewerkt!', 'success');
@@ -410,7 +438,7 @@ async function savePlanning() {
 
     if (result.error) throw result.error;
 
-    // 🔥 LOG: Planning toegevoegd of bijgewerkt
+    // LOG: Planning toegevoegd of bijgewerkt
     const actie = isBewerken ? 'bijgewerkt' : 'toegevoegd';
     const entityId = isBewerken ? currentPlanningId : result.data?.[0]?.id;
     const adresNaam = alleAdressen.find(a => a.id === parseInt(adresId))?.instelling_naam || 'Onbekend';
@@ -472,7 +500,7 @@ async function verwijderPlanning(id) {
 
     if (error) throw error;
 
-    // 🔥 LOG: Planning verwijderd
+    // LOG: Planning verwijderd
     await logActie('verwijderd', 'planning', id);
 
     showToast('✅ Planning verwijderd!', 'success');
@@ -508,13 +536,11 @@ async function optimizeRoute() {
       return;
     }
 
-    // Eenvoudige optimalisatie: sorteer op basis van afstand tot startpunt
-    // Startpunt is het magazijn (vaste locatie)
+    // Eenvoudige optimalisatie: sorteer op afstand tot startpunt
     const startpunt = { lat: 51.0589, lng: 4.3740 }; // Schoonmansveld 48, 2870 Puurs
 
-    // Bereken afstand tussen twee punten (Haversine formule)
     function berekenAfstand(lat1, lng1, lat2, lng2) {
-      const R = 6371; // straal aarde in km
+      const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
       const dLng = (lng2 - lng1) * Math.PI / 180;
       const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -524,7 +550,6 @@ async function optimizeRoute() {
       return R * c;
     }
 
-    // Bereken afstand van startpunt voor elke rit
     const rittenMetAfstand = data.map(rit => {
       const adres = rit.adres;
       let afstand = Infinity;
@@ -534,10 +559,8 @@ async function optimizeRoute() {
       return { ...rit, afstand };
     });
 
-    // Sorteer op afstand (dichtstbij eerst)
     rittenMetAfstand.sort((a, b) => a.afstand - b.afstand);
 
-    // Update de dag_volgorde
     for (let i = 0; i < rittenMetAfstand.length; i++) {
       const rit = rittenMetAfstand[i];
       const { error: updateError } = await supabase
@@ -548,7 +571,6 @@ async function optimizeRoute() {
       if (updateError) throw updateError;
     }
 
-    // 🔥 LOG: Route geoptimaliseerd
     await logActie('route geoptimaliseerd', 'planning', null, null, { 
       datum: datumStr,
       aantal_ritten: rittenMetAfstand.length 
@@ -579,7 +601,6 @@ async function genereerPDF() {
   try {
     showToast('📄 PDF wordt gegenereerd...', 'info');
 
-    // Bouw de PDF content
     let html = `
       <html>
       <head>
@@ -658,7 +679,6 @@ async function genereerPDF() {
       </html>
     `;
 
-    // Genereer PDF met html2pdf
     const opt = {
       margin: 1,
       filename: `route_${datumStr}.pdf`,
@@ -667,7 +687,6 @@ async function genereerPDF() {
       jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
     };
 
-    // Tijdelijke container voor PDF generatie
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
@@ -678,7 +697,6 @@ async function genereerPDF() {
     await html2pdf().set(opt).from(tempContainer).save();
     document.body.removeChild(tempContainer);
 
-    // 🔥 LOG: PDF geëxporteerd
     await logActie('pdf geëxporteerd', 'planning', null, null, { datum: datumStr });
 
     showToast('✅ PDF succesvol gegenereerd!', 'success');
@@ -695,7 +713,7 @@ function genereerWhatsAppBericht() {
   const planningen = allePlanningen || [];
   if (planningen.length === 0) {
     showToast('⚠️ Geen ritten om te versturen', 'warning');
-    return;
+    return null;
   }
 
   const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
@@ -741,11 +759,9 @@ function verstuurWhatsApp() {
   const bericht = whatsappBericht.value;
   if (!bericht) return;
 
-  // Vraag naar telefoonnummer van de chauffeur
   const telefoon = prompt('📱 Voer het telefoonnummer van de chauffeur in (inclusief landcode, bijv. 32 voor België):', '32');
   if (!telefoon) return;
 
-  // Maak WhatsApp URL
   const cleanTelefoon = telefoon.replace(/[^0-9]/g, '');
   const encodedBericht = encodeURIComponent(bericht);
   const url = `https://wa.me/${cleanTelefoon}?text=${encodedBericht}`;
@@ -761,7 +777,6 @@ function kopieerWhatsAppBericht() {
   navigator.clipboard.writeText(bericht).then(() => {
     showToast('✅ Bericht gekopieerd!', 'success');
   }).catch(() => {
-    // Fallback
     whatsappBericht.select();
     document.execCommand('copy');
     showToast('✅ Bericht gekopieerd!', 'success');
