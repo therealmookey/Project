@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logboek - Project</title>
+  <script>
+    (function() {
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.style.backgroundColor = '#0f0f1a';
+        document.documentElement.style.color = '#f0f0f0';
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="navigatie-placeholder"></div>
+  
+  <main class="container">
+    <div class="page-header">
+      <h1>📋 Logboek</h1>
+      <p>Overzicht van alle gebruikersactiviteiten in het systeem.</p>
+    </div>
+
+    <!-- ===== FILTERS ===== -->
+    <div class="filter-section">
+      <div class="filter-row">
+        <div class="filter-item">
+          <label>📅 Vanaf</label>
+          <input type="date" id="logFilterVanaf" class="form-input">
+        </div>
+        <div class="filter-item">
+          <label>📅 Tot</label>
+          <input type="date" id="logFilterTot" class="form-input">
+        </div>
+        <div class="filter-item">
+          <label>👤 Gebruiker</label>
+          <select id="logFilterGebruiker" class="form-input">
+            <option value="alles">Alle gebruikers</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>📂 Module</label>
+          <select id="logFilterModule" class="form-input">
+            <option value="alles">Alle modules</option>
+            <option value="adressen">📍 Adressen</option>
+            <option value="planning">📅 Planning</option>
+            <option value="registraties">📋 Registraties</option>
+            <option value="stock">📦 Voorraad</option>
+            <option value="gebruikers">👤 Gebruikers</option>
+            <option value="admin">👑 Admin</option>
+            <option value="auth">🔐 Authenticatie</option>
+            <option value="analytics">📊 Analytics</option>
+          </select>
+        </div>
+        <div class="filter-item">
+          <label>🔍 Actie</label>
+          <select id="logFilterActie" class="form-input">
+            <option value="alles">Alle acties</option>
+            <option value="toegevoegd">➕ Toegevoegd</option>
+            <option value="bijgewerkt">✏️ Bijgewerkt</option>
+            <option value="verwijderd">🗑️ Verwijderd</option>
+            <option value="goedgekeurd">✅ Goedgekeurd</option>
+            <option value="geweigerd">❌ Geweigerd</option>
+            <option value="ingelogd">🔐 Ingelogd</option>
+            <option value="uitgelogd">🚪 Uitgelogd</option>
+            <option value="geëxporteerd">📊 Geëxporteerd</option>
+            <option value="voorraad aangepast">📦 Voorraad aangepast</option>
+          </select>
+        </div>
+        <div class="filter-item filter-buttons">
+          <button id="logFilterBtn" class="btn btn-primary">🔍 Filter</button>
+          <button id="logResetBtn" class="btn btn-secondary">↺ Reset</button>
+          <button id="logExportBtn" class="btn btn-success">📊 Export Excel</button>
+          <button id="logRefreshBtn" class="btn btn-secondary">🔄 Ververs</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LOG LIJST ===== -->
+    <div id="logLijst" class="admin-tabel">
+      <p>Laden...</p>
+    </div>
+
+    <!-- ===== PAGINERING ===== -->
+    <div class="pagination-container" id="paginationContainer" style="display: none;">
+      <button id="prevPageBtn" class="btn btn-secondary">◀ Vorige</button>
+      <span id="pageInfo">Pagina 1 van 1</span>
+      <button id="nextPageBtn" class="btn btn-secondary">Volgende ▶</button>
+    </div>
+  </main>
+
+  <!-- ===== SCRIPTS ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/logs.js"></script>
+</body>
+</html>
