@@ -15,7 +15,8 @@ const BESCHERMDE_PAGINAS = [
     'registraties.html',
     'stock.html',
     'analytics.html',
-    'tracker-dashboard.html'
+    'tracker-dashboard.html',
+    'logs.html'
 ];
 
 // ===== MODULE RECHTEN (CACHE) =====
@@ -74,24 +75,13 @@ export async function heeftModuleToegang(moduleSleutel) {
         
         const now = Date.now();
         if (moduleRightsCache && (now - moduleRightsCacheTime) < CACHE_TTL) {
-            return moduleRightsCache[moduleSleutel] || false;
+            // Als de cache bestaat en de module niet in de cache staat, check standaard
+            if (moduleRightsCache[moduleSleutel] !== undefined) {
+                return moduleRightsCache[moduleSleutel];
+            }
         }
         
-        const { data: rollen } = await supabase
-            .from('gebruikers_rollen')
-            .select('rol')
-            .eq('user_id', user.id)
-            .maybeSingle();
-        
-        if (rollen && rollen.rol === 'admin') {
-            moduleRightsCache = {};
-            ['adressen', 'planning', 'registraties', 'stock', 'admin', 'analytics', 'modules', 'tracker'].forEach(key => {
-                moduleRightsCache[key] = true;
-            });
-            moduleRightsCacheTime = now;
-            return true;
-        }
-        
+        // 🔥 VERANDERD: Haal ALLE rechten op voor de gebruiker (ook admins)
         const { data: rechten, error } = await supabase
             .from('gebruikers_module_rechten')
             .select('module_sleutel, actief')
@@ -102,16 +92,20 @@ export async function heeftModuleToegang(moduleSleutel) {
             return false;
         }
         
+        // Bouw cache op
         moduleRightsCache = {};
         rechten.forEach(r => {
             moduleRightsCache[r.module_sleutel] = r.actief;
         });
         moduleRightsCacheTime = now;
         
+        // Check of de module in de cache staat
         if (moduleRightsCache[moduleSleutel] !== undefined) {
             return moduleRightsCache[moduleSleutel];
         }
         
+        // 🔥 VERANDERD: Geen automatische admin rechten meer
+        // Haal de standaard waarde op uit de modules tabel
         const { data: module, error: modError } = await supabase
             .from('modules')
             .select('standaard_aan')
@@ -123,7 +117,13 @@ export async function heeftModuleToegang(moduleSleutel) {
             return false;
         }
         
-        return module ? module.standaard_aan : false;
+        // Als de module niet in de rechten staat, gebruik de standaard waarde
+        const standaardWaarde = module ? module.standaard_aan : false;
+        
+        // Sla de standaard waarde op in de cache voor toekomstige checks
+        moduleRightsCache[moduleSleutel] = standaardWaarde;
+        
+        return standaardWaarde;
         
     } catch (err) {
         console.error('Exception bij module check:', err);
@@ -138,7 +138,7 @@ export async function filterNavigatieModules() {
         
         console.log(`🔍 ${moduleLinks.length} module links gevonden`);
         
-        // Eerst alle links verbergen (zowel klasse als style)
+        // Eerst alle links verbergen
         moduleLinks.forEach(link => {
             link.classList.remove('visible');
             link.style.display = 'none';
