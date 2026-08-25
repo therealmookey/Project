@@ -1,10 +1,10 @@
 // ============================================================
-// PLANNING - Planning pagina (met alle functionaliteiten)
+// PLANNING - Planning pagina (originele functionaliteit)
 // ============================================================
 console.log('🚀 planning.js wordt geladen...');
 
 import { requireAuth } from './core/auth.js';
-import { showToast, escapeHtml } from './core/utils.js';  // 🔥 escapeHtml wordt geïmporteerd uit utils.js
+import { showToast, escapeHtml } from './core/utils.js';
 import { supabase, logActie } from './core/supabase.js';
 
 console.log('✅ Imports geladen!');
@@ -13,9 +13,7 @@ console.log('✅ Imports geladen!');
 let allePlanningen = [];
 let alleAdressen = [];
 let currentPlanningId = null;
-let huidigeDatum = new Date();
 let sortableInstances = [];
-let isOptimizing = false;
 
 // ===== DOM ELEMENTEN =====
 const planningLijst = document.getElementById('planningLijst');
@@ -34,24 +32,6 @@ const ophalingVelden = document.getElementById('ophalingVelden');
 const plaatsingVelden = document.getElementById('plaatsingVelden');
 const aantalTonnen = document.getElementById('aantalTonnen');
 const aantalLegeTonnen = document.getElementById('aantalLegeTonnen');
-const datePicker = document.getElementById('datePicker');
-const dateDisplay = document.getElementById('dateDisplay');
-const routeCount = document.getElementById('routeCount');
-const prevDayBtn = document.getElementById('prevDayBtn');
-const nextDayBtn = document.getElementById('nextDayBtn');
-const todayBtn = document.getElementById('todayBtn');
-const goToDateBtn = document.getElementById('goToDateBtn');
-const dayActions = document.getElementById('dayActions');
-const pdfDagBtn = document.getElementById('pdfDagBtn');
-const whatsappDagBtn = document.getElementById('whatsappDagBtn');
-const aiOptimizeDayBtn = document.getElementById('aiOptimizeDayBtn');
-
-// ===== WHATSAPP POPUP =====
-const whatsappPopup = document.getElementById('whatsappPopup');
-const whatsappBericht = document.getElementById('whatsappBericht');
-const whatsappVerstuurBtn = document.getElementById('whatsappVerstuurBtn');
-const whatsappKopieerBtn = document.getElementById('whatsappKopieerBtn');
-const whatsappSluitBtn = document.getElementById('whatsappSluitBtn');
 
 // ===== HULPFUNCTIES =====
 function getValue(id) {
@@ -85,12 +65,6 @@ function formatDateLong(date) {
   });
 }
 
-function toDateString(date) {
-  if (!date) return '';
-  const d = new Date(date);
-  return d.toISOString().split('T')[0];
-}
-
 // ===== ADRESSEN LADEN =====
 async function laadAdressenVoorSelect() {
   try {
@@ -112,46 +86,8 @@ async function laadAdressenVoorSelect() {
   }
 }
 
-// ===== DATUM FUNCTIES =====
-function updateDateDisplay() {
-  const dateStr = toDateString(huidigeDatum);
-  if (datePicker) datePicker.value = dateStr;
-  if (dateDisplay) dateDisplay.textContent = formatDateLong(huidigeDatum);
-  laadPlanningen();
-}
-
-function gaNaarDatum(datum) {
-  if (typeof datum === 'string') {
-    huidigeDatum = new Date(datum + 'T00:00:00');
-  } else if (datum instanceof Date) {
-    huidigeDatum = new Date(datum);
-  }
-  huidigeDatum.setHours(0, 0, 0, 0);
-  updateDateDisplay();
-}
-
-function gaNaarVandaag() {
-  huidigeDatum = new Date();
-  huidigeDatum.setHours(0, 0, 0, 0);
-  updateDateDisplay();
-}
-
-function vorigeDag() {
-  const nieuweDatum = new Date(huidigeDatum);
-  nieuweDatum.setDate(nieuweDatum.getDate() - 1);
-  huidigeDatum = nieuweDatum;
-  updateDateDisplay();
-}
-
-function volgendeDag() {
-  const nieuweDatum = new Date(huidigeDatum);
-  nieuweDatum.setDate(nieuweDatum.getDate() + 1);
-  huidigeDatum = nieuweDatum;
-  updateDateDisplay();
-}
-
 // ============================================================
-// PLANNINGEN LADEN (Vereenvoudigde versie zonder join)
+// PLANNINGEN LADEN (Alle dagen, gesorteerd op datum)
 // ============================================================
 async function laadPlanningen() {
   console.log('📋 laadPlanningen aangeroepen...');
@@ -162,14 +98,11 @@ async function laadPlanningen() {
   planningLijst.innerHTML = '<p>Bezig met laden...</p>';
 
   try {
-    const datumStr = toDateString(huidigeDatum);
-    console.log('🔍 Zoeken op datum:', datumStr);
-    
-    // Haal planningen op voor de geselecteerde datum
+    // Haal ALLE planningen op (geen datumfilter)
     const { data, error } = await supabase
       .from('planningen')
       .select('*')
-      .eq('datum', datumStr)
+      .order('datum', { ascending: false })  // Nieuwste datum eerst
       .order('dag_volgorde', { ascending: true });
 
     if (error) {
@@ -182,12 +115,10 @@ async function laadPlanningen() {
     if (!data || data.length === 0) {
       planningLijst.innerHTML = `
         <div class="geen-planningen">
-          <p>📅 Geen planningen voor ${formatDateLong(huidigeDatum)}</p>
+          <p>📅 Geen planningen gevonden</p>
           <p style="color: #6c757d; font-size: 0.9rem;">Klik op "+ Nieuwe planning" om er een toe te voegen.</p>
         </div>
       `;
-      if (dayActions) dayActions.style.display = 'none';
-      if (routeCount) routeCount.textContent = '0 ritten';
       return;
     }
 
@@ -214,64 +145,88 @@ async function laadPlanningen() {
     }));
 
     allePlanningen = planningenMetAdres;
-    
-    if (routeCount) routeCount.textContent = `${planningenMetAdres.length} ritten`;
-    if (dayActions) dayActions.style.display = 'block';
 
-    // Bouw de HTML
-    let html = `
-      <div class="planning-header-info">
-        <span class="planning-datum">📅 ${formatDateLong(huidigeDatum)}</span>
-        <span class="planning-totaal">${planningenMetAdres.length} ritten</span>
-      </div>
-      <div class="planning-sortable-container" id="planningSortableContainer">
-    `;
-
-    planningenMetAdres.forEach((planning, index) => {
-      const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
-                          (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
-      const typeIcon = planning.type === 'ophaling' ? '📦' : '🚚';
-      const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
-      const volgorde = planning.dag_volgorde || index + 1;
-
-      let extraInfo = '';
-      if (planning.type === 'ophaling' && planning.aantal_tonnen) {
-        extraInfo = `📦 ${planning.aantal_tonnen} ton(nen)`;
-      } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
-        extraInfo = `📦 ${planning.aantal_lege_tonnen} lege ton(nen)`;
+    // Groepeer op datum
+    const grouped = {};
+    planningenMetAdres.forEach(p => {
+      if (!grouped[p.datum]) {
+        grouped[p.datum] = [];
       }
-
-      html += `
-        <div class="planning-item sortable-item" data-id="${planning.id}" data-volgorde="${volgorde}">
-          <div class="drag-handle" title="Sleep om te herordenen">⠿</div>
-          <div class="planning-info">
-            <div class="planning-header">
-              <span class="stop-number-badge">#${volgorde}</span>
-              <h4>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</h4>
-              <span class="planning-status ${statusClass}">${planning.status || 'gepland'}</span>
-            </div>
-            <p>📍 ${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</p>
-            <p>📋 ${typeIcon} ${typeLabel} ${extraInfo ? `- ${extraInfo}` : ''}</p>
-            ${planning.adres?.telefoon ? `<p>📞 ${escapeHtml(planning.adres.telefoon)}</p>` : ''}
-            ${planning.adres?.extra_info ? `<p class="planning-extra-info">📝 ${escapeHtml(planning.adres.extra_info)}</p>` : ''}
-            ${planning.opmerkingen ? `<p class="planning-opmerking">💬 ${escapeHtml(planning.opmerkingen)}</p>` : ''}
-          </div>
-          <div class="planning-buttons">
-            <select class="status-select" data-id="${planning.id}">
-              <option value="gepland" ${planning.status === 'gepland' ? 'selected' : ''}>📋 Gepland</option>
-              <option value="uitgevoerd" ${planning.status === 'uitgevoerd' ? 'selected' : ''}>✅ Uitgevoerd</option>
-              <option value="geannuleerd" ${planning.status === 'geannuleerd' ? 'selected' : ''}>❌ Geannuleerd</option>
-            </select>
-            <button class="btn btn-secondary edit-planning-btn" data-id="${planning.id}">✏️</button>
-            <button class="btn btn-danger delete-planning-btn" data-id="${planning.id}">🗑️</button>
-          </div>
-        </div>
-      `;
+      grouped[p.datum].push(p);
     });
 
-    html += `
-      </div>
-    `;
+    // Sorteer datums (nieuwste eerst)
+    const sortedDates = Object.keys(grouped).sort((a, b) => {
+      return new Date(b) - new Date(a);
+    });
+
+    let html = '';
+
+    for (const datum of sortedDates) {
+      const items = grouped[datum];
+      const dagVanWeek = new Date(datum + 'T00:00:00').toLocaleDateString('nl-NL', { weekday: 'long' });
+      
+      html += `
+        <div class="datum-header">
+          <div class="datum-header-content">
+            <span class="datum-dag">${dagVanWeek}</span>
+            <span class="datum-datum">${formatDate(datum)}</span>
+            <span class="datum-count">${items.length} ritten</span>
+          </div>
+          <div class="datum-actions">
+            <button class="btn btn-primary btn-small pdf-dag-btn" data-datum="${datum}">📄 PDF</button>
+            <button class="btn btn-info btn-small ai-optimize-day-btn" data-datum="${datum}">🤖 Optimaliseer</button>
+          </div>
+        </div>
+        <div class="planning-sortable-container" data-datum="${datum}">
+      `;
+
+      items.forEach((planning, index) => {
+        const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
+                            (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
+        const typeIcon = planning.type === 'ophaling' ? '📦' : '🚚';
+        const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
+        const volgorde = planning.dag_volgorde || index + 1;
+
+        let extraInfo = '';
+        if (planning.type === 'ophaling' && planning.aantal_tonnen) {
+          extraInfo = `📦 ${planning.aantal_tonnen} ton(nen)`;
+        } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
+          extraInfo = `📦 ${planning.aantal_lege_tonnen} lege ton(nen)`;
+        }
+
+        html += `
+          <div class="planning-item sortable-item" data-id="${planning.id}" data-volgorde="${volgorde}" data-datum="${datum}">
+            <div class="drag-handle" title="Sleep om te herordenen">⠿</div>
+            <div class="planning-info">
+              <div class="planning-header">
+                <span class="stop-number-badge">#${volgorde}</span>
+                <h4>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</h4>
+                <span class="planning-status ${statusClass}">${planning.status || 'gepland'}</span>
+              </div>
+              <p>📍 ${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</p>
+              <p>📋 ${typeIcon} ${typeLabel} ${extraInfo ? `- ${extraInfo}` : ''}</p>
+              ${planning.adres?.telefoon ? `<p>📞 ${escapeHtml(planning.adres.telefoon)}</p>` : ''}
+              ${planning.adres?.extra_info ? `<p class="planning-extra-info">📝 ${escapeHtml(planning.adres.extra_info)}</p>` : ''}
+              ${planning.opmerkingen ? `<p class="planning-opmerking">💬 ${escapeHtml(planning.opmerkingen)}</p>` : ''}
+            </div>
+            <div class="planning-buttons">
+              <select class="status-select" data-id="${planning.id}">
+                <option value="gepland" ${planning.status === 'gepland' ? 'selected' : ''}>📋 Gepland</option>
+                <option value="uitgevoerd" ${planning.status === 'uitgevoerd' ? 'selected' : ''}>✅ Uitgevoerd</option>
+                <option value="geannuleerd" ${planning.status === 'geannuleerd' ? 'selected' : ''}>❌ Geannuleerd</option>
+              </select>
+              <button class="btn btn-secondary edit-planning-btn" data-id="${planning.id}">✏️</button>
+              <button class="btn btn-danger delete-planning-btn" data-id="${planning.id}">🗑️</button>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+        </div>
+      `;
+    }
 
     planningLijst.innerHTML = html;
 
@@ -294,7 +249,23 @@ async function laadPlanningen() {
       btn.addEventListener('click', () => verwijderPlanning(btn.dataset.id));
     });
 
-    // Init sortable
+    // Event listeners voor PDF knoppen
+    document.querySelectorAll('.pdf-dag-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const datum = this.dataset.datum;
+        genereerPDFVoorDag(datum);
+      });
+    });
+
+    // Event listeners voor AI optimalisatie knoppen
+    document.querySelectorAll('.ai-optimize-day-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const datum = this.dataset.datum;
+        optimizeRouteVoorDag(datum);
+      });
+    });
+
+    // Init sortable voor elke dag
     initSortable();
 
   } catch (err) {
@@ -311,34 +282,36 @@ function initSortable() {
   });
   sortableInstances = [];
 
-  const container = document.getElementById('planningSortableContainer');
-  if (!container) return;
+  const containers = document.querySelectorAll('.planning-sortable-container');
+  
+  containers.forEach(container => {
+    const sortable = Sortable.create(container, {
+      handle: '.drag-handle',
+      animation: 200,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: function(evt) {
+        const datum = container.dataset.datum;
+        const items = container.querySelectorAll('.sortable-item');
+        const updates = [];
+        items.forEach((item, index) => {
+          const id = item.dataset.id;
+          const nieuweVolgorde = index + 1;
+          updates.push({ id, volgorde: nieuweVolgorde });
+        });
+        updateRouteOrder(updates, datum);
+      }
+    });
 
-  const sortable = Sortable.create(container, {
-    handle: '.drag-handle',
-    animation: 200,
-    ghostClass: 'sortable-ghost',
-    chosenClass: 'sortable-chosen',
-    dragClass: 'sortable-drag',
-    onEnd: function(evt) {
-      const items = container.querySelectorAll('.sortable-item');
-      const updates = [];
-      items.forEach((item, index) => {
-        const id = item.dataset.id;
-        const nieuweVolgorde = index + 1;
-        updates.push({ id, volgorde: nieuweVolgorde });
-      });
-      updateRouteOrder(updates);
-    }
+    sortableInstances.push(sortable);
   });
-
-  sortableInstances.push(sortable);
 }
 
 // ===== ROUTE VOLGORDE UPDATE =====
-async function updateRouteOrder(updates) {
+async function updateRouteOrder(updates, datum) {
   try {
-    console.log('🔄 Route volgorde updaten:', updates);
+    console.log('🔄 Route volgorde updaten voor', datum, ':', updates);
     
     for (const update of updates) {
       const { error } = await supabase
@@ -351,7 +324,7 @@ async function updateRouteOrder(updates) {
 
     // LOG: Route volgorde aangepast
     await logActie('route volgorde aangepast', 'planning', null, null, { 
-      datum: toDateString(huidigeDatum),
+      datum: datum,
       updates: updates 
     });
 
@@ -512,25 +485,130 @@ async function verwijderPlanning(id) {
 }
 
 // ============================================================
-// AI OPTIMALISATIE
+// PDF GENERATIE PER DAG
 // ============================================================
-async function optimizeRoute() {
+async function genereerPDFVoorDag(datum) {
+  const planningen = allePlanningen.filter(p => p.datum === datum);
+
+  if (planningen.length === 0) {
+    showToast('⚠️ Geen ritten om te exporteren', 'warning');
+    return;
+  }
+
+  try {
+    showToast('📄 PDF wordt gegenereerd...', 'info');
+
+    const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
+
+    let html = `
+      <html>
+      <head>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; }
+          h1 { color: #2c7da0; border-bottom: 2px solid #2c7da0; padding-bottom: 10px; }
+          .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+          .header p { color: #666; margin: 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background-color: #2c7da0; color: white; padding: 10px; text-align: left; }
+          td { padding: 10px; border-bottom: 1px solid #ddd; }
+          .status-gepland { color: #856404; background: #fff3cd; padding: 2px 8px; border-radius: 4px; }
+          .status-uitgevoerd { color: #155724; background: #d4edda; padding: 2px 8px; border-radius: 4px; }
+          .status-geannuleerd { color: #721c24; background: #f8d7da; padding: 2px 8px; border-radius: 4px; }
+          .footer { margin-top: 30px; color: #999; font-size: 12px; text-align: center; border-top: 1px solid #ddd; padding-top: 10px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>📅 Route-overzicht</h1>
+          <p>${formatDateLong(datum)}</p>
+        </div>
+        <p><strong>Totaal ritten:</strong> ${sortedPlanningen.length}</p>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Ziekenhuis</th>
+              <th>Adres</th>
+              <th>Type</th>
+              <th>Details</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    sortedPlanningen.forEach((planning, index) => {
+      const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
+                          (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
+      const typeIcon = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
+      let details = '';
+      if (planning.type === 'ophaling' && planning.aantal_tonnen) {
+        details = `${planning.aantal_tonnen} ton(nen)`;
+      } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
+        details = `${planning.aantal_lege_tonnen} lege ton(nen)`;
+      }
+
+      html += `
+        <tr>
+          <td>${index + 1}</td>
+          <td><strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong></td>
+          <td>${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</td>
+          <td>${typeIcon}</td>
+          <td>${details}</td>
+          <td><span class="${statusClass}">${planning.status || 'gepland'}</span></td>
+        </tr>
+      `;
+    });
+
+    html += `
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const opt = {
+      margin: 1,
+      filename: `route_${datum}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+    };
+
+    const tempContainer = document.createElement('div');
+    tempContainer.style.position = 'absolute';
+    tempContainer.style.left = '-9999px';
+    tempContainer.style.top = '-9999px';
+    tempContainer.innerHTML = html;
+    document.body.appendChild(tempContainer);
+
+    await html2pdf().set(opt).from(tempContainer).save();
+    document.body.removeChild(tempContainer);
+
+    await logActie('pdf geëxporteerd', 'planning', null, null, { datum: datum });
+
+    showToast('✅ PDF succesvol gegenereerd!', 'success');
+  } catch (err) {
+    console.error('Fout bij PDF generatie:', err);
+    showToast('❌ Fout bij PDF generatie: ' + err.message, 'error');
+  }
+}
+
+// ============================================================
+// AI OPTIMALISATIE PER DAG
+// ============================================================
+async function optimizeRouteVoorDag(datum) {
   if (isOptimizing) return;
   isOptimizing = true;
   showToast('🤖 Route wordt geoptimaliseerd...', 'info');
 
   try {
-    const datumStr = toDateString(huidigeDatum);
+    const planningen = allePlanningen.filter(p => p.datum === datum);
     
-    // Haal alle planningen op voor deze dag
-    const { data, error } = await supabase
-      .from('planningen')
-      .select('*, adres:adres_id (id, instelling_naam, straat, plaats, latitude, longitude)')
-      .eq('datum', datumStr)
-      .order('dag_volgorde', { ascending: true });
-
-    if (error) throw error;
-    if (!data || data.length === 0) {
+    if (!planningen || planningen.length === 0) {
       showToast('⚠️ Geen ritten om te optimaliseren', 'warning');
       isOptimizing = false;
       return;
@@ -550,7 +628,7 @@ async function optimizeRoute() {
       return R * c;
     }
 
-    const rittenMetAfstand = data.map(rit => {
+    const rittenMetAfstand = planningen.map(rit => {
       const adres = rit.adres;
       let afstand = Infinity;
       if (adres && adres.latitude && adres.longitude) {
@@ -572,7 +650,7 @@ async function optimizeRoute() {
     }
 
     await logActie('route geoptimaliseerd', 'planning', null, null, { 
-      datum: datumStr,
+      datum: datum,
       aantal_ritten: rittenMetAfstand.length 
     });
 
@@ -584,203 +662,6 @@ async function optimizeRoute() {
   } finally {
     isOptimizing = false;
   }
-}
-
-// ============================================================
-// PDF GENERATIE
-// ============================================================
-async function genereerPDF() {
-  const datumStr = toDateString(huidigeDatum);
-  const planningen = allePlanningen || [];
-
-  if (planningen.length === 0) {
-    showToast('⚠️ Geen ritten om te exporteren', 'warning');
-    return;
-  }
-
-  try {
-    showToast('📄 PDF wordt gegenereerd...', 'info');
-
-    let html = `
-      <html>
-      <head>
-        <style>
-          body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; }
-          h1 { color: #2c7da0; border-bottom: 2px solid #2c7da0; padding-bottom: 10px; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-          .header p { color: #666; margin: 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th { background-color: #2c7da0; color: white; padding: 10px; text-align: left; }
-          td { padding: 10px; border-bottom: 1px solid #ddd; }
-          .status-gepland { color: #856404; background: #fff3cd; padding: 2px 8px; border-radius: 4px; }
-          .status-uitgevoerd { color: #155724; background: #d4edda; padding: 2px 8px; border-radius: 4px; }
-          .status-geannuleerd { color: #721c24; background: #f8d7da; padding: 2px 8px; border-radius: 4px; }
-          .footer { margin-top: 30px; color: #999; font-size: 12px; text-align: center; border-top: 1px solid #ddd; padding-top: 10px; }
-          .extra-info { color: #666; font-size: 0.9rem; }
-          .opmerking { color: #856404; font-size: 0.85rem; font-style: italic; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>📅 Route-overzicht</h1>
-          <p>${formatDateLong(huidigeDatum)}</p>
-        </div>
-        <p><strong>Totaal ritten:</strong> ${planningen.length}</p>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Ziekenhuis</th>
-              <th>Adres</th>
-              <th>Type</th>
-              <th>Details</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
-
-    sortedPlanningen.forEach((planning, index) => {
-      const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
-                          (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
-      const typeIcon = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
-      let details = '';
-      if (planning.type === 'ophaling' && planning.aantal_tonnen) {
-        details = `${planning.aantal_tonnen} ton(nen)`;
-      } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
-        details = `${planning.aantal_lege_tonnen} lege ton(nen)`;
-      }
-
-      html += `
-        <tr>
-          <td>${index + 1}</td>
-          <td><strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong></td>
-          <td>${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</td>
-          <td>${typeIcon}</td>
-          <td>
-            ${details}
-            ${planning.adres?.telefoon ? `<br><span class="extra-info">📞 ${escapeHtml(planning.adres.telefoon)}</span>` : ''}
-            ${planning.opmerkingen ? `<br><span class="opmerking">💬 ${escapeHtml(planning.opmerkingen)}</span>` : ''}
-          </td>
-          <td><span class="${statusClass}">${planning.status || 'gepland'}</span></td>
-        </tr>
-      `;
-    });
-
-    html += `
-          </tbody>
-        </table>
-        <div class="footer">
-          <p>Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const opt = {
-      margin: 1,
-      filename: `route_${datumStr}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-    };
-
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.left = '-9999px';
-    tempContainer.style.top = '-9999px';
-    tempContainer.innerHTML = html;
-    document.body.appendChild(tempContainer);
-
-    await html2pdf().set(opt).from(tempContainer).save();
-    document.body.removeChild(tempContainer);
-
-    await logActie('pdf geëxporteerd', 'planning', null, null, { datum: datumStr });
-
-    showToast('✅ PDF succesvol gegenereerd!', 'success');
-  } catch (err) {
-    console.error('Fout bij PDF generatie:', err);
-    showToast('❌ Fout bij PDF generatie: ' + err.message, 'error');
-  }
-}
-
-// ============================================================
-// WHATSAPP ROUTE
-// ============================================================
-function genereerWhatsAppBericht() {
-  const planningen = allePlanningen || [];
-  if (planningen.length === 0) {
-    showToast('⚠️ Geen ritten om te versturen', 'warning');
-    return null;
-  }
-
-  const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
-  const datum = formatDateLong(huidigeDatum);
-
-  let bericht = `📋 *Route-overzicht - ${datum}*\n\n`;
-  bericht += `📍 *Totaal ritten:* ${sortedPlanningen.length}\n\n`;
-  bericht += `---\n\n`;
-
-  sortedPlanningen.forEach((planning, index) => {
-    const typeIcon = planning.type === 'ophaling' ? '📦' : '🚚';
-    const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
-    let details = '';
-    if (planning.type === 'ophaling' && planning.aantal_tonnen) {
-      details = `${planning.aantal_tonnen} ton(nen)`;
-    } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
-      details = `${planning.aantal_lege_tonnen} lege ton(nen)`;
-    }
-
-    bericht += `*${index + 1}. ${planning.adres?.instelling_naam || 'Onbekend'}*\n`;
-    bericht += `📍 ${planning.adres?.straat || ''}, ${planning.adres?.plaats || ''}\n`;
-    bericht += `📋 ${typeIcon} ${typeLabel}`;
-    if (details) bericht += ` - ${details}`;
-    if (planning.adres?.telefoon) bericht += `\n📞 ${planning.adres.telefoon}`;
-    if (planning.opmerkingen) bericht += `\n💬 ${planning.opmerkingen}`;
-    bericht += `\n\n---\n\n`;
-  });
-
-  bericht += `\n✅ *Veilige rit!* 🚗`;
-
-  return bericht;
-}
-
-function toonWhatsAppPopup() {
-  const bericht = genereerWhatsAppBericht();
-  if (!bericht) return;
-  
-  whatsappBericht.value = bericht;
-  whatsappPopup.style.display = 'flex';
-}
-
-function verstuurWhatsApp() {
-  const bericht = whatsappBericht.value;
-  if (!bericht) return;
-
-  const telefoon = prompt('📱 Voer het telefoonnummer van de chauffeur in (inclusief landcode, bijv. 32 voor België):', '32');
-  if (!telefoon) return;
-
-  const cleanTelefoon = telefoon.replace(/[^0-9]/g, '');
-  const encodedBericht = encodeURIComponent(bericht);
-  const url = `https://wa.me/${cleanTelefoon}?text=${encodedBericht}`;
-  
-  window.open(url, '_blank');
-  whatsappPopup.style.display = 'none';
-}
-
-function kopieerWhatsAppBericht() {
-  const bericht = whatsappBericht.value;
-  if (!bericht) return;
-  
-  navigator.clipboard.writeText(bericht).then(() => {
-    showToast('✅ Bericht gekopieerd!', 'success');
-  }).catch(() => {
-    whatsappBericht.select();
-    document.execCommand('copy');
-    showToast('✅ Bericht gekopieerd!', 'success');
-  });
 }
 
 // ============================================================
@@ -796,42 +677,18 @@ document.addEventListener('DOMContentLoaded', async function() {
   }
 
   await laadAdressenVoorSelect();
-
-  // Initialiseer datum
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  huidigeDatum = today;
-  updateDateDisplay();
+  await laadPlanningen();
 
   // ===== EVENT LISTENERS =====
 
-  // Datum navigatie
-  if (prevDayBtn) prevDayBtn.addEventListener('click', vorigeDag);
-  if (nextDayBtn) nextDayBtn.addEventListener('click', volgendeDag);
-  if (todayBtn) todayBtn.addEventListener('click', gaNaarVandaag);
-  if (goToDateBtn && datePicker) {
-    goToDateBtn.addEventListener('click', () => {
-      if (datePicker.value) {
-        gaNaarDatum(datePicker.value);
-      }
-    });
-  }
-  if (datePicker) {
-    datePicker.addEventListener('change', () => {
-      if (datePicker.value) {
-        gaNaarDatum(datePicker.value);
-      }
-    });
-  }
-
-  // Planning beheer
+  // Nieuwe planning
   if (newPlanningBtn) {
     newPlanningBtn.addEventListener('click', () => {
       currentPlanningId = null;
       planningPopupTitle.textContent = 'Nieuwe planning';
       setValue('typeSelect', '');
       setValue('adresSelect', '');
-      setValue('planningDatum', toDateString(huidigeDatum));
+      setValue('planningDatum', '');
       setValue('opmerkingen', '');
       setValue('aantalTonnen', '1');
       setValue('aantalLegeTonnen', '1');
@@ -843,6 +700,22 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (refreshPlanningBtn) {
     refreshPlanningBtn.addEventListener('click', laadPlanningen);
+  }
+
+  // AI Optimalisatie - algemeen (voor alle dagen)
+  if (aiOptimizeBtn) {
+    aiOptimizeBtn.addEventListener('click', async () => {
+      // Optimaliseer de meest recente dag met ritten
+      const data = allePlanningen || [];
+      if (data.length === 0) {
+        showToast('⚠️ Geen ritten om te optimaliseren', 'warning');
+        return;
+      }
+      const recentsteDatum = data.sort((a, b) => new Date(b.datum) - new Date(a.datum))[0]?.datum;
+      if (recentsteDatum) {
+        await optimizeRouteVoorDag(recentsteDatum);
+      }
+    });
   }
 
   if (savePlanningBtn) {
@@ -871,58 +744,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   }
 
-  // AI Optimalisatie
-  if (aiOptimizeBtn) {
-    aiOptimizeBtn.addEventListener('click', optimizeRoute);
-  }
-  if (aiOptimizeDayBtn) {
-    aiOptimizeDayBtn.addEventListener('click', optimizeRoute);
-  }
-
-  // PDF
-  if (pdfDagBtn) {
-    pdfDagBtn.addEventListener('click', genereerPDF);
-  }
-
-  // WhatsApp
-  if (whatsappDagBtn) {
-    whatsappDagBtn.addEventListener('click', toonWhatsAppPopup);
-  }
-  if (whatsappVerstuurBtn) {
-    whatsappVerstuurBtn.addEventListener('click', verstuurWhatsApp);
-  }
-  if (whatsappKopieerBtn) {
-    whatsappKopieerBtn.addEventListener('click', kopieerWhatsAppBericht);
-  }
-  if (whatsappSluitBtn) {
-    whatsappSluitBtn.addEventListener('click', () => {
-      whatsappPopup.style.display = 'none';
-    });
-  }
-
   // Sluiten bij klik buiten popups
   window.addEventListener('click', (e) => {
     if (e.target === planningPopup) {
       planningPopup.style.display = 'none';
-    }
-    if (e.target === whatsappPopup) {
-      whatsappPopup.style.display = 'none';
-    }
-  });
-
-  // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      vorigeDag();
-    }
-    if (e.key === 'ArrowRight' && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      volgendeDag();
-    }
-    if (e.key === 't' && !e.ctrlKey && !e.metaKey) {
-      e.preventDefault();
-      gaNaarVandaag();
     }
   });
 
