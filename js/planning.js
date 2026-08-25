@@ -14,6 +14,7 @@ let allePlanningen = [];
 let alleAdressen = [];
 let currentPlanningId = null;
 let sortableInstances = [];
+let isOptimizing = false;
 
 // ===== DOM ELEMENTEN =====
 const planningLijst = document.getElementById('planningLijst');
@@ -102,7 +103,7 @@ async function laadPlanningen() {
     const { data, error } = await supabase
       .from('planningen')
       .select('*')
-      .order('datum', { ascending: false })  // Nieuwste datum eerst
+      .order('datum', { ascending: false })
       .order('dag_volgorde', { ascending: true });
 
     if (error) {
@@ -322,7 +323,6 @@ async function updateRouteOrder(updates, datum) {
       if (error) throw error;
     }
 
-    // LOG: Route volgorde aangepast
     await logActie('route volgorde aangepast', 'planning', null, null, { 
       datum: datum,
       updates: updates 
@@ -346,7 +346,6 @@ async function updatePlanningStatus(id, nieuweStatus) {
 
     if (error) throw error;
 
-    // LOG: Status gewijzigd
     await logActie('status gewijzigd', 'planning', id, null, { nieuweStatus });
 
     showToast('✅ Status bijgewerkt!', 'success');
@@ -393,7 +392,6 @@ async function savePlanning() {
         .update(planningData)
         .eq('id', currentPlanningId);
     } else {
-      // Haal de hoogste dag_volgorde op voor deze datum
       const { data: maxData } = await supabase
         .from('planningen')
         .select('dag_volgorde')
@@ -411,7 +409,6 @@ async function savePlanning() {
 
     if (result.error) throw result.error;
 
-    // LOG: Planning toegevoegd of bijgewerkt
     const actie = isBewerken ? 'bijgewerkt' : 'toegevoegd';
     const entityId = isBewerken ? currentPlanningId : result.data?.[0]?.id;
     const adresNaam = alleAdressen.find(a => a.id === parseInt(adresId))?.instelling_naam || 'Onbekend';
@@ -473,7 +470,6 @@ async function verwijderPlanning(id) {
 
     if (error) throw error;
 
-    // LOG: Planning verwijderd
     await logActie('verwijderd', 'planning', id);
 
     showToast('✅ Planning verwijderd!', 'success');
@@ -485,7 +481,7 @@ async function verwijderPlanning(id) {
 }
 
 // ============================================================
-// PDF GENERATIE PER DAG (Hersteld)
+// PDF GENERATIE PER DAG (Hersteld met string HTML)
 // ============================================================
 async function genereerPDFVoorDag(datum) {
   const planningen = allePlanningen.filter(p => p.datum === datum);
@@ -500,141 +496,147 @@ async function genereerPDFVoorDag(datum) {
 
     const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
 
-    // Bouw de HTML voor de PDF
-    const pdfContent = document.createElement('div');
-    pdfContent.style.padding = '20px';
-    pdfContent.style.fontFamily = "'Segoe UI', Arial, sans-serif";
-    pdfContent.style.backgroundColor = 'white';
-    pdfContent.style.color = '#333';
-
-    // Header
-    const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.justifyContent = 'space-between';
-    header.style.alignItems = 'center';
-    header.style.borderBottom = '2px solid #2c7da0';
-    header.style.paddingBottom = '10px';
-    header.style.marginBottom = '20px';
-    header.innerHTML = `
-      <h1 style="color: #2c7da0; margin: 0;">📅 Route-overzicht</h1>
-      <p style="color: #666; margin: 0; font-size: 14px;">${formatDateLong(datum)}</p>
+    // Bouw HTML als string voor de PDF
+    let htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            padding: 40px; 
+            background: white;
+            color: #333;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #2c7da0;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+          }
+          .header h1 {
+            color: #2c7da0;
+            font-size: 24px;
+            margin: 0;
+          }
+          .header p {
+            color: #666;
+            font-size: 14px;
+            margin: 0;
+          }
+          .total {
+            font-size: 14px;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+          }
+          th {
+            background-color: #2c7da0;
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            border: 1px solid #2c7da0;
+          }
+          td {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+          }
+          tr:nth-child(even) {
+            background-color: #f8f9fa;
+          }
+          .status-gepland {
+            background: #fff3cd;
+            color: #856404;
+            padding: 2px 8px;
+            border-radius: 4px;
+          }
+          .status-uitgevoerd {
+            background: #d4edda;
+            color: #155724;
+            padding: 2px 8px;
+            border-radius: 4px;
+          }
+          .status-geannuleerd {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 2px 8px;
+            border-radius: 4px;
+          }
+          .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #999;
+            font-size: 11px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>📅 Route-overzicht</h1>
+          <p>${formatDateLong(datum)}</p>
+        </div>
+        <div class="total">
+          <strong>Totaal ritten:</strong> ${sortedPlanningen.length}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Ziekenhuis</th>
+              <th>Adres</th>
+              <th>Type</th>
+              <th>Details</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
     `;
-    pdfContent.appendChild(header);
 
-    // Totaal
-    const total = document.createElement('p');
-    total.style.fontSize = '14px';
-    total.style.marginBottom = '15px';
-    total.innerHTML = `<strong>Totaal ritten:</strong> ${sortedPlanningen.length}`;
-    pdfContent.appendChild(total);
-
-    // Tabel
-    const table = document.createElement('table');
-    table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
-    table.style.marginTop = '10px';
-    table.style.fontSize = '13px';
-
-    // Tabel header
-    const thead = document.createElement('thead');
-    const headerRow = document.createElement('tr');
-    headerRow.style.backgroundColor = '#2c7da0';
-    headerRow.style.color = 'white';
-    ['#', 'Ziekenhuis', 'Adres', 'Type', 'Details', 'Status'].forEach(text => {
-      const th = document.createElement('th');
-      th.textContent = text;
-      th.style.padding = '10px';
-      th.style.textAlign = 'left';
-      th.style.border = '1px solid #2c7da0';
-      headerRow.appendChild(th);
-    });
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    // Tabel body
-    const tbody = document.createElement('tbody');
     sortedPlanningen.forEach((planning, index) => {
-      const tr = document.createElement('tr');
-      tr.style.borderBottom = '1px solid #ddd';
-
-      // # kolom
-      const td1 = document.createElement('td');
-      td1.textContent = index + 1;
-      td1.style.padding = '8px 10px';
-      td1.style.border = '1px solid #ddd';
-      tr.appendChild(td1);
-
-      // Ziekenhuis kolom
-      const td2 = document.createElement('td');
-      td2.innerHTML = `<strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong>`;
-      td2.style.padding = '8px 10px';
-      td2.style.border = '1px solid #ddd';
-      tr.appendChild(td2);
-
-      // Adres kolom
-      const td3 = document.createElement('td');
-      td3.textContent = `${planning.adres?.straat || ''}, ${planning.adres?.plaats || ''}`;
-      td3.style.padding = '8px 10px';
-      td3.style.border = '1px solid #ddd';
-      tr.appendChild(td3);
-
-      // Type kolom
-      const td4 = document.createElement('td');
-      td4.textContent = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
-      td4.style.padding = '8px 10px';
-      td4.style.border = '1px solid #ddd';
-      tr.appendChild(td4);
-
-      // Details kolom
-      const td5 = document.createElement('td');
+      const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
+                          (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
+      const typeLabel = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
       let details = '';
       if (planning.type === 'ophaling' && planning.aantal_tonnen) {
         details = `${planning.aantal_tonnen} ton(nen)`;
       } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
         details = `${planning.aantal_lege_tonnen} lege ton(nen)`;
       }
-      td5.textContent = details || '-';
-      td5.style.padding = '8px 10px';
-      td5.style.border = '1px solid #ddd';
-      tr.appendChild(td5);
 
-      // Status kolom
-      const td6 = document.createElement('td');
-      const statusSpan = document.createElement('span');
-      const status = planning.status || 'gepland';
-      statusSpan.textContent = status;
-      statusSpan.style.padding = '2px 8px';
-      statusSpan.style.borderRadius = '4px';
-      if (status === 'gepland') {
-        statusSpan.style.backgroundColor = '#fff3cd';
-        statusSpan.style.color = '#856404';
-      } else if (status === 'uitgevoerd') {
-        statusSpan.style.backgroundColor = '#d4edda';
-        statusSpan.style.color = '#155724';
-      } else {
-        statusSpan.style.backgroundColor = '#f8d7da';
-        statusSpan.style.color = '#721c24';
-      }
-      td6.appendChild(statusSpan);
-      td6.style.padding = '8px 10px';
-      td6.style.border = '1px solid #ddd';
-      tr.appendChild(td6);
-
-      tbody.appendChild(tr);
+      htmlContent += `
+        <tr>
+          <td>${index + 1}</td>
+          <td><strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong></td>
+          <td>${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</td>
+          <td>${typeLabel}</td>
+          <td>${details || '-'}</td>
+          <td><span class="${statusClass}">${planning.status || 'gepland'}</span></td>
+        </tr>
+      `;
     });
-    table.appendChild(tbody);
-    pdfContent.appendChild(table);
 
-    // Footer
-    const footer = document.createElement('div');
-    footer.style.marginTop = '30px';
-    footer.style.paddingTop = '10px';
-    footer.style.borderTop = '1px solid #ddd';
-    footer.style.textAlign = 'center';
-    footer.style.color = '#999';
-    footer.style.fontSize = '12px';
-    footer.textContent = `Gegenereerd op ${new Date().toLocaleString('nl-NL')}`;
-    pdfContent.appendChild(footer);
+    htmlContent += `
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
+          <p style="margin-top:5px;">${window.location.origin}</p>
+        </div>
+      </body>
+      </html>
+    `;
 
     // PDF opties
     const opt = {
@@ -644,27 +646,28 @@ async function genereerPDFVoorDag(datum) {
       html2canvas: { 
         scale: 2, 
         useCORS: true,
-        letterRendering: true,
-        width: pdfContent.scrollWidth,
-        height: pdfContent.scrollHeight
+        letterRendering: true
       },
       jsPDF: { 
         unit: 'in', 
         format: 'a4', 
         orientation: 'portrait' 
-      },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      }
     };
 
-    // Tijdelijke container
+    // Tijdelijke container voor de PDF inhoud
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
     tempContainer.style.top = '-9999px';
-    tempContainer.style.width = '794px'; // A4 breedte in pixels
-    tempContainer.style.backgroundColor = 'white';
-    tempContainer.appendChild(pdfContent);
+    tempContainer.style.width = '100%';
+    tempContainer.style.maxWidth = '794px';
+    tempContainer.style.background = 'white';
+    tempContainer.innerHTML = htmlContent;
     document.body.appendChild(tempContainer);
+
+    // Wacht kort voor rendering
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     await html2pdf().set(opt).from(tempContainer).save();
     document.body.removeChild(tempContainer);
@@ -695,8 +698,7 @@ async function optimizeRouteVoorDag(datum) {
       return;
     }
 
-    // Eenvoudige optimalisatie: sorteer op afstand tot startpunt
-    const startpunt = { lat: 51.0589, lng: 4.3740 }; // Schoonmansveld 48, 2870 Puurs
+    const startpunt = { lat: 51.0589, lng: 4.3740 };
 
     function berekenAfstand(lat1, lng1, lat2, lng2) {
       const R = 6371;
@@ -762,7 +764,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   // ===== EVENT LISTENERS =====
 
-  // Nieuwe planning
   if (newPlanningBtn) {
     newPlanningBtn.addEventListener('click', () => {
       currentPlanningId = null;
@@ -783,10 +784,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     refreshPlanningBtn.addEventListener('click', laadPlanningen);
   }
 
-  // AI Optimalisatie - algemeen (voor alle dagen)
   if (aiOptimizeBtn) {
     aiOptimizeBtn.addEventListener('click', async () => {
-      // Optimaliseer de meest recente dag met ritten
       const data = allePlanningen || [];
       if (data.length === 0) {
         showToast('⚠️ Geen ritten om te optimaliseren', 'warning');
@@ -809,7 +808,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   }
 
-  // Type change
   if (typeSelect) {
     typeSelect.addEventListener('change', function() {
       if (this.value === 'ophaling') {
@@ -825,7 +823,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     });
   }
 
-  // Sluiten bij klik buiten popups
   window.addEventListener('click', (e) => {
     if (e.target === planningPopup) {
       planningPopup.style.display = 'none';
@@ -835,7 +832,6 @@ document.addEventListener('DOMContentLoaded', async function() {
   console.log('✅ Planning pagina geïnitialiseerd!');
 });
 
-// Als DOM al geladen is
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
   console.log('🔄 DOM al geladen, trigger direct...');
   document.dispatchEvent(new Event('DOMContentLoaded'));
