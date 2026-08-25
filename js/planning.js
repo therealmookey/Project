@@ -467,6 +467,9 @@ async function optimizeRouteVoorDag(datum) {
 // ============================================================
 // PDF GENERATIE
 // ============================================================
+// ============================================================
+// PDF GENERATIE (Hersteld)
+// ============================================================
 async function genereerPDFVoorDag(datum) {
   const planningen = allePlanningen.filter(p => p.datum === datum);
 
@@ -480,22 +483,83 @@ async function genereerPDFVoorDag(datum) {
 
     const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
 
-    let html = `
+    // Bouw de HTML voor de PDF
+    let htmlContent = `
+      <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
+        <title>Route-overzicht</title>
         <style>
-          body { font-family: Arial, sans-serif; padding: 20px; }
-          h1 { color: #2c7da0; border-bottom: 2px solid #2c7da0; padding-bottom: 10px; }
-          .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
-          .header p { color: #666; margin: 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th { background-color: #2c7da0; color: white; padding: 10px; text-align: left; }
-          td { padding: 10px; border-bottom: 1px solid #ddd; }
-          .status-gepland { color: #856404; }
-          .status-uitgevoerd { color: #155724; }
-          .status-geannuleerd { color: #721c24; }
-          .footer { margin-top: 30px; color: #999; font-size: 12px; text-align: center; border-top: 1px solid #ddd; padding-top: 10px; }
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            padding: 30px; 
+            background: white;
+            color: #333;
+          }
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #2c7da0;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+          }
+          .header h1 {
+            color: #2c7da0;
+            font-size: 22px;
+            margin: 0;
+          }
+          .header p {
+            color: #666;
+            font-size: 14px;
+            margin: 0;
+          }
+          .total {
+            font-size: 14px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin-top: 10px;
+          }
+          th {
+            background-color: #2c7da0;
+            color: white;
+            padding: 10px 12px;
+            text-align: left;
+            border: 1px solid #2c7da0;
+          }
+          td {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+          }
+          tr:nth-child(even) {
+            background-color: #f8f9fa;
+          }
+          .status-gepland {
+            color: #856404;
+          }
+          .status-uitgevoerd {
+            color: #155724;
+          }
+          .status-geannuleerd {
+            color: #721c24;
+          }
+          .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            color: #999;
+            font-size: 11px;
+          }
         </style>
       </head>
       <body>
@@ -503,7 +567,9 @@ async function genereerPDFVoorDag(datum) {
           <h1>📅 Route-overzicht</h1>
           <p>${formatDate(datum)}</p>
         </div>
-        <p><strong>Totaal ritten:</strong> ${sortedPlanningen.length}</p>
+        <div class="total">
+          <strong>Totaal ritten:</strong> ${sortedPlanningen.length}
+        </div>
         <table>
           <thead>
             <tr>
@@ -526,20 +592,21 @@ async function genereerPDFVoorDag(datum) {
       } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
         details = `${planning.aantal_lege_tonnen} lege ton(nen)`;
       }
+      const statusClass = planning.status || 'gepland';
 
-      html += `
+      htmlContent += `
         <tr>
           <td>${index + 1}</td>
           <td><strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong></td>
           <td>${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</td>
           <td>${typeLabel}</td>
           <td>${details || '-'}</td>
-          <td class="status-${planning.status || 'gepland'}">${planning.status || 'gepland'}</td>
+          <td class="status-${statusClass}">${statusClass}</td>
         </tr>
       `;
     });
 
-    html += `
+    htmlContent += `
           </tbody>
         </table>
         <div class="footer">
@@ -549,26 +616,45 @@ async function genereerPDFVoorDag(datum) {
       </html>
     `;
 
+    // PDF opties
     const opt = {
       margin: 1,
       filename: `route_${datum}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true,
+        letterRendering: true,
+        logging: false
+      },
+      jsPDF: { 
+        unit: 'in', 
+        format: 'a4', 
+        orientation: 'portrait' 
+      }
     };
 
+    // Tijdelijke container voor de PDF
     const tempContainer = document.createElement('div');
     tempContainer.style.position = 'absolute';
     tempContainer.style.left = '-9999px';
-    tempContainer.style.top = '-9999px';
-    tempContainer.innerHTML = html;
+    tempContainer.style.top = '0';
+    tempContainer.style.width = '794px';
+    tempContainer.style.background = 'white';
+    tempContainer.style.padding = '20px';
+    tempContainer.style.zIndex = '-1';
+    tempContainer.innerHTML = htmlContent;
     document.body.appendChild(tempContainer);
 
+    // Genereer PDF
     await html2pdf().set(opt).from(tempContainer).save();
+
+    // Cleanup
     document.body.removeChild(tempContainer);
 
     await logActie('pdf geëxporteerd', 'planning', null, null, { datum: datum });
     showToast('✅ PDF succesvol gegenereerd!', 'success');
+
   } catch (err) {
     console.error('Fout bij PDF generatie:', err);
     showToast('❌ Fout bij PDF generatie: ' + err.message, 'error');
