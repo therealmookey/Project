@@ -1,5 +1,5 @@
 // ============================================================
-// PLANNING - Planning pagina
+// PLANNING - Planning pagina (met AI optimalisatie en drag & drop)
 // ============================================================
 console.log('🚀 planning.js wordt geladen...');
 
@@ -13,11 +13,14 @@ console.log('✅ Imports geladen!');
 let allePlanningen = [];
 let alleAdressen = [];
 let currentPlanningId = null;
+let sortableInstances = [];
+let isOptimizing = false;
 
 // ===== DOM ELEMENTEN =====
 const planningLijst = document.getElementById('planningLijst');
 const newPlanningBtn = document.getElementById('newPlanningBtn');
 const refreshPlanningBtn = document.getElementById('refreshPlanningBtn');
+const aiOptimizeBtn = document.getElementById('aiOptimizeBtn');
 const planningPopup = document.getElementById('planningPopup');
 const planningPopupTitle = document.getElementById('planningPopupTitle');
 const typeSelect = document.getElementById('typeSelect');
@@ -114,8 +117,10 @@ async function laadPlanningen() {
           </div>
           <div class="datum-actions">
             <button class="btn btn-primary btn-small pdf-dag-btn" data-datum="${datum}">📄 PDF</button>
+            <button class="btn btn-info btn-small ai-optimize-day-btn" data-datum="${datum}">🤖 Optimaliseer</button>
           </div>
         </div>
+        <div class="planning-sortable-container" data-datum="${datum}">
       `;
 
       items.forEach((planning, index) => {
@@ -126,7 +131,8 @@ async function laadPlanningen() {
         const volgorde = planning.dag_volgorde || index + 1;
 
         html += `
-          <div class="planning-item" data-id="${planning.id}">
+          <div class="planning-item sortable-item" data-id="${planning.id}" data-volgorde="${volgorde}" data-datum="${datum}">
+            <div class="drag-handle" title="Sleep om te herordenen">⠿</div>
             <div class="planning-info">
               <div class="planning-header">
                 <span class="stop-number-badge">#${volgorde}</span>
@@ -152,6 +158,10 @@ async function laadPlanningen() {
           </div>
         `;
       });
+
+      html += `
+        </div>
+      `;
     }
 
     planningLijst.innerHTML = html;
@@ -180,9 +190,80 @@ async function laadPlanningen() {
       });
     });
 
+    document.querySelectorAll('.ai-optimize-day-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const datum = this.dataset.datum;
+        optimizeRouteVoorDag(datum);
+      });
+    });
+
+    // Init sortable
+    initSortable();
+
   } catch (err) {
     console.error('Fout bij laden planningen:', err);
     planningLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
+  }
+}
+
+// ===== SORTABLE INIT =====
+function initSortable() {
+  // Vernietig oude sortable instances
+  sortableInstances.forEach(instance => {
+    if (instance) instance.destroy();
+  });
+  sortableInstances = [];
+
+  const containers = document.querySelectorAll('.planning-sortable-container');
+  
+  containers.forEach(container => {
+    const sortable = Sortable.create(container, {
+      handle: '.drag-handle',
+      animation: 200,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      dragClass: 'sortable-drag',
+      onEnd: function(evt) {
+        const datum = container.dataset.datum;
+        const items = container.querySelectorAll('.sortable-item');
+        const updates = [];
+        items.forEach((item, index) => {
+          const id = item.dataset.id;
+          const nieuweVolgorde = index + 1;
+          updates.push({ id, volgorde: nieuweVolgorde });
+        });
+        updateRouteOrder(updates, datum);
+      }
+    });
+
+    sortableInstances.push(sortable);
+  });
+}
+
+// ===== ROUTE VOLGORDE UPDATE =====
+async function updateRouteOrder(updates, datum) {
+  try {
+    console.log('🔄 Route volgorde updaten voor', datum, ':', updates);
+    
+    for (const update of updates) {
+      const { error } = await supabase
+        .from('planningen')
+        .update({ dag_volgorde: update.volgorde })
+        .eq('id', update.id);
+      
+      if (error) throw error;
+    }
+
+    await logActie('route volgorde aangepast', 'planning', null, null, { 
+      datum: datum,
+      updates: updates 
+    });
+
+    showToast('✅ Route volgorde opgeslagen!', 'success');
+    laadPlanningen();
+  } catch (err) {
+    console.error('Fout bij updaten route volgorde:', err);
+    showToast('❌ Fout: ' + err.message, 'error');
   }
 }
 
@@ -317,7 +398,75 @@ async function verwijderPlanning(id) {
   }
 }
 
-// ===== PDF GENERATIE =====
+// ============================================================
+// AI OPTIMALISATIE PER DAG
+// ============================================================
+async function optimizeRouteVoorDag(datum) {
+  if (isOptimizing) return;
+  isOptimizing = true;
+  showToast('🤖 Route wordt geoptimaliseerd...', 'info');
+
+  try {
+    const planningen = allePlanningen.filter(p => p.datum === datum);
+    
+    if (!planningen || planningen.length === 0) {
+      showToast('⚠️ Geen ritten om te optimaliseren', 'warning');
+      isOptimizing = false;
+      return;
+    }
+
+    const startpunt = { lat: 51.0589, lng: 4.3740 };
+
+    function berekenAfstand(lat1, lng1, lat2, lng2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    const rittenMetAfstand = planningen.map(rit => {
+      const adres = rit.adres;
+      let afstand = Infinity;
+      if (adres && adres.latitude && adres.longitude) {
+        afstand = berekenAfstand(startpunt.lat, startpunt.lng, adres.latitude, adres.longitude);
+      }
+      return { ...rit, afstand };
+    });
+
+    rittenMetAfstand.sort((a, b) => a.afstand - b.afstand);
+
+    for (let i = 0; i < rittenMetAfstand.length; i++) {
+      const rit = rittenMetAfstand[i];
+      const { error: updateError } = await supabase
+        .from('planningen')
+        .update({ dag_volgorde: i + 1 })
+        .eq('id', rit.id);
+      
+      if (updateError) throw updateError;
+    }
+
+    await logActie('route geoptimaliseerd', 'planning', null, null, { 
+      datum: datum,
+      aantal_ritten: rittenMetAfstand.length 
+    });
+
+    showToast('✅ Route geoptimaliseerd!', 'success');
+    laadPlanningen();
+  } catch (err) {
+    console.error('Fout bij optimalisatie:', err);
+    showToast('❌ Fout bij optimalisatie: ' + err.message, 'error');
+  } finally {
+    isOptimizing = false;
+  }
+}
+
+// ============================================================
+// PDF GENERATIE
+// ============================================================
 async function genereerPDFVoorDag(datum) {
   const planningen = allePlanningen.filter(p => p.datum === datum);
 
@@ -426,7 +575,9 @@ async function genereerPDFVoorDag(datum) {
   }
 }
 
-// ===== INITIALISATIE =====
+// ============================================================
+// INITIALISATIE
+// ============================================================
 document.addEventListener('DOMContentLoaded', async function() {
   console.log('🔄 DOMContentLoaded event triggered');
 
@@ -459,6 +610,20 @@ document.addEventListener('DOMContentLoaded', async function() {
 
   if (refreshPlanningBtn) {
     refreshPlanningBtn.addEventListener('click', laadPlanningen);
+  }
+
+  if (aiOptimizeBtn) {
+    aiOptimizeBtn.addEventListener('click', async () => {
+      const data = allePlanningen || [];
+      if (data.length === 0) {
+        showToast('⚠️ Geen ritten om te optimaliseren', 'warning');
+        return;
+      }
+      const recentsteDatum = data.sort((a, b) => new Date(b.datum) - new Date(a.datum))[0]?.datum;
+      if (recentsteDatum) {
+        await optimizeRouteVoorDag(recentsteDatum);
+      }
+    });
   }
 
   if (savePlanningBtn) {
