@@ -4478,7 +4478,31 @@ hr {
   border-radius: 12px;
   padding: 1.5rem;
   margin-top: 2rem;
+  margin-bottom: 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+/* Stijl voor de filterbalk */
+.overzicht-filter {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.overzicht-filter label {
+  font-weight: 500;
+  color: #495057;
+  margin-bottom: 0;
+}
+
+.overzicht-filter select {
+  padding: 6px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+  cursor: pointer;
 }
 
 .overzicht-header {
