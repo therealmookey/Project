@@ -49,13 +49,13 @@ function toonZiekenhuisKaart(item, statusType) {
   }
 
   let dataInfo = '';
-  if (item.status === '✅ Actief') {
+  if (statusType === 'actief') {
     dataInfo = `
       <div class="data-info">
         <span>📦 ${item.aantal_ophalingen} ophalingen</span>
-        ${item.gemiddeld_betrouwbaar_interval ? `<span>📊 Gem. interval: ${item.gemiddeld_betrouwbaar_interval} dagen</span>` : ''}
-        ${item.totaal_gewicht ? `<span>⚖️ ${item.totaal_gewicht} kg</span>` : ''}
-        ${item.laatste_ophaling ? `<span>📅 Laatste: ${formatDate(item.laatste_ophaling)}</span>` : ''}
+        <span>📊 Gem. interval: ${item.gemiddeld_betrouwbaar_interval || '?'} dagen</span>
+        <span>⚖️ ${item.totaal_gewicht || 0} kg</span>
+        <span>📅 Laatste: ${formatDate(item.laatste_ophaling)}</span>
         ${item.rendabiliteit ? `<span>📈 ${item.rendabiliteit}</span>` : ''}
       </div>
     `;
