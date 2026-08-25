@@ -4470,3 +4470,229 @@ hr {
     background-color: #2a2a4e;
     color: #f0f0f0;
 }
+/* ============================================================
+   ZIEKENHUIS OVERZICHT
+   ============================================================ */
+.ziekenhuis-overzicht-module {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.overzicht-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.overzicht-header h3 {
+  color: #2c7da0;
+  margin: 0;
+}
+
+.overzicht-totaal {
+  background: #e9ecef;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: #495057;
+}
+
+.status-badges {
+  display: flex;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.status-badges .badge {
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.badge.status-actief {
+  background: #d4edda;
+  color: #155724;
+}
+
+.badge.status-onvoldoende {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.badge.status-geen {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-sectie {
+  margin-bottom: 1rem;
+}
+
+.status-sectie details {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 0.5rem;
+}
+
+.status-sectie summary {
+  cursor: pointer;
+  padding: 0.5rem;
+  font-weight: 500;
+  color: #2c7da0;
+}
+
+.status-sectie summary:hover {
+  background: #e9ecef;
+  border-radius: 6px;
+}
+
+.ziekenhuis-lijst {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.ziekenhuis-item {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  border-left: 4px solid #2c7da0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.ziekenhuis-item.status-actief {
+  border-left-color: #28a745;
+}
+
+.ziekenhuis-item.status-onvoldoende {
+  border-left-color: #ffc107;
+}
+
+.ziekenhuis-item.status-geen {
+  border-left-color: #dc3545;
+}
+
+.ziekenhuis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.ziekenhuis-header strong {
+  font-size: 1rem;
+  color: #2c7da0;
+}
+
+.status-label {
+  font-size: 0.8rem;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.ziekenhuis-item.status-actief .status-label {
+  background: #d4edda;
+  color: #155724;
+}
+
+.ziekenhuis-item.status-onvoldoende .status-label {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.ziekenhuis-item.status-geen .status-label {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.ziekenhuis-adres {
+  font-size: 0.9rem;
+  color: #495057;
+  margin: 0.25rem 0;
+}
+
+.extra-info {
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.data-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin: 0.5rem 0;
+  padding: 0.5rem 0;
+  border-top: 1px solid #e9ecef;
+}
+
+.contact-info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #495057;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.contact-info .btn-small {
+  padding: 4px 12px;
+  font-size: 0.75rem;
+}
+
+/* ===== DARK MODE ===== */
+[data-theme="dark"] .ziekenhuis-overzicht-module {
+  background: #1a1a2e;
+}
+
+[data-theme="dark"] .overzicht-header {
+  border-bottom-color: #2a2a4e;
+}
+
+[data-theme="dark"] .overzicht-totaal {
+  background: #2a2a4e;
+  color: #c0c0c0;
+}
+
+[data-theme="dark"] .status-sectie details {
+  background: #1a1a2e;
+}
+
+[data-theme="dark"] .status-sectie summary:hover {
+  background: #2a2a4e;
+}
+
+[data-theme="dark"] .ziekenhuis-item {
+  background: #1e1e3a;
+}
+
+[data-theme="dark"] .ziekenhuis-adres {
+  color: #d0d0d0;
+}
+
+[data-theme="dark"] .data-info {
+  border-top-color: #2a2a4e;
+  color: #a0a0a0;
+}
+
+[data-theme="dark"] .contact-info {
+  border-top-color: #2a2a4e;
+  color: #d0d0d0;
+}
