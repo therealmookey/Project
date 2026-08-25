@@ -146,7 +146,7 @@ export async function laadZiekenhuisOverzicht() {
     if (actief.length > 0) {
       html += `
         <div class="status-sectie">
-          <details open>
+          <details>
             <summary><strong>✅ Actieve ziekenhuizen</strong> (${actief.length})</summary>
             <div class="ziekenhuis-lijst">
       `;
@@ -164,7 +164,7 @@ export async function laadZiekenhuisOverzicht() {
     if (onvoldoendeOphalingen.length > 0) {
       html += `
         <div class="status-sectie">
-          <details open>
+          <details>
             <summary><strong>⚠️ Onvoldoende ophalingen</strong> (${onvoldoendeOphalingen.length})</summary>
             <div class="ziekenhuis-lijst">
       `;
@@ -182,7 +182,7 @@ export async function laadZiekenhuisOverzicht() {
     if (onvoldoendeIntervallen.length > 0) {
       html += `
         <div class="status-sectie">
-          <details open>
+          <details>
             <summary><strong>⚠️ Onvoldoende intervallen</strong> (${onvoldoendeIntervallen.length})</summary>
             <div class="ziekenhuis-lijst">
       `;
@@ -200,7 +200,7 @@ export async function laadZiekenhuisOverzicht() {
     if (geenData.length > 0) {
       html += `
         <div class="status-sectie">
-          <details open>
+          <details>
             <summary><strong>❌ Geen ophalingen</strong> (${geenData.length})</summary>
             <div class="ziekenhuis-lijst">
       `;
