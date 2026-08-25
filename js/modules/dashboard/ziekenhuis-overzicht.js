@@ -1,10 +1,9 @@
 // ============================================================
-// MODULE - ZIEKENHUIS OVERZICHT (Met filter en verbeterde styling)
+// MODULE - ZIEKENHUIS OVERZICHT (Vereenvoudigd)
 // ============================================================
 console.log('🏥 Ziekenhuis overzicht module geladen!');
 
 const supabase = window.supabase;
-let alleZiekenhuizen = []; // Alle data opslaan voor filtering
 
 // ===== HULPFUNCTIES =====
 function escapeHtml(text) {
@@ -73,7 +72,6 @@ function toonZiekenhuisKaart(item, statusType) {
       </div>
       <div class="ziekenhuis-adres">
         📍 ${escapeHtml(item.straat)}, ${escapeHtml(item.postcode)} ${escapeHtml(item.plaats)}
-        ${item.extra_info ? `<br><span class="extra-info">📝 ${escapeHtml(item.extra_info)}</span>` : ''}
       </div>
       ${dataInfo}
       ${contactInfo}
@@ -108,11 +106,95 @@ export async function laadZiekenhuisOverzicht() {
       return;
     }
 
-    // Sla alle data op voor filtering
-    alleZiekenhuizen = data;
+    // Groepeer op status
+    const actief = data.filter(item => item.status === '✅ Actief');
+    const onvoldoende = data.filter(item => item.status === '⚠️ Onvoldoende data');
+    const geenData = data.filter(item => item.status === '❌ Geen ophalingen');
 
-    // Bouw de filterbalk en de lijst
-    toonOverzichtMetFilter(alleZiekenhuizen, container);
+    let html = `
+      <div class="ziekenhuis-overzicht">
+        <div class="overzicht-header">
+          <h3>🏥 Alle ziekenhuizen</h3>
+          <span class="overzicht-totaal">${data.length} totaal</span>
+        </div>
+
+        <!-- Samenvatting badges -->
+        <div class="status-badges">
+          <span class="badge status-actief">✅ ${actief.length} actief</span>
+          <span class="badge status-onvoldoende">⚠️ ${onvoldoende.length} onvoldoende data</span>
+          <span class="badge status-geen">❌ ${geenData.length} geen ophalingen</span>
+        </div>
+    `;
+
+    // SECTIE 1: Actieve ziekenhuizen
+    if (actief.length > 0) {
+      html += `
+        <div class="status-sectie">
+          <details open>
+            <summary><strong>✅ Actieve ziekenhuizen</strong> (${actief.length})</summary>
+            <div class="ziekenhuis-lijst">
+      `;
+      actief.forEach(item => {
+        html += toonZiekenhuisKaart(item, 'actief');
+      });
+      html += `
+            </div>
+          </details>
+        </div>
+      `;
+    }
+
+    // SECTIE 2: Onvoldoende data
+    if (onvoldoende.length > 0) {
+      html += `
+        <div class="status-sectie">
+          <details open>
+            <summary><strong>⚠️ Onvoldoende data</strong> (${onvoldoende.length})</summary>
+            <div class="ziekenhuis-lijst">
+      `;
+      onvoldoende.forEach(item => {
+        html += toonZiekenhuisKaart(item, 'onvoldoende');
+      });
+      html += `
+            </div>
+          </details>
+        </div>
+      `;
+    }
+
+    // SECTIE 3: Geen ophalingen
+    if (geenData.length > 0) {
+      html += `
+        <div class="status-sectie">
+          <details open>
+            <summary><strong>❌ Geen ophalingen</strong> (${geenData.length})</summary>
+            <div class="ziekenhuis-lijst">
+      `;
+      geenData.forEach(item => {
+        html += toonZiekenhuisKaart(item, 'geen');
+      });
+      html += `
+            </div>
+          </details>
+        </div>
+      `;
+    }
+
+    html += `
+      </div>
+    `;
+
+    container.innerHTML = html;
+
+    // Event listeners voor contactknoppen
+    document.querySelectorAll('.contact-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const naam = this.dataset.naam;
+        const telefoon = this.dataset.telefoon;
+        const email = this.dataset.email;
+        toonContactPopup(naam, telefoon, email);
+      });
+    });
 
   } catch (err) {
     console.error('Fout bij laden overzicht:', err);
@@ -120,124 +202,10 @@ export async function laadZiekenhuisOverzicht() {
   }
 }
 
-// ===== OVERZICHT TONEN MET FILTER =====
-function toonOverzichtMetFilter(data, container) {
-  const filterWaarde = document.getElementById('overzichtLimit')?.value || '10';
-  const limit = filterWaarde === 'alles' ? data.length : parseInt(filterWaarde);
-
-  // Groepeer op status
-  const actief = data.filter(item => item.status === '✅ Actief').slice(0, limit);
-  const onvoldoende = data.filter(item => item.status === '⚠️ Onvoldoende data').slice(0, limit);
-  const geenData = data.filter(item => item.status === '❌ Geen ophalingen').slice(0, limit);
-
-  let html = `
-    <div class="ziekenhuis-overzicht">
-      <div class="overzicht-header">
-        <h3>🏥 Alle ziekenhuizen</h3>
-        <div class="overzicht-filter">
-          <label for="overzichtLimit">Toon:</label>
-          <select id="overzichtLimit" class="form-input">
-            <option value="5">5 ziekenhuizen</option>
-            <option value="10" selected>10 ziekenhuizen</option>
-            <option value="15">15 ziekenhuizen</option>
-            <option value="alles">Alle ziekenhuizen</option>
-          </select>
-          <span class="overzicht-totaal">${data.length} totaal</span>
-        </div>
-      </div>
-
-      <!-- Samenvatting badges -->
-      <div class="status-badges">
-        <span class="badge status-actief">✅ ${data.filter(item => item.status === '✅ Actief').length} actief</span>
-        <span class="badge status-onvoldoende">⚠️ ${data.filter(item => item.status === '⚠️ Onvoldoende data').length} onvoldoende data</span>
-        <span class="badge status-geen">❌ ${data.filter(item => item.status === '❌ Geen ophalingen').length} geen ophalingen</span>
-      </div>
-  `;
-
-  // SECTIE 1: Actieve ziekenhuizen
-  if (actief.length > 0) {
-    html += `
-      <div class="status-sectie">
-        <details open>
-          <summary><strong>✅ Actieve ziekenhuizen</strong> (${data.filter(item => item.status === '✅ Actief').length})</summary>
-          <div class="ziekenhuis-lijst">
-    `;
-    actief.forEach(item => {
-      html += toonZiekenhuisKaart(item, 'actief');
-    });
-    html += `
-          </div>
-        </details>
-      </div>
-    `;
-  }
-
-  // SECTIE 2: Onvoldoende data
-  if (onvoldoende.length > 0) {
-    html += `
-      <div class="status-sectie">
-        <details open>
-          <summary><strong>⚠️ Onvoldoende data</strong> (${data.filter(item => item.status === '⚠️ Onvoldoende data').length})</summary>
-          <div class="ziekenhuis-lijst">
-    `;
-    onvoldoende.forEach(item => {
-      html += toonZiekenhuisKaart(item, 'onvoldoende');
-    });
-    html += `
-          </div>
-        </details>
-      </div>
-    `;
-  }
-
-  // SECTIE 3: Geen ophalingen
-  if (geenData.length > 0) {
-    html += `
-      <div class="status-sectie">
-        <details open>
-          <summary><strong>❌ Geen ophalingen</strong> (${data.filter(item => item.status === '❌ Geen ophalingen').length})</summary>
-          <div class="ziekenhuis-lijst">
-    `;
-    geenData.forEach(item => {
-      html += toonZiekenhuisKaart(item, 'geen');
-    });
-    html += `
-          </div>
-        </details>
-      </div>
-    `;
-  }
-
-  html += `
-    </div>
-  `;
-
-  container.innerHTML = html;
-
-  // Event listeners voor contactknoppen
-  document.querySelectorAll('.contact-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const naam = this.dataset.naam;
-      const telefoon = this.dataset.telefoon;
-      const email = this.dataset.email;
-      toonContactPopup(naam, telefoon, email);
-    });
-  });
-
-  // Event listener voor de filter
-  const filterSelect = document.getElementById('overzichtLimit');
-  if (filterSelect) {
-    filterSelect.addEventListener('change', function() {
-      toonOverzichtMetFilter(alleZiekenhuizen, container);
-    });
-  }
-}
-
 // ===== CONTACT POPUP =====
 function toonContactPopup(naam, telefoon, email) {
   const popup = document.getElementById('contactPopup');
   if (!popup) {
-    // Maak popup als die niet bestaat
     const newPopup = document.createElement('div');
     newPopup.id = 'contactPopup';
     newPopup.className = 'popup';
@@ -291,7 +259,6 @@ function toonContactPopup(naam, telefoon, email) {
   popup.style.display = 'flex';
 }
 
-// ===== EXPORT =====
 export default {
   laadZiekenhuisOverzicht
 };
