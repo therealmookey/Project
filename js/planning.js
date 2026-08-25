@@ -465,10 +465,7 @@ async function optimizeRouteVoorDag(datum) {
 }
 
 // ============================================================
-// PDF GENERATIE
-// ============================================================
-// ============================================================
-// PDF GENERATIE (Hersteld)
+// PDF GENERATIE (Print versie)
 // ============================================================
 async function genereerPDFVoorDag(datum) {
   const planningen = allePlanningen.filter(p => p.datum === datum);
@@ -479,12 +476,12 @@ async function genereerPDFVoorDag(datum) {
   }
 
   try {
-    showToast('📄 PDF wordt gegenereerd...', 'info');
+    showToast('📄 PDF wordt voorbereid voor print...', 'info');
 
     const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
 
-    // Bouw de HTML voor de PDF
-    let htmlContent = `
+    // Bouw de print-HTML
+    const printContent = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -494,7 +491,7 @@ async function genereerPDFVoorDag(datum) {
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
-            padding: 30px; 
+            padding: 40px; 
             background: white;
             color: #333;
           }
@@ -508,7 +505,7 @@ async function genereerPDFVoorDag(datum) {
           }
           .header h1 {
             color: #2c7da0;
-            font-size: 22px;
+            font-size: 24px;
             margin: 0;
           }
           .header p {
@@ -543,15 +540,9 @@ async function genereerPDFVoorDag(datum) {
           tr:nth-child(even) {
             background-color: #f8f9fa;
           }
-          .status-gepland {
-            color: #856404;
-          }
-          .status-uitgevoerd {
-            color: #155724;
-          }
-          .status-geannuleerd {
-            color: #721c24;
-          }
+          .status-gepland { color: #856404; }
+          .status-uitgevoerd { color: #155724; }
+          .status-geannuleerd { color: #721c24; }
           .footer {
             margin-top: 30px;
             padding-top: 15px;
@@ -559,6 +550,10 @@ async function genereerPDFVoorDag(datum) {
             text-align: center;
             color: #999;
             font-size: 11px;
+          }
+          @media print {
+            body { padding: 20px; }
+            .no-print { display: none; }
           }
         </style>
       </head>
@@ -594,7 +589,7 @@ async function genereerPDFVoorDag(datum) {
       }
       const statusClass = planning.status || 'gepland';
 
-      htmlContent += `
+      printContent += `
         <tr>
           <td>${index + 1}</td>
           <td><strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong></td>
@@ -606,54 +601,43 @@ async function genereerPDFVoorDag(datum) {
       `;
     });
 
-    htmlContent += `
+    printContent += `
           </tbody>
         </table>
         <div class="footer">
           <p>Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
         </div>
+        <div class="no-print" style="text-align:center; margin-top:20px; padding:10px; background:#e9ecef; border-radius:4px;">
+          <button onclick="window.print()" style="padding:10px 30px; font-size:16px; cursor:pointer; background:#2c7da0; color:white; border:none; border-radius:6px;">
+            🖨️ Print / PDF opslaan
+          </button>
+          <button onclick="window.close()" style="padding:10px 30px; font-size:16px; cursor:pointer; background:#6c757d; color:white; border:none; border-radius:6px; margin-left:10px;">
+            ❌ Sluiten
+          </button>
+        </div>
       </body>
       </html>
     `;
 
-    // PDF opties
-    const opt = {
-      margin: 1,
-      filename: `route_${datum}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true,
-        letterRendering: true,
-        logging: false
-      },
-      jsPDF: { 
-        unit: 'in', 
-        format: 'a4', 
-        orientation: 'portrait' 
-      }
+    // Open in nieuw venster voor printen
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+      showToast('❌ Popup geblokkeerd! Sta popups toe voor deze site.', 'error');
+      return;
+    }
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Wacht tot de inhoud geladen is en toon print dialog
+    printWindow.onload = function() {
+      // Toon print dialog na 1 seconde
+      setTimeout(function() {
+        printWindow.print();
+      }, 1000);
     };
 
-    // Tijdelijke container voor de PDF
-    const tempContainer = document.createElement('div');
-    tempContainer.style.position = 'absolute';
-    tempContainer.style.left = '-9999px';
-    tempContainer.style.top = '0';
-    tempContainer.style.width = '794px';
-    tempContainer.style.background = 'white';
-    tempContainer.style.padding = '20px';
-    tempContainer.style.zIndex = '-1';
-    tempContainer.innerHTML = htmlContent;
-    document.body.appendChild(tempContainer);
-
-    // Genereer PDF
-    await html2pdf().set(opt).from(tempContainer).save();
-
-    // Cleanup
-    document.body.removeChild(tempContainer);
-
     await logActie('pdf geëxporteerd', 'planning', null, null, { datum: datum });
-    showToast('✅ PDF succesvol gegenereerd!', 'success');
 
   } catch (err) {
     console.error('Fout bij PDF generatie:', err);
