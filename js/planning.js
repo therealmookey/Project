@@ -467,6 +467,9 @@ async function optimizeRouteVoorDag(datum) {
 // ============================================================
 // PDF GENERATIE (Print versie)
 // ============================================================
+// ============================================================
+// PDF GENERATIE (Print versie - Gecorrigeerd)
+// ============================================================
 async function genereerPDFVoorDag(datum) {
   const planningen = allePlanningen.filter(p => p.datum === datum);
 
@@ -481,7 +484,7 @@ async function genereerPDFVoorDag(datum) {
     const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
 
     // Bouw de print-HTML
-    const printContent = `
+    let printContent = `
       <!DOCTYPE html>
       <html>
       <head>
@@ -631,7 +634,6 @@ async function genereerPDFVoorDag(datum) {
 
     // Wacht tot de inhoud geladen is en toon print dialog
     printWindow.onload = function() {
-      // Toon print dialog na 1 seconde
       setTimeout(function() {
         printWindow.print();
       }, 1000);
