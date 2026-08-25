@@ -31,23 +31,16 @@ function toonZiekenhuisKaart(item, statusType) {
     statusClass += 'onbekend';
   }
 
-  // 🔥 CONTACTKNOP: Alleen tonen bij Actief of Onvoldoende (dus NIET bij "Geen ophalingen")
+  // 🔥 ALLEEN contactgegevens tonen (zonder knop)
   let contactInfo = '';
   const heeftContactGegevens = item.telefoon || item.contactpersoon_naam || item.contactpersoon_email;
-  const toonContactKnop = item.status !== '❌ Geen ophalingen' && heeftContactGegevens;
 
-  if (toonContactKnop) {
+  if (heeftContactGegevens) {
     contactInfo = `
       <div class="contact-info">
         ${item.contactpersoon_naam ? `<span>👤 ${escapeHtml(item.contactpersoon_naam)}</span>` : ''}
         ${item.telefoon ? `<span>📞 ${escapeHtml(item.telefoon)}</span>` : ''}
         ${item.contactpersoon_email ? `<span>✉️ ${escapeHtml(item.contactpersoon_email)}</span>` : ''}
-        <button class="btn btn-secondary btn-small contact-btn" 
-                data-naam="${escapeHtml(item.instelling_naam)}" 
-                data-telefoon="${escapeHtml(item.telefoon || '')}" 
-                data-email="${escapeHtml(item.contactpersoon_email || '')}">
-          📞 Contact
-        </button>
       </div>
     `;
   }
