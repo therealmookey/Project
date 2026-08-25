@@ -63,6 +63,7 @@ function toonZiekenhuisKaart(item, statusType) {
     dataInfo = `
       <div class="data-info">
         <span>📦 ${item.aantal_ophalingen || 0} ophalingen</span>
+        ${item.gemiddeld_betrouwbaar_interval ? `<span>📊 Gem. interval: ${item.gemiddeld_betrouwbaar_interval} dagen</span>` : ''}
         ${item.laatste_ophaling ? `<span>📅 Laatste: ${formatDate(item.laatste_ophaling)}</span>` : ''}
         ${item.dagen_sinds_laatste ? `<span>⏳ ${item.dagen_sinds_laatste} dagen geleden</span>` : ''}
         ${item.rendabiliteit ? `<span>📈 ${item.rendabiliteit}</span>` : ''}
