@@ -1,116 +1,131 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project - Planning</title>
-    
-    <!-- ===== VOORKOM FLITS VAN LIGHT MODE ===== -->
-    <script>
-        (function() {
-            const theme = localStorage.getItem('theme');
-            if (theme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                document.documentElement.style.backgroundColor = '#0f0f1a';
-                document.documentElement.style.color = '#f0f0f0';
-            }
-        })();
-    </script>
-    
-    <link rel="stylesheet" href="css/style.css">
-    
-    <!-- html2pdf voor PDF generatie -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    
-    <!-- SortableJS voor drag & drop -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project - Planning</title>
+  <!-- ===== VOORKOM FLITS VAN LIGHT MODE ===== -->
+  <script>
+    (function() {
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.style.backgroundColor = '#0f0f1a';
+        document.documentElement.style.color = '#f0f0f0';
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- html2pdf voor PDF generatie -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <!-- SortableJS voor drag & drop -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 </head>
 <body>
-    <div id="navigatie-placeholder"></div>
-    
-    <main class="container">
-        <div class="page-header">
-            <h1>📅 Planning</h1>
-            <button id="newPlanningBtn" class="btn btn-primary">+ Nieuwe planning</button>
-        </div>
-        
-        <!-- Alle planningen in één lijst -->
-        <div id="planningLijst" class="planning-lijst">
-            <p>Laden...</p>
-        </div>
-    </main>
-    
-    <!-- Popup voor planning toevoegen/bewerken -->
-    <div id="planningPopup" class="popup">
-        <div class="popup-content">
-            <h3 id="planningPopupTitle">Nieuwe planning</h3>
-            
-            <label>Type *</label>
-            <select id="typeSelect" required>
-                <option value="">Kies type...</option>
-                <option value="ophaling">📦 Ophaling (volle tonnen ophalen)</option>
-                <option value="plaatsing">🚚 Plaatsing (lege tonnen afleveren)</option>
-            </select>
-            
-            <label>Adres *</label>
-            <select id="adresSelect" required>
-                <option value="">Kies een adres...</option>
-            </select>
-            
-            <label>Datum *</label>
-            <input type="date" id="planningDatum" required>
-            
-            <div id="ophalingVelden" style="display: none;">
-                <label>Aantal volle tonnen ophalen</label>
-                <input type="number" id="aantalTonnen" min="1" max="100" value="1" step="1">
-            </div>
-            
-            <div id="plaatsingVelden" style="display: none;">
-                <label>Aantal lege tonnen meenemen</label>
-                <input type="number" id="aantalLegeTonnen" min="1" max="100" value="1" step="1">
-            </div>
-            
-            <!-- ===== COMBINATIE WINKELMANDJE ===== -->
-            <div id="combinatieSelectieContainer" style="display: none;">
-                <hr>
-                <h4>📦 Combinaties voor plaatsing</h4>
-                <p style="font-size:0.85rem;color:#6c757d;">Selecteer de combinaties die bij deze plaatsing horen.</p>
-                
-                <div class="combinatie-winkelmandje">
-                    <div class="combinatie-toevoegen">
-                        <select id="planningCombinatieSelect" class="form-input">
-                            <option value="">Kies een combinatie...</option>
-                        </select>
-                        <input type="number" id="planningCombinatieAantal" min="1" value="1" step="1" style="width:80px;display:inline-block;">
-                        <button id="addPlanningCombinatieBtn" class="btn btn-secondary">➕ Toevoegen</button>
-                    </div>
-                    <div id="planningCombinatieLijst" class="combinatie-lijst">
-                        <p>Geen combinaties toegevoegd.</p>
-                    </div>
-                </div>
-            </div>
-            
-            <label>Opmerkingen</label>
-            <textarea id="opmerkingen" rows="3" placeholder="Extra informatie..."></textarea>
-            
-            <div style="display: flex; gap: 10px; margin-top: 1rem;">
-                <button id="savePlanningBtn" class="btn btn-primary">Opslaan</button>
-                <button id="closePlanningPopup" class="btn btn-secondary">Annuleren</button>
-            </div>
-        </div>
+  <div id="navigatie-placeholder"></div>
+  
+  <main class="container">
+    <div class="page-header">
+      <h1>📅 Planning</h1>
+      <div class="header-buttons">
+        <button id="newPlanningBtn" class="btn btn-primary">+ Nieuwe planning</button>
+        <button id="aiOptimizeBtn" class="btn btn-info ai-optimize-btn">🤖 AI Optimalisatie</button>
+        <button id="refreshPlanningBtn" class="btn btn-secondary">🔄 Ververs</button>
+      </div>
     </div>
-    
-    <!-- ===== SCRIPTS ===== -->
-    <!-- 1. Supabase CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- 2. Configuratie -->
-    <script src="js/config.js"></script>
-    
-    <!-- 3. MAIN (als module) - laadt navigatie, thema, versie -->
-    <script type="module" src="js/main.js"></script>
-    
-    <!-- 4. Planning specifiek (als module) -->
-    <script type="module" src="js/planning.js"></script>
+
+    <!-- ===== DATUM SELECTOR ===== -->
+    <div class="date-selector-section">
+      <div class="date-controls">
+        <button id="prevDayBtn" class="btn btn-secondary btn-small">◀ Vorige dag</button>
+        <button id="todayBtn" class="btn btn-primary btn-small">📅 Vandaag</button>
+        <button id="nextDayBtn" class="btn btn-secondary btn-small">Volgende dag ▶</button>
+        <input type="date" id="datePicker" class="date-input">
+        <button id="goToDateBtn" class="btn btn-secondary btn-small">Ga naar</button>
+      </div>
+      <div class="date-info">
+        <span id="dateDisplay">Geen datum geselecteerd</span>
+        <span id="routeCount" class="route-count-badge">0 ritten</span>
+      </div>
+    </div>
+
+    <!-- ===== PLANNING LIJST ===== -->
+    <div id="planningLijst" class="planning-lijst">
+      <p>Laden...</p>
+    </div>
+
+    <!-- ===== DAG ACTIES ===== -->
+    <div class="day-actions" id="dayActions" style="display: none;">
+      <hr>
+      <div class="day-actions-buttons">
+        <button id="pdfDagBtn" class="btn btn-danger pdf-dag-btn">📄 Exporteer dag naar PDF</button>
+        <button id="whatsappDagBtn" class="btn btn-success">📱 Stuur route naar chauffeur (WhatsApp)</button>
+        <button id="aiOptimizeDayBtn" class="btn btn-info ai-optimize-btn">🤖 Optimaliseer route</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ===== POPUP: PLANNING TOEVOEGEN/BEWERKEN ===== -->
+  <div id="planningPopup" class="popup">
+    <div class="popup-content">
+      <h3 id="planningPopupTitle">Nieuwe planning</h3>
+      
+      <label>Type *</label>
+      <select id="typeSelect" required>
+        <option value="">Kies type...</option>
+        <option value="ophaling">📦 Ophaling (volle tonnen ophalen)</option>
+        <option value="plaatsing">🚚 Plaatsing (lege tonnen afleveren)</option>
+      </select>
+
+      <label>Adres *</label>
+      <select id="adresSelect" required>
+        <option value="">Kies een adres...</option>
+      </select>
+
+      <label>Datum *</label>
+      <input type="date" id="planningDatum" required>
+
+      <div id="ophalingVelden" style="display: none;">
+        <label>Aantal volle tonnen ophalen</label>
+        <input type="number" id="aantalTonnen" min="1" max="100" value="1" step="1">
+      </div>
+
+      <div id="plaatsingVelden" style="display: none;">
+        <label>Aantal lege tonnen meenemen</label>
+        <input type="number" id="aantalLegeTonnen" min="1" max="100" value="1" step="1">
+      </div>
+
+      <label>Opmerkingen</label>
+      <textarea id="opmerkingen" rows="3" placeholder="Extra informatie..."></textarea>
+
+      <div style="display: flex; gap: 10px; margin-top: 1rem;">
+        <button id="savePlanningBtn" class="btn btn-primary">Opslaan</button>
+        <button id="closePlanningPopup" class="btn btn-secondary">Annuleren</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== WHATSAPP POPUP ===== -->
+  <div id="whatsappPopup" class="popup">
+    <div class="popup-content whatsapp-popup">
+      <h3>📱 Stuur route naar chauffeur</h3>
+      <div class="route-bericht">
+        <h4>📋 Routebericht</h4>
+        <textarea id="whatsappBericht" rows="10" readonly></textarea>
+        <div class="route-actions">
+          <button id="whatsappVerstuurBtn" class="btn btn-success">📱 Verstuur via WhatsApp</button>
+          <button id="whatsappKopieerBtn" class="btn btn-secondary">📋 Kopieer bericht</button>
+          <button id="whatsappSluitBtn" class="btn btn-secondary">Sluiten</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCRIPTS ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/planning.js"></script>
 </body>
 </html>
