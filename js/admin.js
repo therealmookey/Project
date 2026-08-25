@@ -3,7 +3,7 @@
 // ============================================================
 import { requireAdmin, getGebruikersnaam, logoutUser } from './core/auth.js';
 import { showToast, escapeHtml } from './core/utils.js';
-import { supabase } from './core/supabase.js';
+import { supabase, logActie } from './core/supabase.js';  // 🔥 logActie toegevoegd
 
 console.log('🚀 admin.js geladen');
 
@@ -102,7 +102,6 @@ async function laadGebruikers() {
     alleGebruikers = rollen;
     if (aantalGebruikersSpan) aantalGebruikersSpan.textContent = rollen.length;
 
-    // Filter op zoekterm
     let gefilterdeRollen = rollen;
     if (huidigeUserZoekterm) {
       const term = huidigeUserZoekterm.toLowerCase();
@@ -146,6 +145,7 @@ async function laadGebruikers() {
         statusDisplay = '✅ Goedgekeurd';
       }
       const emailDisplay = rol.user_id ? rol.user_id.substring(0, 8) + '...@email' : '-';
+
       html += `
         <tr style="border-bottom: 1px solid #e9ecef;" data-userid="${rol.user_id}">
           <td style="padding: 12px;"><strong>${escapeHtml(rol.gebruikersnaam || '-')}</strong></td>
@@ -177,18 +177,28 @@ async function laadGebruikers() {
     gebruikersLijst.innerHTML = html;
     console.log('✅ Gebruikerslijst weergegeven, aantal rijen:', gefilterdeRollen.length);
 
-    // Event listeners voor knoppen
+    // ===== EVENT LISTENERS VOOR KNOBBEN =====
+
+    // Goedkeuren
     document.querySelectorAll('.approve-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const userId = btn.dataset.userid;
         if (!confirm('Weet je zeker dat je deze gebruiker wilt goedkeuren?')) return;
+
+        // 🔥 Haal gebruikersnaam op voor logging
+        const row = btn.closest('tr');
+        const gebruikersnaam = row?.querySelector('td:first-child')?.textContent || 'Onbekend';
+
         const { error } = await supabase
           .from('gebruikers_rollen')
           .update({ status: 'goedgekeurd' })
           .eq('user_id', userId);
+
         if (error) {
           showToast('Fout: ' + error.message, 'error');
         } else {
+          // 🔥 LOG: Gebruiker goedgekeurd
+          await logActie('goedgekeurd', 'gebruikers', userId, gebruikersnaam);
           showToast('✅ Gebruiker goedgekeurd!', 'success');
           laadGebruikers();
           laadChauffeurs();
@@ -196,17 +206,26 @@ async function laadGebruikers() {
       });
     });
 
+    // Weigeren
     document.querySelectorAll('.reject-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const userId = btn.dataset.userid;
         if (!confirm('Weet je zeker dat je deze gebruiker wilt weigeren?')) return;
+
+        // 🔥 Haal gebruikersnaam op voor logging
+        const row = btn.closest('tr');
+        const gebruikersnaam = row?.querySelector('td:first-child')?.textContent || 'Onbekend';
+
         const { error } = await supabase
           .from('gebruikers_rollen')
           .update({ status: 'geweigerd' })
           .eq('user_id', userId);
+
         if (error) {
           showToast('Fout: ' + error.message, 'error');
         } else {
+          // 🔥 LOG: Gebruiker geweigerd
+          await logActie('geweigerd', 'gebruikers', userId, gebruikersnaam);
           showToast('❌ Gebruiker geweigerd.', 'error');
           laadGebruikers();
           laadChauffeurs();
@@ -214,10 +233,12 @@ async function laadGebruikers() {
       });
     });
 
+    // Bewerken
     document.querySelectorAll('.edit-user-btn').forEach(btn => {
       btn.addEventListener('click', () => bewerkGebruiker(btn.dataset.userid));
     });
 
+    // Verwijderen
     document.querySelectorAll('.delete-user-btn').forEach(btn => {
       btn.addEventListener('click', () => verwijderGebruiker(btn.dataset.userid));
     });
@@ -361,6 +382,10 @@ async function verwijderGebruiker(userId) {
   }
   if (!confirm('⚠️ Weet je zeker dat je deze gebruiker volledig wilt verwijderen?\n\nDit verwijdert:\n- De gebruiker uit auth.users\n- Alle rollen en rechten\n- Dit kan niet ongedaan worden gemaakt!')) return;
 
+  // 🔥 Haal gebruikersnaam op voor logging
+  const row = document.querySelector(`tr[data-userid="${userId}"]`);
+  const gebruikersnaam = row?.querySelector('td:first-child')?.textContent || 'Onbekend';
+
   try {
     showToast('🔄 Bezig met verwijderen...', 'info');
 
@@ -370,8 +395,6 @@ async function verwijderGebruiker(userId) {
       .eq('user_id', userId);
     if (rechtError) {
       console.warn('⚠️ Kon rechten niet verwijderen:', rechtError);
-    } else {
-      console.log('✅ Module rechten verwijderd');
     }
 
     const { error: rolError } = await supabase
@@ -405,6 +428,9 @@ async function verwijderGebruiker(userId) {
       throw new Error(result.error || 'Fout bij verwijderen uit auth');
     }
     console.log('✅ Gebruiker verwijderd uit auth.users:', result);
+
+    // 🔥 LOG: Gebruiker verwijderd
+    await logActie('verwijderd', 'gebruikers', userId, gebruikersnaam);
 
     showToast('✅ Gebruiker volledig verwijderd!', 'success');
     laadGebruikers();
@@ -488,12 +514,16 @@ async function saveUser() {
     };
 
     let result;
+    let isNieuweGebruiker = false;
+    let nieuweUserId = null;
+
     if (currentEditingUserId) {
       result = await supabase
         .from('gebruikers_rollen')
         .update(userData)
         .eq('user_id', currentEditingUserId);
     } else {
+      isNieuweGebruiker = true;
       if (!email || !password) {
         showToast('Vul e-mail en wachtwoord in voor nieuwe gebruiker', 'error');
         return;
@@ -505,10 +535,11 @@ async function saveUser() {
       if (authError) throw authError;
       if (!authData.user) throw new Error('Account kon niet worden aangemaakt');
 
+      nieuweUserId = authData.user.id;
       result = await supabase
         .from('gebruikers_rollen')
         .insert([{
-          user_id: authData.user.id,
+          user_id: nieuweUserId,
           ...userData,
           status: 'goedgekeurd'
         }]);
@@ -517,10 +548,10 @@ async function saveUser() {
     if (result.error) throw result.error;
 
     const checkboxes = document.querySelectorAll('.module-recht-checkbox');
+    const userId = currentEditingUserId || nieuweUserId || result.data?.[0]?.user_id;
     for (const checkbox of checkboxes) {
       const moduleSleutel = checkbox.dataset.module;
       const actief = checkbox.checked;
-      const userId = currentEditingUserId || result.data?.[0]?.user_id;
       if (userId) {
         await supabase
           .from('gebruikers_module_rechten')
@@ -532,6 +563,13 @@ async function saveUser() {
             onConflict: 'user_id, module_sleutel'
           });
       }
+    }
+
+    // 🔥 LOG: Gebruiker toegevoegd of bijgewerkt
+    if (isNieuweGebruiker) {
+      await logActie('toegevoegd', 'gebruikers', userId, gebruikersnaam);
+    } else {
+      await logActie('bijgewerkt', 'gebruikers', userId, gebruikersnaam);
     }
 
     showToast('✅ Gebruiker opgeslagen!', 'success');
@@ -563,23 +601,36 @@ async function initAdmin() {
 
   console.log('✅ Admin rechten bevestigd');
 
-  // 🔥 STAP 1: Reset zoektermen direct
   huidigeUserZoekterm = '';
   huidigeChauffeurZoekterm = '';
-  
-  // 🔥 STAP 2: Leeg het zoekveld
   if (searchUserInput) {
     searchUserInput.value = '';
+    searchUserInput.setAttribute('autocomplete', 'off');
   }
   if (searchChauffeurInput) {
     searchChauffeurInput.value = '';
+    searchChauffeurInput.setAttribute('autocomplete', 'off');
   }
-  console.log('🔍 Zoektermen gereset');
+  console.log('🔍 Zoektermen gereset, autocomplete uitgeschakeld');
 
-  // 🔥 STAP 3: Laad de data (alleen hier, niet nog een keer later)
   await laadGebruikers();
   await laadChauffeurs();
   await laadStatistieken();
+
+  setTimeout(() => {
+    if (searchUserInput && searchUserInput.value !== '') {
+      console.log('🔄 Autocomplete detected, resetting zoekterm...');
+      searchUserInput.value = '';
+      huidigeUserZoekterm = '';
+      laadGebruikers();
+    }
+    if (searchChauffeurInput && searchChauffeurInput.value !== '') {
+      console.log('🔄 Autocomplete detected, resetting zoekterm...');
+      searchChauffeurInput.value = '';
+      huidigeChauffeurZoekterm = '';
+      laadChauffeurs();
+    }
+  }, 200);
 
   // ===== EVENT LISTENERS =====
   if (userIsChauffeur) {
@@ -660,10 +711,18 @@ async function initAdmin() {
     }
   }
 
-  // Popup sluiten bij klik buiten popup
   window.addEventListener('click', (e) => {
     if (e.target === userPopup) {
       userPopup.style.display = 'none';
+    }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    if (searchUserInput) {
+      searchUserInput.value = '';
+    }
+    if (searchChauffeurInput) {
+      searchChauffeurInput.value = '';
     }
   });
 
@@ -673,7 +732,6 @@ async function initAdmin() {
 // ===== START =====
 document.addEventListener('DOMContentLoaded', initAdmin);
 
-// Als DOM al geladen is, start direct
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
   console.log('🔄 DOM al geladen, start admin direct...');
   initAdmin();

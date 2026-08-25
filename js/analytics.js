@@ -5,7 +5,7 @@ console.log('🚀 analytics.js wordt geladen...');
 
 import { requireAuth } from './core/auth.js';
 import { showToast, escapeHtml, formatDate } from './core/utils.js';
-import { supabase } from './core/supabase.js';
+import { supabase, logActie } from './core/supabase.js';  // 🔥 logActie toegevoegd
 
 // ===== ZIEKENHUIS OVERZICHT IMPORTEREN =====
 import { laadZiekenhuisOverzicht } from './modules/dashboard/ziekenhuis-overzicht.js';
@@ -130,7 +130,6 @@ function getLabelFormatter(periode) {
 async function laadKPI() {
   console.log('📊 KPI dashboard laden...');
   
-  // Controleer of de elementen bestaan
   const elements = {
     totaalOphalingen: document.getElementById('kpiTotaalOphalingen'),
     totaalGewicht: document.getElementById('kpiTotaalGewicht'),
@@ -147,7 +146,6 @@ async function laadKPI() {
   }
 
   try {
-    // Totaal ophalingen
     const { count: totaalOphalingen, error: err1 } = await supabase
       .from('ophaalregistraties')
       .select('*', { count: 'exact', head: true })
@@ -156,7 +154,6 @@ async function laadKPI() {
       elements.totaalOphalingen.textContent = totaalOphalingen || 0;
     }
 
-    // Gewicht data
     const { data: gewichtData, error: err2 } = await supabase
       .from('ophaalregistraties')
       .select('gewicht')
@@ -168,7 +165,6 @@ async function laadKPI() {
       if (elements.gemiddeldGewicht) elements.gemiddeldGewicht.textContent = gemiddeldGewicht.toFixed(1);
     }
 
-    // Aantal ziekenhuizen
     const { count: ziekenhuizen, error: err3 } = await supabase
       .from('adressen')
       .select('*', { count: 'exact', head: true });
@@ -176,7 +172,6 @@ async function laadKPI() {
       elements.ziekenhuizen.textContent = ziekenhuizen || 0;
     }
 
-    // Ritten deze week
     const vandaag = new Date();
     const weekStart = new Date(vandaag);
     weekStart.setDate(vandaag.getDate() - vandaag.getDay());
@@ -194,7 +189,6 @@ async function laadKPI() {
       elements.rittenWeek.textContent = rittenWeek || 0;
     }
 
-    // Opstarten deze maand
     const maandStart = new Date(vandaag.getFullYear(), vandaag.getMonth(), 1);
     const maandStartStr = maandStart.toISOString().split('T')[0];
     const maandEind = new Date(vandaag.getFullYear(), vandaag.getMonth() + 1, 0);
@@ -383,7 +377,7 @@ async function laadTopZiekenhuizen() {
     sorted.forEach((item, index) => {
       const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
       html += `
-        <li class="top-item">
+        <li class="top-item clickable" data-id="${item.id}" data-naam="${escapeHtml(item.naam)}">
           <span class="top-rank">${medal}</span>
           <span class="top-naam">${escapeHtml(item.naam)}</span>
           <span class="top-count">${item.count} ophalingen</span>
@@ -393,10 +387,34 @@ async function laadTopZiekenhuizen() {
     });
     html += '</ul>';
     topZiekenhuizenContainer.innerHTML = html;
+
+    // Event listeners voor klikken op ziekenhuis
+    document.querySelectorAll('.top-item.clickable').forEach(item => {
+      item.addEventListener('click', function() {
+        const id = this.dataset.id;
+        const naam = this.dataset.naam;
+        filterOpZiekenhuis(id, naam);
+      });
+    });
+
     console.log('✅ Top ziekenhuizen geladen');
   } catch (err) {
     console.error('❌ Fout bij laden top ziekenhuizen:', err);
     topZiekenhuizenContainer.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
+  }
+}
+
+function filterOpZiekenhuis(id, naam) {
+  console.log(`🔍 Filteren op ziekenhuis: ${naam} (ID: ${id})`);
+  if (analyticsZiekenhuisFilter) {
+    analyticsZiekenhuisFilter.value = id;
+  }
+  huidigeFilters.ziekenhuis_id = id;
+  laadTrendChart();
+  showToast(`📊 Toon trend voor: ${naam}`, 'info');
+  const chartElement = document.querySelector('.analytics-card.full-width');
+  if (chartElement) {
+    chartElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 }
 
@@ -748,7 +766,7 @@ function resetFilters() {
 }
 
 // ============================================================
-// MODULE 8: EXPORT EXCEL
+// MODULE 8: EXPORT EXCEL (met logging)
 // ============================================================
 async function exportExcel() {
   if (!alleOphalingenData || alleOphalingenData.length === 0) {
@@ -808,6 +826,14 @@ async function exportExcel() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+    
+    // 🔥 LOG: Excel export
+    await logActie('geëxporteerd', 'analytics', null, null, { 
+      type: 'excel', 
+      periode: huidigeFilters.periode,
+      ziekenhuis: huidigeFilters.ziekenhuis_id 
+    });
+    
     showToast('✅ Excel export succesvol!', 'success');
   } catch (err) {
     console.error('Fout bij Excel export:', err);
