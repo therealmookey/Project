@@ -4769,7 +4769,7 @@ hr {
   flex: 0 1 auto;
   justify-content: flex-end;
   /* 🔥 Extra marge boven de knoppen */
-  padding-bottom: 24px;
+  padding-bottom: 16px;
 }
 
 .filter-buttons {
