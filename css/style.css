@@ -4743,6 +4743,8 @@ hr {
   margin-bottom: 4px;
   font-weight: 500;
   white-space: nowrap;
+  height: 16px;
+  line-height: 16px;
 }
 
 .filter-item .form-input {
@@ -4770,17 +4772,12 @@ hr {
   justify-content: flex-end;
 }
 
-/* 🔥 Onzichtbaar label voor uitlijning */
-.filter-buttons-group label {
-  visibility: hidden;
-  margin-bottom: 4px;
+/* 🔥 Voeg een lege ruimte toe boven de knoppen (zelfde hoogte als label) */
+.filter-buttons-group::before {
+  content: '';
   display: block;
-  font-size: 0.8rem;
-  color: #495057;
-  font-weight: 500;
-  white-space: nowrap;
   height: 16px;
-  pointer-events: none;
+  margin-bottom: 4px;
 }
 
 .filter-buttons {
