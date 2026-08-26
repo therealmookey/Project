@@ -430,7 +430,7 @@ async function verwijderPlanning(id) {
 }
 
 // ============================================================
-// PDF GENERATIE (Kaart-stijl met alle details voor chauffeur)
+// PDF GENERATIE (Kaart-stijl zonder status)
 // ============================================================
 async function genereerPDFVoorDag(datum) {
   const planningen = allePlanningen.filter(p => p.datum === datum);
@@ -502,9 +502,6 @@ async function genereerPDFVoorDag(datum) {
             border-left: 5px solid #2c7da0;
             page-break-inside: avoid;
           }
-          .rit-card.status-gepland { border-left-color: #ffc107; }
-          .rit-card.status-uitgevoerd { border-left-color: #28a745; }
-          .rit-card.status-geannuleerd { border-left-color: #dc3545; }
           
           .rit-header {
             display: flex;
@@ -530,15 +527,6 @@ async function genereerPDFVoorDag(datum) {
             color: #2c7da0;
             flex: 1;
           }
-          .rit-status {
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-          }
-          .rit-status.gepland { background: #fff3cd; color: #856404; }
-          .rit-status.uitgevoerd { background: #d4edda; color: #155724; }
-          .rit-status.geannuleerd { background: #f8d7da; color: #721c24; }
           
           .rit-body {
             display: flex;
@@ -661,7 +649,6 @@ async function genereerPDFVoorDag(datum) {
     `;
 
     sortedPlanningen.forEach((planning, index) => {
-      const statusClass = planning.status || 'gepland';
       const typeLabel = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
       
       // Details
@@ -723,11 +710,10 @@ async function genereerPDFVoorDag(datum) {
       }
 
       printContent += `
-        <div class="rit-card status-${statusClass}">
+        <div class="rit-card">
           <div class="rit-header">
             <span class="rit-nummer">#${index + 1}</span>
             <span class="rit-naam">${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</span>
-            <span class="rit-status ${statusClass}">${statusClass}</span>
           </div>
           <div class="rit-body">
             <div class="rit-row">
