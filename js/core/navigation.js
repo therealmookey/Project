@@ -24,6 +24,10 @@ let moduleRightsCache = null;
 let moduleRightsCacheTime = 0;
 const CACHE_TTL = 60000; // 60 seconden
 
+// 🔥 NIEUW: Navigatie cache
+let navigatieHTML = null;
+let navigatieGeladen = false;
+
 // ===== PAGINA BEVEILIGING =====
 
 export function isBeschermdePagina() {
@@ -86,7 +90,6 @@ export async function heeftModuleToegang(moduleSleutel) {
             }
         }
         
-        // Haal ALLE rechten op voor de gebruiker
         const { data: rechten, error } = await supabase
             .from('gebruikers_module_rechten')
             .select('module_sleutel, actief')
@@ -97,19 +100,16 @@ export async function heeftModuleToegang(moduleSleutel) {
             return false;
         }
         
-        // Bouw cache op
         moduleRightsCache = {};
         rechten.forEach(r => {
             moduleRightsCache[r.module_sleutel] = r.actief;
         });
         moduleRightsCacheTime = now;
         
-        // Check of de module in de cache staat met expliciete rechten
         if (moduleRightsCache[moduleSleutel] !== undefined) {
             return moduleRightsCache[moduleSleutel];
         }
         
-        // Geen expliciete rechten gevonden, gebruik standaard waarde
         const { data: module, error: modError } = await supabase
             .from('modules')
             .select('standaard_aan')
@@ -140,19 +140,16 @@ export async function filterNavigatieModules() {
         
         console.log(`🔍 ${moduleLinks.length} module links gevonden`);
         
-        // Always visible links altijd tonen (Dashboard, Mijn profiel, etc.)
         alwaysVisibleLinks.forEach(link => {
             link.style.display = 'inline-block';
             link.classList.add('visible');
         });
         
-        // Alle module-links eerst verbergen
         moduleLinks.forEach(link => {
             link.classList.remove('visible');
             link.style.display = 'none';
         });
         
-        // Dan per link checken of de gebruiker toegang heeft
         for (const link of moduleLinks) {
             const moduleSleutel = link.dataset.module;
             if (!moduleSleutel) continue;
@@ -171,16 +168,31 @@ export async function filterNavigatieModules() {
     }
 }
 
-// ===== NAVIGATIE LADEN =====
+// ===== NAVIGATIE LADEN (MET CACHE) =====
 
 export async function laadNavigatie() {
     const placeholder = document.getElementById('navigatie-placeholder');
     if (!placeholder) return;
     
+    // 🔥 Als de navigatie al geladen is, gebruik de cache
+    if (navigatieGeladen && navigatieHTML) {
+        placeholder.innerHTML = navigatieHTML;
+        console.log('✅ Navigatie uit cache geladen');
+        // Filter modules op rechten
+        await filterNavigatieModules();
+        return;
+    }
+    
     try {
+        console.log('🔄 Navigatie wordt geladen (eerste keer)...');
         const response = await fetch('includes/navigatie.html');
         if (!response.ok) throw new Error('Navigatie kon niet geladen worden');
         const html = await response.text();
+        
+        // 🔥 Opslaan in cache
+        navigatieHTML = html;
+        navigatieGeladen = true;
+        
         placeholder.innerHTML = html;
         
         // Reset cache en filter
@@ -197,7 +209,7 @@ export async function laadNavigatie() {
             });
         }
         
-        console.log('✅ Navigatie geladen en gefilterd!');
+        console.log('✅ Navigatie geladen en in cache opgeslagen!');
         
     } catch (error) {
         console.error('Fout bij laden navigatie:', error);
