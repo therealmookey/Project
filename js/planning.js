@@ -1,5 +1,5 @@
 // ============================================================
-// PLANNING - Planning pagina (met AI optimalisatie en drag & drop)
+// PLANNING - Planning pagina (Volledig hersteld)
 // ============================================================
 console.log('🚀 planning.js wordt geladen...');
 
@@ -71,7 +71,9 @@ async function laadAdressenVoorSelect() {
   }
 }
 
-// ===== PLANNINGEN LADEN =====
+// ============================================================
+// PLANNINGEN LADEN
+// ============================================================
 async function laadPlanningen() {
   console.log('📋 laadPlanningen aangeroepen...');
   if (!planningLijst) return;
@@ -130,6 +132,12 @@ async function laadPlanningen() {
         const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
         const volgorde = planning.dag_volgorde || index + 1;
 
+        // 🔥 Opmerkingen/notities worden nu getoond
+        let opmerkingHtml = '';
+        if (planning.opmerkingen) {
+          opmerkingHtml = `<p class="planning-opmerking">💬 ${escapeHtml(planning.opmerkingen)}</p>`;
+        }
+
         html += `
           <div class="planning-item sortable-item" data-id="${planning.id}" data-volgorde="${volgorde}" data-datum="${datum}">
             <div class="drag-handle" title="Sleep om te herordenen">⠿</div>
@@ -144,7 +152,8 @@ async function laadPlanningen() {
               ${planning.type === 'ophaling' && planning.aantal_tonnen ? `<p>📦 ${planning.aantal_tonnen} ton(nen)</p>` : ''}
               ${planning.type === 'plaatsing' && planning.aantal_lege_tonnen ? `<p>📦 ${planning.aantal_lege_tonnen} lege ton(nen)</p>` : ''}
               ${planning.adres?.telefoon ? `<p>📞 ${escapeHtml(planning.adres.telefoon)}</p>` : ''}
-              ${planning.opmerkingen ? `<p>📝 ${escapeHtml(planning.opmerkingen)}</p>` : ''}
+              ${planning.adres?.extra_info ? `<p class="planning-extra-info">📝 ${escapeHtml(planning.adres.extra_info)}</p>` : ''}
+              ${opmerkingHtml}
             </div>
             <div class="planning-buttons">
               <select class="status-select" data-id="${planning.id}">
@@ -208,7 +217,6 @@ async function laadPlanningen() {
 
 // ===== SORTABLE INIT =====
 function initSortable() {
-  // Vernietig oude sortable instances
   sortableInstances.forEach(instance => {
     if (instance) instance.destroy();
   });
@@ -243,8 +251,6 @@ function initSortable() {
 // ===== ROUTE VOLGORDE UPDATE =====
 async function updateRouteOrder(updates, datum) {
   try {
-    console.log('🔄 Route volgorde updaten voor', datum, ':', updates);
-    
     for (const update of updates) {
       const { error } = await supabase
         .from('planningen')
@@ -285,7 +291,9 @@ async function updatePlanningStatus(id, nieuweStatus) {
   }
 }
 
-// ===== PLANNING OPSLAAN =====
+// ============================================================
+// PLANNING CRUD
+// ============================================================
 async function savePlanning() {
   const type = getValue('typeSelect');
   const adresId = getValue('adresSelect');
@@ -342,7 +350,6 @@ async function savePlanning() {
   }
 }
 
-// ===== PLANNING BEWERKEN =====
 async function bewerkPlanning(id) {
   try {
     const { data, error } = await supabase
@@ -377,7 +384,6 @@ async function bewerkPlanning(id) {
   }
 }
 
-// ===== PLANNING VERWIJDEREN =====
 async function verwijderPlanning(id) {
   if (!confirm('Weet je zeker dat je deze planning wilt verwijderen?')) return;
 
@@ -399,76 +405,7 @@ async function verwijderPlanning(id) {
 }
 
 // ============================================================
-// AI OPTIMALISATIE PER DAG
-// ============================================================
-async function optimizeRouteVoorDag(datum) {
-  if (isOptimizing) return;
-  isOptimizing = true;
-  showToast('🤖 Route wordt geoptimaliseerd...', 'info');
-
-  try {
-    const planningen = allePlanningen.filter(p => p.datum === datum);
-    
-    if (!planningen || planningen.length === 0) {
-      showToast('⚠️ Geen ritten om te optimaliseren', 'warning');
-      isOptimizing = false;
-      return;
-    }
-
-    const startpunt = { lat: 51.0589, lng: 4.3740 };
-
-    function berekenAfstand(lat1, lng1, lat2, lng2) {
-      const R = 6371;
-      const dLat = (lat2 - lat1) * Math.PI / 180;
-      const dLng = (lng2 - lng1) * Math.PI / 180;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-                Math.sin(dLng/2) * Math.sin(dLng/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      return R * c;
-    }
-
-    const rittenMetAfstand = planningen.map(rit => {
-      const adres = rit.adres;
-      let afstand = Infinity;
-      if (adres && adres.latitude && adres.longitude) {
-        afstand = berekenAfstand(startpunt.lat, startpunt.lng, adres.latitude, adres.longitude);
-      }
-      return { ...rit, afstand };
-    });
-
-    rittenMetAfstand.sort((a, b) => a.afstand - b.afstand);
-
-    for (let i = 0; i < rittenMetAfstand.length; i++) {
-      const rit = rittenMetAfstand[i];
-      const { error: updateError } = await supabase
-        .from('planningen')
-        .update({ dag_volgorde: i + 1 })
-        .eq('id', rit.id);
-      
-      if (updateError) throw updateError;
-    }
-
-    await logActie('route geoptimaliseerd', 'planning', null, null, { 
-      datum: datum,
-      aantal_ritten: rittenMetAfstand.length 
-    });
-
-    showToast('✅ Route geoptimaliseerd!', 'success');
-    laadPlanningen();
-  } catch (err) {
-    console.error('Fout bij optimalisatie:', err);
-    showToast('❌ Fout bij optimalisatie: ' + err.message, 'error');
-  } finally {
-    isOptimizing = false;
-  }
-}
-
-// ============================================================
-// PDF GENERATIE (Print versie)
-// ============================================================
-// ============================================================
-// PDF GENERATIE (Print versie - Gecorrigeerd)
+// PDF GENERATIE (Werkende versie)
 // ============================================================
 async function genereerPDFVoorDag(datum) {
   const planningen = allePlanningen.filter(p => p.datum === datum);
@@ -479,7 +416,7 @@ async function genereerPDFVoorDag(datum) {
   }
 
   try {
-    showToast('📄 PDF wordt voorbereid voor print...', 'info');
+    showToast('📄 PDF wordt gegenereerd...', 'info');
 
     const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
 
@@ -592,13 +529,19 @@ async function genereerPDFVoorDag(datum) {
       }
       const statusClass = planning.status || 'gepland';
 
+      // 🔥 Opmerkingen worden ook in PDF getoond
+      let opmerkingPdf = '';
+      if (planning.opmerkingen) {
+        opmerkingPdf = `<br><span style="font-size:11px;color:#856404;">💬 ${escapeHtml(planning.opmerkingen)}</span>`;
+      }
+
       printContent += `
         <tr>
           <td>${index + 1}</td>
           <td><strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong></td>
           <td>${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</td>
           <td>${typeLabel}</td>
-          <td>${details || '-'}</td>
+          <td>${details || '-'}${opmerkingPdf}</td>
           <td class="status-${statusClass}">${statusClass}</td>
         </tr>
       `;
@@ -622,7 +565,6 @@ async function genereerPDFVoorDag(datum) {
       </html>
     `;
 
-    // Open in nieuw venster voor printen
     const printWindow = window.open('', '_blank', 'width=800,height=600');
     if (!printWindow) {
       showToast('❌ Popup geblokkeerd! Sta popups toe voor deze site.', 'error');
@@ -632,11 +574,10 @@ async function genereerPDFVoorDag(datum) {
     printWindow.document.close();
     printWindow.focus();
 
-    // Wacht tot de inhoud geladen is en toon print dialog
     printWindow.onload = function() {
       setTimeout(function() {
         printWindow.print();
-      }, 1000);
+      }, 500);
     };
 
     await logActie('pdf geëxporteerd', 'planning', null, null, { datum: datum });
@@ -644,6 +585,72 @@ async function genereerPDFVoorDag(datum) {
   } catch (err) {
     console.error('Fout bij PDF generatie:', err);
     showToast('❌ Fout bij PDF generatie: ' + err.message, 'error');
+  }
+}
+
+// ============================================================
+// AI OPTIMALISATIE
+// ============================================================
+async function optimizeRouteVoorDag(datum) {
+  if (isOptimizing) return;
+  isOptimizing = true;
+  showToast('🤖 Route wordt geoptimaliseerd...', 'info');
+
+  try {
+    const planningen = allePlanningen.filter(p => p.datum === datum);
+    
+    if (!planningen || planningen.length === 0) {
+      showToast('⚠️ Geen ritten om te optimaliseren', 'warning');
+      isOptimizing = false;
+      return;
+    }
+
+    const startpunt = { lat: 51.0589, lng: 4.3740 };
+
+    function berekenAfstand(lat1, lng1, lat2, lng2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLng/2) * Math.sin(dLng/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    const rittenMetAfstand = planningen.map(rit => {
+      const adres = rit.adres;
+      let afstand = Infinity;
+      if (adres && adres.latitude && adres.longitude) {
+        afstand = berekenAfstand(startpunt.lat, startpunt.lng, adres.latitude, adres.longitude);
+      }
+      return { ...rit, afstand };
+    });
+
+    rittenMetAfstand.sort((a, b) => a.afstand - b.afstand);
+
+    for (let i = 0; i < rittenMetAfstand.length; i++) {
+      const rit = rittenMetAfstand[i];
+      const { error: updateError } = await supabase
+        .from('planningen')
+        .update({ dag_volgorde: i + 1 })
+        .eq('id', rit.id);
+      
+      if (updateError) throw updateError;
+    }
+
+    await logActie('route geoptimaliseerd', 'planning', null, null, { 
+      datum: datum,
+      aantal_ritten: rittenMetAfstand.length 
+    });
+
+    showToast('✅ Route geoptimaliseerd!', 'success');
+    laadPlanningen();
+  } catch (err) {
+    console.error('Fout bij optimalisatie:', err);
+    showToast('❌ Fout bij optimalisatie: ' + err.message, 'error');
+  } finally {
+    isOptimizing = false;
   }
 }
 
