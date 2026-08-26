@@ -13,8 +13,6 @@ const userPopup = document.getElementById('userPopup');
 const closeUserPopup = document.getElementById('closeUserPopup');
 const saveUserBtn = document.getElementById('saveUserBtn');
 const userPopupTitle = document.getElementById('userPopupTitle');
-const userIsChauffeur = document.getElementById('userIsChauffeur');
-const chauffeurVelden = document.getElementById('chauffeurVelden');
 const gebruikersLijst = document.getElementById('gebruikersLijst');
 const chauffeursLijst = document.getElementById('chauffeursLijst');
 const searchUserInput = document.getElementById('searchUserInput');
@@ -73,11 +71,9 @@ function initTabs() {
       e.stopPropagation();
       console.log(`🔄 Tab geklikt: ${this.dataset.tab}`);
       
-      // Alle tabs en panes uitschakelen
       document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.admin-tab').forEach(p => p.classList.remove('active'));
       
-      // Huidige tab activeren
       this.classList.add('active');
       const tabName = this.dataset.tab;
       const paneId = 'tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1);
@@ -137,9 +133,6 @@ async function laadGebruikers() {
               <th style="padding: 12px; text-align: left;">Gebruikersnaam</th>
               <th style="padding: 12px; text-align: left;">E-mail</th>
               <th style="padding: 12px; text-align: left;">Rol</th>
-              <th style="padding: 12px; text-align: left;">Chauffeur</th>
-              <th style="padding: 12px; text-align: left;">Chauffeursnummer</th>
-              <th style="padding: 12px; text-align: left;">Telefoon</th>
               <th style="padding: 12px; text-align: left;">Status</th>
               <th style="padding: 12px; text-align: left;">Aangemaakt</th>
               <th style="padding: 12px; text-align: left;">Acties</th>
@@ -166,9 +159,6 @@ async function laadGebruikers() {
           <td style="padding: 12px;"><strong>${escapeHtml(rol.gebruikersnaam || '-')}</strong></td>
           <td style="padding: 12px;">${escapeHtml(emailDisplay)}</td>
           <td style="padding: 12px;">${rol.rol === 'admin' ? '👑 Admin' : '👤 Gebruiker'}</td>
-          <td style="padding: 12px;">${rol.is_chauffeur ? '✅ Ja' : '❌ Nee'}</td>
-          <td style="padding: 12px;">${escapeHtml(rol.chauffeur_nummer || '-')}</td>
-          <td style="padding: 12px;">${escapeHtml(rol.chauffeur_telefoon || '-')}</td>
           <td style="padding: 12px;">${statusDisplay}</td>
           <td style="padding: 12px;">${new Date(rol.created_at).toLocaleDateString('nl-NL')}</td>
           <td style="padding: 12px;" class="admin-buttons">
@@ -274,10 +264,6 @@ async function bewerkGebruiker(userId) {
     setValue('userEmail', data.user_id || '');
     setValue('userPassword', '');
     setValue('userRol', data.rol || 'gebruiker');
-    setValue('userIsChauffeur', data.is_chauffeur ? 'true' : 'false');
-    setValue('chauffeurNummer', data.chauffeur_nummer || '');
-    setValue('chauffeurTelefoon', data.chauffeur_telefoon || '');
-    chauffeurVelden.style.display = data.is_chauffeur ? 'block' : 'none';
     userPopup.style.display = 'flex';
   } catch (err) {
     showToast('Fout: ' + err.message, 'error');
@@ -289,9 +275,6 @@ async function saveUser() {
   const email = getValue('userEmail');
   const password = getValue('userPassword');
   const rol = getValue('userRol');
-  const isChauffeur = getValue('userIsChauffeur') === 'true';
-  const chauffeurNummer = getValue('chauffeurNummer');
-  const chauffeurTelefoon = getValue('chauffeurTelefoon');
 
   if (!gebruikersnaam) {
     showToast('Vul een gebruikersnaam in', 'error');
@@ -302,9 +285,6 @@ async function saveUser() {
     const userData = {
       gebruikersnaam: gebruikersnaam,
       rol: rol,
-      is_chauffeur: isChauffeur,
-      chauffeur_nummer: isChauffeur ? chauffeurNummer : null,
-      chauffeur_telefoon: isChauffeur ? chauffeurTelefoon : null,
       status: 'goedgekeurd'
     };
 
@@ -330,18 +310,18 @@ async function saveUser() {
       if (authError) throw authError;
       if (!authData.user) throw new Error('Account kon niet worden aangemaakt');
 
-      neueUserId = authData.user.id;
+      nieuweUserId = authData.user.id;
       result = await supabase
         .from('gebruikers_rollen')
         .insert([{
-          user_id: neueUserId,
+          user_id: nieuweUserId,
           ...userData
         }]);
     }
 
     if (result.error) throw result.error;
 
-    const userId = currentEditingUserId || neueUserId || result.data?.[0]?.user_id;
+    const userId = currentEditingUserId || nieuweUserId || result.data?.[0]?.user_id;
 
     if (isNieuweGebruiker) {
       await logActie('toegevoegd', 'gebruikers', userId, gebruikersnaam);
@@ -681,10 +661,6 @@ async function initAdmin() {
       setValue('userEmail', '');
       setValue('userPassword', '');
       setValue('userRol', 'gebruiker');
-      setValue('userIsChauffeur', 'false');
-      setValue('chauffeurNummer', '');
-      setValue('chauffeurTelefoon', '');
-      chauffeurVelden.style.display = 'none';
       userPopup.style.display = 'flex';
     });
   }
@@ -709,86 +685,4 @@ async function initAdmin() {
     });
   }
 
-  if (saveChauffeurBtn) {
-    saveChauffeurBtn.addEventListener('click', saveChauffeur);
-  }
-
-  if (closeChauffeurPopup) {
-    closeChauffeurPopup.addEventListener('click', () => {
-      chauffeurPopup.style.display = 'none';
-      currentChauffeurId = null;
-      resetChauffeurPopup();
-    });
-  }
-
-  // Zoekfunctionaliteit gebruikers
-  if (searchUserInput) {
-    searchUserInput.addEventListener('input', (e) => {
-      huidigeUserZoekterm = e.target.value;
-      laadGebruikers();
-    });
-  }
-
-  if (clearUserSearchBtn) {
-    clearUserSearchBtn.addEventListener('click', () => {
-      searchUserInput.value = '';
-      huidigeUserZoekterm = '';
-      laadGebruikers();
-      searchUserInput.focus();
-    });
-  }
-
-  // Zoekfunctionaliteit chauffeurs
-  if (searchChauffeurInput) {
-    searchChauffeurInput.addEventListener('input', (e) => {
-      huidigeChauffeurZoekterm = e.target.value;
-      laadChauffeurs();
-    });
-  }
-
-  if (clearChauffeurSearchBtn) {
-    clearChauffeurSearchBtn.addEventListener('click', () => {
-      searchChauffeurInput.value = '';
-      huidigeChauffeurZoekterm = '';
-      laadChauffeurs();
-      searchChauffeurInput.focus();
-    });
-  }
-
-  // Startpunt opslaan
-  if (saveStartpuntBtn && startpuntInstelling) {
-    saveStartpuntBtn.addEventListener('click', () => {
-      const startpunt = startpuntInstelling.value;
-      localStorage.setItem('startpunt', startpunt);
-      showToast('✅ Startpunt opgeslagen!', 'success');
-    });
-    const savedStartpunt = localStorage.getItem('startpunt');
-    if (savedStartpunt) {
-      startpuntInstelling.value = savedStartpunt;
-    }
-  }
-
-  // Popups sluiten bij klik buiten
-  window.addEventListener('click', (e) => {
-    if (e.target === userPopup) {
-      userPopup.style.display = 'none';
-    }
-    if (e.target === chauffeurPopup) {
-      chauffeurPopup.style.display = 'none';
-      currentChauffeurId = null;
-      resetChauffeurPopup();
-    }
-  });
-
-  console.log('✅ Admin geïnitialiseerd!');
-}
-
-// ===== START =====
-document.addEventListener('DOMContentLoaded', initAdmin);
-
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  console.log('🔄 DOM al geladen, start admin direct...');
-  initAdmin();
-}
-
-console.log('✅ admin.js geladen!');
+ 

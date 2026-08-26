@@ -79,7 +79,7 @@
     </div>
   </main>
 
-  <!-- Popup voor gebruiker toevoegen/bewerken -->
+  <!-- Popup voor gebruiker toevoegen/bewerken (zonder chauffeur velden) -->
   <div id="userPopup" class="popup">
     <div class="popup-content">
       <h3 id="userPopupTitle">Nieuwe gebruiker</h3>
@@ -99,19 +99,6 @@
         <option value="gebruiker">👤 Gebruiker</option>
         <option value="admin">👑 Admin</option>
       </select>
-
-      <label>Chauffeur status</label>
-      <select id="userIsChauffeur">
-        <option value="false">❌ Geen chauffeur</option>
-        <option value="true">✅ Ja, deze gebruiker is ook chauffeur</option>
-      </select>
-
-      <div id="chauffeurVelden" style="display: none;">
-        <label>Chauffeursnummer</label>
-        <input type="text" id="chauffeurNummer" placeholder="Bijv. CH-001">
-        <label>Telefoonnummer chauffeur (WhatsApp)</label>
-        <input type="tel" id="chauffeurTelefoon" placeholder="0485 12 34 56">
-      </div>
 
       <div style="display: flex; gap: 10px; margin-top: 1rem;">
         <button id="saveUserBtn" class="btn btn-primary">Opslaan</button>
