@@ -361,8 +361,18 @@ async function saveModuleRights() {
 async function laadAlleModules() {
   console.log('📦 laadAlleModules aangeroepen...');
   if (!modulesLijst) return;
-  modulesLijst.innerHTML = '<p>Bezig met laden...</p>';
-
+  
+  // 🔥 HARD RESET: verwijder de hele container en maak hem opnieuw
+  const parent = modulesLijst.parentNode;
+  const newContainer = document.createElement('div');
+  newContainer.id = 'modulesLijst';
+  newContainer.className = 'module-tabel';
+  newContainer.innerHTML = '<p>Bezig met laden...</p>';
+  parent.replaceChild(newContainer, modulesLijst);
+  
+  // Update de referentie
+  const nieuweModulesLijst = document.getElementById('modulesLijst');
+  
   try {
     const { data, error } = await supabase
       .from('modules')
@@ -374,7 +384,7 @@ async function laadAlleModules() {
     console.log('📊 Aantal modules geladen:', alleModules.length);
 
     if (alleModules.length === 0) {
-      modulesLijst.innerHTML = '<p>Geen modules gevonden. Klik op "+ Nieuwe module" om er een toe te voegen.</p>';
+      nieuweModulesLijst.innerHTML = '<p>Geen modules gevonden. Klik op "+ Nieuwe module" om er een toe te voegen.</p>';
       return;
     }
 
@@ -416,7 +426,7 @@ async function laadAlleModules() {
       </div>
     `;
 
-    modulesLijst.innerHTML = html;
+    nieuweModulesLijst.innerHTML = html;
 
     // Event listeners
     document.querySelectorAll('.edit-module-btn').forEach(btn => {
@@ -427,21 +437,11 @@ async function laadAlleModules() {
       btn.addEventListener('click', () => verwijderModule(btn.dataset.id));
     });
 
-    // Search functionaliteit
-    if (searchModulesInput) {
-      const term = searchModulesInput.value.toLowerCase();
-      const rows = modulesLijst.querySelectorAll('table tbody tr');
-      rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(term) ? '' : 'none';
-      });
-    }
-
     console.log('✅ Modules tabel bijgewerkt met', alleModules.length, 'modules');
 
   } catch (err) {
     console.error('Fout bij laden modules:', err);
-    modulesLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
+    nieuweModulesLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
   }
 }
 
@@ -525,8 +525,11 @@ async function saveModule() {
     currentModuleId = null;
     resetModulePopup();
     
-    // 🔥 ALLEEN DE TABEL VERNIEUWEN
-    await laadAlleModules();
+    // 🔥 FORCEER EEN VOLLEDIGE HERLADING VAN DE PAGINA
+    // Dit is de enige manier die altijd werkt
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
 
   } catch (err) {
     console.error('Fout bij opslaan module:', err);
