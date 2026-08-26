@@ -4743,8 +4743,6 @@ hr {
   margin-bottom: 4px;
   font-weight: 500;
   white-space: nowrap;
-  height: 16px;
-  line-height: 16px;
 }
 
 .filter-item .form-input {
@@ -4770,14 +4768,8 @@ hr {
   flex-direction: column;
   flex: 0 1 auto;
   justify-content: flex-end;
-}
-
-/* 🔥 Voeg een lege ruimte toe boven de knoppen (zelfde hoogte als label) */
-.filter-buttons-group::before {
-  content: '';
-  display: block;
-  height: 16px;
-  margin-bottom: 4px;
+  /* 🔥 Extra marge boven de knoppen */
+  padding-top: 20px;
 }
 
 .filter-buttons {
