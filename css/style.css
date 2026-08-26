@@ -4768,8 +4768,8 @@ hr {
   flex-direction: column;
   flex: 0 1 auto;
   justify-content: flex-end;
-  /* 🔥 Alleen dit toevoegen: 20px ruimte onder de knoppen */
-  margin-bottom: 20px;
+  /* 🔥 Alleen dit toevoegen: 16px ruimte onder de knoppen */
+  margin-bottom: 16px;
 }
 
 .analytics-filters .filter-buttons {
