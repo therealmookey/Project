@@ -753,7 +753,6 @@ async function genereerPDFVoorDag(datum) {
     showToast('❌ Fout bij PDF generatie: ' + err.message, 'error');
   }
 }
-
 // ============================================================
 // AI OPTIMALISATIE
 // ============================================================
