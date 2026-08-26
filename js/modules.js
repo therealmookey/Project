@@ -63,21 +63,36 @@ function initTabs() {
 // ============================================================
 async function refreshNavigatie() {
   try {
-    // Methode 1: Importeer navigation en herlaad modules
-    const { default: navigation } = await import('./core/navigation.js');
+    console.log('🔄 Start navigatie refresh...');
     
-    // 🔥 Forceer cache reset in navigation.js
-    if (navigation && navigation._resetCache) {
-      await navigation._resetCache();
+    // Methode 1: Herlaad via navigation module
+    try {
+      const { default: navigation } = await import('./core/navigation.js');
+      
+      // 🔥 Reset de cache in navigation.js
+      if (navigation && navigation._resetCache) {
+        await navigation._resetCache();
+        console.log('✅ Navigation cache gereset');
+      }
+      
+      // 🔥 Herlaad de module links
+      if (navigation && navigation.filterNavigatieModules) {
+        await navigation.filterNavigatieModules();
+        console.log('✅ Navigatie herladen via filterNavigatieModules');
+      }
+      
+      // 🔥 Herlaad de hele navigatie als backup
+      if (navigation && navigation.laadNavigatie) {
+        setTimeout(async () => {
+          await navigation.laadNavigatie();
+          console.log('✅ Navigatie volledig herladen via laadNavigatie');
+        }, 300);
+      }
+    } catch (navError) {
+      console.warn('⚠️ Navigation module import error:', navError);
     }
     
-    // 🔥 Herlaad de module links
-    if (navigation && navigation.filterNavigatieModules) {
-      await navigation.filterNavigatieModules();
-      console.log('✅ Navigatie cache geleegd en herladen (methode 1)');
-    }
-    
-    // Methode 2: Directe DOM manipulatie als fallback
+    // Methode 2: Directe DOM manipulatie (altijd uitvoeren)
     const moduleLinks = document.querySelectorAll('.module-link');
     console.log(`🔍 ${moduleLinks.length} module links gevonden voor directe refresh`);
     
@@ -86,6 +101,21 @@ async function refreshNavigatie() {
     if (!user) {
       console.warn('⚠️ Geen gebruiker ingelogd voor directe refresh');
       return;
+    }
+    
+    // 🔥 Haal alle modules met standaard waarden op
+    const { data: modules, error: modError } = await supabase
+      .from('modules')
+      .select('module_sleutel, standaard_aan');
+    
+    if (modError) {
+      console.warn('⚠️ Kon modules niet ophalen:', modError);
+    } else {
+      const standaardMap = {};
+      modules.forEach(m => {
+        standaardMap[m.module_sleutel] = m.standaard_aan;
+      });
+      console.log('✅ Standaard waarden opgehaald:', standaardMap);
     }
     
     // Haal alle rechten op voor de gebruiker
@@ -105,7 +135,7 @@ async function refreshNavigatie() {
       rechtenMap[r.module_sleutel] = r.actief;
     });
     
-    // Update de zichtbaarheid van elke link
+    // 🔥 Update de zichtbaarheid van elke link (combineer rechten met standaard)
     moduleLinks.forEach(link => {
       const moduleSleutel = link.dataset.module;
       if (!moduleSleutel) {
@@ -113,7 +143,16 @@ async function refreshNavigatie() {
         return;
       }
       
-      const heeftToegang = rechtenMap[moduleSleutel] === true;
+      // Check of de gebruiker expliciete rechten heeft
+      let heeftToegang = false;
+      if (rechtenMap[moduleSleutel] !== undefined) {
+        heeftToegang = rechtenMap[moduleSleutel] === true;
+      } else {
+        // Gebruik standaard waarde als er geen expliciete rechten zijn
+        const standaard = standaardMap[moduleSleutel];
+        heeftToegang = standaard === true;
+      }
+      
       if (heeftToegang) {
         link.style.display = 'inline-block';
         link.classList.add('visible');
@@ -123,15 +162,7 @@ async function refreshNavigatie() {
       }
     });
     
-    console.log('✅ Navigatie direct bijgewerkt (methode 2)');
-    
-    // Methode 3: Herlaad de hele navigatie
-    if (navigation && navigation.laadNavigatie) {
-      setTimeout(async () => {
-        await navigation.laadNavigatie();
-        console.log('✅ Navigatie volledig herladen (methode 3)');
-      }, 500);
-    }
+    console.log('✅ Navigatie direct bijgewerkt met standaard waarden');
     
   } catch (err) {
     console.warn('⚠️ Fout bij refreshen navigatie:', err);
