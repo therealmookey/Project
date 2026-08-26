@@ -24,6 +24,9 @@ let moduleRightsCache = null;
 let moduleRightsCacheTime = 0;
 const CACHE_TTL = 60000; // 60 seconden
 
+// ===== NAVIGATIE CACHE =====
+let navigatieGeladen = false;
+
 // ===== PAGINA BEVEILIGING =====
 
 export function isBeschermdePagina() {
@@ -128,13 +131,19 @@ export async function heeftModuleToegang(moduleSleutel) {
     }
 }
 
-// ===== FILTER NAVIGATIE MODULES =====
+// ===== FILTER NAVIGATIE MODULES (ALLEEN BIJ ECHTE WIJZIGINGEN) =====
 export async function filterNavigatieModules() {
+    // 🔥 Alleen filteren als de navigatie al geladen is
+    if (!navigatieGeladen) {
+        console.log('⏳ Navigatie nog niet geladen, filteren wordt uitgesteld...');
+        return;
+    }
+    
     try {
         const moduleLinks = document.querySelectorAll('.module-link');
         const alwaysVisibleLinks = document.querySelectorAll('.always-visible');
         
-        console.log(`🔍 ${moduleLinks.length} module links gevonden (filteren, niet herladen)`);
+        console.log(`🔍 ${moduleLinks.length} module links worden gefilterd`);
         
         alwaysVisibleLinks.forEach(link => {
             link.style.display = 'inline-block';
@@ -164,34 +173,31 @@ export async function filterNavigatieModules() {
     }
 }
 
-// ===== NAVIGATIE LADEN (MET CACHE) =====
+// ===== NAVIGATIE LADEN =====
 
 export async function laadNavigatie() {
     const placeholder = document.getElementById('navigatie-placeholder');
     if (!placeholder) return;
     
-    // Gebruik globale cache
-    if (window.__navigatieGeladen && window.__navigatieHTML) {
-        console.log('✅ Navigatie uit cache geladen (overslaan)');
-        placeholder.innerHTML = window.__navigatieHTML;
-        await filterNavigatieModules();
+    // 🔥 Als navigatie al geladen is, stop hier
+    if (navigatieGeladen) {
+        console.log('✅ Navigatie al geladen, overslaan...');
         return;
     }
     
     try {
-        console.log('🔄 Navigatie wordt geladen (eerste en enige keer)...');
+        console.log('🔄 Navigatie wordt geladen...');
         const response = await fetch('includes/navigatie.html');
         if (!response.ok) throw new Error('Navigatie kon niet geladen worden');
         const html = await response.text();
         
-        window.__navigatieHTML = html;
-        window.__navigatieGeladen = true;
-        
         placeholder.innerHTML = html;
+        navigatieGeladen = true;
         
-        resetModuleCache();
+        // 🔥 Alleen de eerste keer filteren
         await filterNavigatieModules();
         
+        // Uitlog knop
         const logoutBtn = document.getElementById('logoutBtnNav');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async (e) => {
@@ -201,7 +207,7 @@ export async function laadNavigatie() {
             });
         }
         
-        console.log('✅ Navigatie geladen en in cache opgeslagen!');
+        console.log('✅ Navigatie geladen!');
         
     } catch (error) {
         console.error('Fout bij laden navigatie:', error);

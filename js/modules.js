@@ -61,11 +61,11 @@ function initTabs() {
 }
 
 // ============================================================
-// HELPER: NAVIGATIE UPDATE (ZONDER HERLADEN)
+// HELPER: NAVIGATIE UPDATE (ALLEEN BIJ ECHTE WIJZIGINGEN)
 // ============================================================
 async function refreshNavigatie() {
   try {
-    console.log('🔄 Start navigatie update (alleen filteren)...');
+    console.log('🔄 Navigatie wordt bijgewerkt (alleen bij wijzigingen)...');
     
     try {
       const { default: navigation } = await import('./core/navigation.js');
@@ -75,12 +75,11 @@ async function refreshNavigatie() {
         console.log('✅ Module cache gereset');
       }
       
+      // 🔥 Alleen filteren als de navigatie al geladen is
       if (navigation && navigation.filterNavigatieModules) {
         await navigation.filterNavigatieModules();
-        console.log('✅ Navigatie gefilterd (zonder herladen)');
+        console.log('✅ Navigatie gefilterd');
       }
-      
-      // ❌ VERWIJDERD: laadNavigatie wordt niet meer aangeroepen
       
     } catch (navError) {
       console.warn('⚠️ Navigation module import error:', navError);
