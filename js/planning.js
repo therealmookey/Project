@@ -667,7 +667,7 @@ async function genereerPDFVoorDag(datum) {
         `;
       }
 
-      // Contactpersoon
+      // 🔥 Contactpersoon (toegevoegd)
       if (planning.adres?.contactpersoon_naam) {
         detailsHtml += `
           <div class="rit-row">
