@@ -15,6 +15,8 @@ const clearModuleUserSearchBtn = document.getElementById('clearModuleUserSearchB
 const searchModulesInput = document.getElementById('searchModulesInput');
 const clearModulesSearchBtn = document.getElementById('clearModulesSearchBtn');
 const addModuleBtn = document.getElementById('addModuleBtn');
+const syncModuleDefaultsBtn = document.getElementById('syncModuleDefaultsBtn');
+const refreshModulesBtn = document.getElementById('refreshModulesBtn');
 const modulePopup = document.getElementById('modulePopup');
 const modulePopupTitle = document.getElementById('modulePopupTitle');
 const modulePopupUser = document.getElementById('modulePopupUser');
@@ -90,6 +92,81 @@ async function refreshNavigatie() {
     
   } catch (err) {
     console.warn('⚠️ Fout bij refreshen navigatie:', err);
+  }
+}
+
+// ============================================================
+// SYNC STANDAARD WAARDEN NAAR ALLE GEBRUIKERS
+// ============================================================
+async function syncModuleDefaults() {
+  if (!confirm('⚠️ Weet je zeker dat je de standaard waarden wilt synchroniseren?\n\nDit zal alle gebruikers zonder expliciete rechten de nieuwe standaard waarden geven.')) {
+    return;
+  }
+
+  try {
+    showToast('🔄 Bezig met synchroniseren...', 'info');
+    
+    // 1. Haal alle standaard waarden op
+    const { data: modules, error: modError } = await supabase
+      .from('modules')
+      .select('module_sleutel, standaard_aan');
+    
+    if (modError) throw modError;
+    
+    // 2. Haal alle gebruikers op
+    const { data: gebruikers, error: userError } = await supabase
+      .from('gebruikers_rollen')
+      .select('user_id')
+      .eq('status', 'goedgekeurd');
+    
+    if (userError) throw userError;
+    
+    let totalAdded = 0;
+    
+    // 3. Voor elke gebruiker en elke module, check of er rechten zijn
+    for (const gebruiker of gebruikers) {
+      // Haal bestaande rechten op voor deze gebruiker
+      const { data: bestaandeRechten, error: rechtError } = await supabase
+        .from('gebruikers_module_rechten')
+        .select('module_sleutel')
+        .eq('user_id', gebruiker.user_id);
+      
+      if (rechtError) throw rechtError;
+      
+      const bestaandeSleutels = bestaandeRechten.map(r => r.module_sleutel);
+      
+      // Voor elke module, voeg rechten toe als ze niet bestaan
+      for (const module of modules) {
+        if (!bestaandeSleutels.includes(module.module_sleutel)) {
+          // Geen expliciete rechten, voeg standaard waarde toe
+          const { error: insertError } = await supabase
+            .from('gebruikers_module_rechten')
+            .insert({
+              user_id: gebruiker.user_id,
+              module_sleutel: module.module_sleutel,
+              actief: module.standaard_aan
+            });
+          
+          if (insertError) {
+            console.warn(`⚠️ Kon rechten niet toevoegen voor ${gebruiker.user_id} - ${module.module_sleutel}:`, insertError);
+          } else {
+            totalAdded++;
+          }
+        }
+      }
+    }
+    
+    showToast(`✅ Synchronisatie voltooid! ${totalAdded} rechten toegevoegd.`, 'success');
+    
+    // Herlaad de modules lijst
+    await laadAlleModules();
+    
+    // Herlaad de navigatie
+    await refreshNavigatie();
+    
+  } catch (err) {
+    console.error('Fout bij synchroniseren:', err);
+    showToast('❌ Fout bij synchroniseren: ' + err.message, 'error');
   }
 }
 
@@ -575,6 +652,8 @@ async function initModules() {
     firstTab.click();
   }
 
+  // ===== EVENT LISTENERS =====
+
   if (saveModuleRightsBtn) {
     saveModuleRightsBtn.addEventListener('click', saveModuleRights);
   }
@@ -603,6 +682,20 @@ async function initModules() {
       moduleEditPopup.style.display = 'none';
       currentModuleId = null;
       resetModulePopup();
+    });
+  }
+
+  // 🔥 Sync standaard waarden knop
+  if (syncModuleDefaultsBtn) {
+    syncModuleDefaultsBtn.addEventListener('click', syncModuleDefaults);
+  }
+
+  // 🔥 Refresh modules knop
+  if (refreshModulesBtn) {
+    refreshModulesBtn.addEventListener('click', async () => {
+      showToast('🔄 Bezig met verversen...', 'info');
+      await laadAlleModules();
+      showToast('✅ Modules verversd!', 'success');
     });
   }
 

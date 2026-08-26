@@ -39,6 +39,10 @@
           <button id="clearModuleUserSearchBtn" class="btn btn-secondary">✖ Wissen</button>
         </div>
       </div>
+      <div class="module-info-box">
+        <p>💡 <strong>Per gebruiker:</strong> Hier kun je voor elke individuele gebruiker de module rechten aanpassen. 
+        Wijzigingen zijn direct zichtbaar.</p>
+      </div>
       <div id="gebruikersModuleLijst" class="module-tabel">
         <p>Laden...</p>
       </div>
@@ -50,8 +54,15 @@
         <div class="search-bar">
           <input type="text" id="searchModulesInput" placeholder="🔍 Zoek module..." class="search-input">
           <button id="clearModulesSearchBtn" class="btn btn-secondary">✖ Wissen</button>
+          <button id="syncModuleDefaultsBtn" class="btn btn-warning">🔄 Sync standaard waarden</button>
+          <button id="refreshModulesBtn" class="btn btn-secondary">🔄 Ververs</button>
           <button id="addModuleBtn" class="btn btn-primary">+ Nieuwe module</button>
         </div>
+      </div>
+      <div class="module-info-box">
+        <p>💡 <strong>Alle modules:</strong> Hier kun je de <strong>standaard instellingen</strong> van modules beheren. 
+        Deze instellingen gelden voor <strong>nieuwe gebruikers</strong> en gebruikers zonder expliciete rechten.
+        Klik op <strong>"Sync standaard waarden"</strong> om de wijzigingen toe te passen op bestaande gebruikers.</p>
       </div>
       <div id="modulesLijst" class="module-tabel">
         <p>Laden...</p>
@@ -89,7 +100,7 @@
       <label>Beschrijving</label>
       <textarea id="moduleBeschrijvingInput" rows="3" placeholder="Wat doet deze module?"></textarea>
 
-      <label>Standaard aan</label>
+      <label>Standaard aan voor nieuwe gebruikers</label>
       <select id="moduleStandaardAan">
         <option value="true">✅ Ja</option>
         <option value="false">❌ Nee</option>

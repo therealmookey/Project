@@ -66,7 +66,6 @@ export async function checkPageAuth() {
 
 // ===== MODULE RECHTEN =====
 
-// 🔥 NIEUW: Functie om de cache te resetten
 export function resetModuleCache() {
     moduleRightsCache = null;
     moduleRightsCacheTime = 0;
@@ -105,12 +104,12 @@ export async function heeftModuleToegang(moduleSleutel) {
         });
         moduleRightsCacheTime = now;
         
-        // Check of de module in de cache staat
+        // Check of de module in de cache staat met expliciete rechten
         if (moduleRightsCache[moduleSleutel] !== undefined) {
             return moduleRightsCache[moduleSleutel];
         }
         
-        // 🔥 Haal de standaard waarde op uit de modules tabel
+        // Geen expliciete rechten gevonden, gebruik standaard waarde
         const { data: module, error: modError } = await supabase
             .from('modules')
             .select('standaard_aan')
@@ -137,14 +136,23 @@ export async function heeftModuleToegang(moduleSleutel) {
 export async function filterNavigatieModules() {
     try {
         const moduleLinks = document.querySelectorAll('.module-link');
+        const alwaysVisibleLinks = document.querySelectorAll('.always-visible');
         
         console.log(`🔍 ${moduleLinks.length} module links gevonden`);
         
+        // Always visible links altijd tonen (Dashboard, Mijn profiel, etc.)
+        alwaysVisibleLinks.forEach(link => {
+            link.style.display = 'inline-block';
+            link.classList.add('visible');
+        });
+        
+        // Alle module-links eerst verbergen
         moduleLinks.forEach(link => {
             link.classList.remove('visible');
             link.style.display = 'none';
         });
         
+        // Dan per link checken of de gebruiker toegang heeft
         for (const link of moduleLinks) {
             const moduleSleutel = link.dataset.module;
             if (!moduleSleutel) continue;
@@ -175,11 +183,11 @@ export async function laadNavigatie() {
         const html = await response.text();
         placeholder.innerHTML = html;
         
-        // Reset cache voordat we filteren
+        // Reset cache en filter
         resetModuleCache();
-        
         await filterNavigatieModules();
         
+        // Uitlog knop
         const logoutBtn = document.getElementById('logoutBtnNav');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async (e) => {
@@ -223,5 +231,5 @@ export default {
     filterNavigatieModules,
     laadNavigatie,
     checkAuth,
-    resetModuleCache  // 🔥 NIEUW: exporteer de reset functie
+    resetModuleCache
 };

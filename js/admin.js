@@ -181,7 +181,7 @@ async function laadGebruikers() {
 
     gebruikersLijst.innerHTML = html;
 
-    // ===== GOEDKEUREN =====
+    // ===== GOEDKEUREN (met standaard modules) =====
     document.querySelectorAll('.approve-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const userId = btn.dataset.userid;
@@ -190,19 +190,61 @@ async function laadGebruikers() {
         const row = btn.closest('tr');
         const gebruikersnaam = row?.querySelector('td:first-child')?.textContent || 'Onbekend';
 
-        const { error } = await supabase
-          .from('gebruikers_rollen')
-          .update({ status: 'goedgekeurd' })
-          .eq('user_id', userId);
+        try {
+          // 1. Update status naar goedgekeurd
+          const { error: updateError } = await supabase
+            .from('gebruikers_rollen')
+            .update({ status: 'goedgekeurd' })
+            .eq('user_id', userId);
 
-        if (error) {
-          showToast('Fout: ' + error.message, 'error');
-        } else {
+          if (updateError) throw updateError;
+
+          // 2. Haal alle standaard modules op
+          const { data: modules, error: modError } = await supabase
+            .from('modules')
+            .select('module_sleutel, standaard_aan')
+            .eq('standaard_aan', true);
+
+          if (modError) throw modError;
+
+          // 3. Voeg standaard modules toe aan de gebruiker
+          if (modules && modules.length > 0) {
+            const moduleRechten = modules.map(m => ({
+              user_id: userId,
+              module_sleutel: m.module_sleutel,
+              actief: true
+            }));
+
+            const { error: insertError } = await supabase
+              .from('gebruikers_module_rechten')
+              .insert(moduleRechten);
+
+            if (insertError) {
+              console.warn('⚠️ Kon standaard modules niet toevoegen:', insertError);
+            } else {
+              console.log(`✅ ${moduleRechten.length} standaard modules toegevoegd voor ${gebruikersnaam}`);
+            }
+          }
+
           await logActie('goedgekeurd', 'gebruikers', userId, gebruikersnaam);
-          showToast('✅ Gebruiker goedgekeurd!', 'success');
+          showToast(`✅ Gebruiker ${gebruikersnaam} goedgekeurd met standaard modules!`, 'success');
           laadGebruikers();
           laadChauffeurs();
           laadStatistieken();
+          
+          // Herlaad navigatie zodat de nieuwe rechten zichtbaar zijn
+          try {
+            const { default: navigation } = await import('./core/navigation.js');
+            if (navigation && navigation.filterNavigatieModules) {
+              await navigation.filterNavigatieModules();
+            }
+          } catch (navError) {
+            console.warn('⚠️ Kon navigatie niet refreshen:', navError);
+          }
+          
+        } catch (err) {
+          console.error('Fout bij goedkeuren:', err);
+          showToast('❌ Fout bij goedkeuren: ' + err.message, 'error');
         }
       });
     });
@@ -285,7 +327,7 @@ async function saveUser() {
     const userData = {
       gebruikersnaam: gebruikersnaam,
       rol: rol,
-      status: 'goedgekeurd'
+      status: 'wachtend'  // 🔥 Nieuwe gebruikers wachten op goedkeuring
     };
 
     let result;
@@ -317,6 +359,8 @@ async function saveUser() {
           user_id: nieuweUserId,
           ...userData
         }]);
+      
+      // 🔥 Geen module rechten toevoegen - de gebruiker krijgt alleen Dashboard
     }
 
     if (result.error) throw result.error;
