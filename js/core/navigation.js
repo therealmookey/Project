@@ -24,14 +24,6 @@ let moduleRightsCache = null;
 let moduleRightsCacheTime = 0;
 const CACHE_TTL = 60000; // 60 seconden
 
-// 🔥 Navigatie cache - globaal
-if (typeof window.__navigatieGeladen === 'undefined') {
-    window.__navigatieGeladen = false;
-}
-if (typeof window.__navigatieHTML === 'undefined') {
-    window.__navigatieHTML = null;
-}
-
 // ===== PAGINA BEVEILIGING =====
 
 export function isBeschermdePagina() {
@@ -142,7 +134,7 @@ export async function filterNavigatieModules() {
         const moduleLinks = document.querySelectorAll('.module-link');
         const alwaysVisibleLinks = document.querySelectorAll('.always-visible');
         
-        console.log(`🔍 ${moduleLinks.length} module links gevonden`);
+        console.log(`🔍 ${moduleLinks.length} module links gevonden (filteren, niet herladen)`);
         
         alwaysVisibleLinks.forEach(link => {
             link.style.display = 'inline-block';
@@ -178,7 +170,7 @@ export async function laadNavigatie() {
     const placeholder = document.getElementById('navigatie-placeholder');
     if (!placeholder) return;
     
-    // 🔥 Gebruik globale cache
+    // Gebruik globale cache
     if (window.__navigatieGeladen && window.__navigatieHTML) {
         console.log('✅ Navigatie uit cache geladen (overslaan)');
         placeholder.innerHTML = window.__navigatieHTML;
@@ -192,17 +184,14 @@ export async function laadNavigatie() {
         if (!response.ok) throw new Error('Navigatie kon niet geladen worden');
         const html = await response.text();
         
-        // Opslaan in globale cache
         window.__navigatieHTML = html;
         window.__navigatieGeladen = true;
         
         placeholder.innerHTML = html;
         
-        // Reset cache en filter
         resetModuleCache();
         await filterNavigatieModules();
         
-        // Uitlog knop
         const logoutBtn = document.getElementById('logoutBtnNav');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async (e) => {

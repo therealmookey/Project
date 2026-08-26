@@ -15,7 +15,7 @@ if (typeof window.__appInitialized === 'undefined') {
 
 // ===== INITIALISATIE =====
 document.addEventListener('DOMContentLoaded', async function() {
-  // 🔥 Voorkom dubbele initialisatie met globale variabele
+  // Voorkom dubbele initialisatie met globale variabele
   if (window.__appInitialized) {
     console.log('⚠️ App al geïnitialiseerd, overslaan...');
     return;

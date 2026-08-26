@@ -61,31 +61,27 @@ function initTabs() {
 }
 
 // ============================================================
-// HELPER: NAVIGATIE CACHE LEEGMAKEN
+// HELPER: NAVIGATIE UPDATE (ZONDER HERLADEN)
 // ============================================================
 async function refreshNavigatie() {
   try {
-    console.log('🔄 Start navigatie refresh...');
+    console.log('🔄 Start navigatie update (alleen filteren)...');
     
     try {
       const { default: navigation } = await import('./core/navigation.js');
       
       if (navigation && navigation.resetModuleCache) {
         navigation.resetModuleCache();
-        console.log('✅ Navigation cache gereset');
+        console.log('✅ Module cache gereset');
       }
       
       if (navigation && navigation.filterNavigatieModules) {
         await navigation.filterNavigatieModules();
-        console.log('✅ Navigatie herladen via filterNavigatieModules');
+        console.log('✅ Navigatie gefilterd (zonder herladen)');
       }
       
-      if (navigation && navigation.laadNavigatie) {
-        setTimeout(async () => {
-          await navigation.laadNavigatie();
-          console.log('✅ Navigatie volledig herladen via laadNavigatie');
-        }, 300);
-      }
+      // ❌ VERWIJDERD: laadNavigatie wordt niet meer aangeroepen
+      
     } catch (navError) {
       console.warn('⚠️ Navigation module import error:', navError);
     }
@@ -106,14 +102,12 @@ async function syncModuleDefaults() {
   try {
     showToast('🔄 Bezig met synchroniseren...', 'info');
     
-    // 1. Haal alle standaard waarden op
     const { data: modules, error: modError } = await supabase
       .from('modules')
       .select('module_sleutel, standaard_aan');
     
     if (modError) throw modError;
     
-    // 2. Haal alle gebruikers op
     const { data: gebruikers, error: userError } = await supabase
       .from('gebruikers_rollen')
       .select('user_id')
@@ -123,9 +117,7 @@ async function syncModuleDefaults() {
     
     let totalAdded = 0;
     
-    // 3. Voor elke gebruiker en elke module, check of er rechten zijn
     for (const gebruiker of gebruikers) {
-      // Haal bestaande rechten op voor deze gebruiker
       const { data: bestaandeRechten, error: rechtError } = await supabase
         .from('gebruikers_module_rechten')
         .select('module_sleutel')
@@ -135,10 +127,8 @@ async function syncModuleDefaults() {
       
       const bestaandeSleutels = bestaandeRechten.map(r => r.module_sleutel);
       
-      // Voor elke module, voeg rechten toe als ze niet bestaan
       for (const module of modules) {
         if (!bestaandeSleutels.includes(module.module_sleutel)) {
-          // Geen expliciete rechten, voeg standaard waarde toe
           const { error: insertError } = await supabase
             .from('gebruikers_module_rechten')
             .insert({
@@ -158,10 +148,7 @@ async function syncModuleDefaults() {
     
     showToast(`✅ Synchronisatie voltooid! ${totalAdded} rechten toegevoegd.`, 'success');
     
-    // Herlaad de modules lijst
     await laadAlleModules();
-    
-    // Herlaad de navigatie
     await refreshNavigatie();
     
   } catch (err) {
@@ -232,7 +219,6 @@ async function laadGebruikersVoorModules() {
 
     gebruikersModuleLijst.innerHTML = html;
 
-    // Search functionaliteit
     if (searchModuleUserInput) {
       const term = searchModuleUserInput.value.toLowerCase();
       const rows = gebruikersModuleLijst.querySelectorAll('table tbody tr');
@@ -361,18 +347,8 @@ async function saveModuleRights() {
 async function laadAlleModules() {
   console.log('📦 laadAlleModules aangeroepen...');
   if (!modulesLijst) return;
-  
-  // 🔥 HARD RESET: verwijder de hele container en maak hem opnieuw
-  const parent = modulesLijst.parentNode;
-  const newContainer = document.createElement('div');
-  newContainer.id = 'modulesLijst';
-  newContainer.className = 'module-tabel';
-  newContainer.innerHTML = '<p>Bezig met laden...</p>';
-  parent.replaceChild(newContainer, modulesLijst);
-  
-  // Update de referentie
-  const nieuweModulesLijst = document.getElementById('modulesLijst');
-  
+  modulesLijst.innerHTML = '<p>Bezig met laden...</p>';
+
   try {
     const { data, error } = await supabase
       .from('modules')
@@ -384,7 +360,7 @@ async function laadAlleModules() {
     console.log('📊 Aantal modules geladen:', alleModules.length);
 
     if (alleModules.length === 0) {
-      nieuweModulesLijst.innerHTML = '<p>Geen modules gevonden. Klik op "+ Nieuwe module" om er een toe te voegen.</p>';
+      modulesLijst.innerHTML = '<p>Geen modules gevonden. Klik op "+ Nieuwe module" om er een toe te voegen.</p>';
       return;
     }
 
@@ -426,9 +402,8 @@ async function laadAlleModules() {
       </div>
     `;
 
-    nieuweModulesLijst.innerHTML = html;
+    modulesLijst.innerHTML = html;
 
-    // Event listeners
     document.querySelectorAll('.edit-module-btn').forEach(btn => {
       btn.addEventListener('click', () => bewerkModule(btn.dataset.id));
     });
@@ -437,11 +412,20 @@ async function laadAlleModules() {
       btn.addEventListener('click', () => verwijderModule(btn.dataset.id));
     });
 
+    if (searchModulesInput) {
+      const term = searchModulesInput.value.toLowerCase();
+      const rows = modulesLijst.querySelectorAll('table tbody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    }
+
     console.log('✅ Modules tabel bijgewerkt met', alleModules.length, 'modules');
 
   } catch (err) {
     console.error('Fout bij laden modules:', err);
-    nieuweModulesLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
+    modulesLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
   }
 }
 
@@ -525,11 +509,8 @@ async function saveModule() {
     currentModuleId = null;
     resetModulePopup();
     
-    // 🔥 FORCEER EEN VOLLEDIGE HERLADING VAN DE PAGINA
-    // Dit is de enige manier die altijd werkt
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
+    await laadAlleModules();
+    await refreshNavigatie();
 
   } catch (err) {
     console.error('Fout bij opslaan module:', err);
@@ -603,7 +584,6 @@ function setValue(id, value) {
 // ============================================================
 
 function setupSearchListeners() {
-  // Per gebruiker - zoekfunctionaliteit
   if (searchModuleUserInput) {
     searchModuleUserInput.addEventListener('input', function() {
       const term = this.value.toLowerCase();
@@ -626,7 +606,6 @@ function setupSearchListeners() {
     });
   }
 
-  // Alle modules - zoekfunctionaliteit
   if (searchModulesInput) {
     searchModulesInput.addEventListener('input', function() {
       const term = this.value.toLowerCase();
@@ -681,7 +660,6 @@ async function initModules() {
 
   // ===== EVENT LISTENERS =====
 
-  // Module rechten popup
   if (saveModuleRightsBtn) {
     saveModuleRightsBtn.addEventListener('click', saveModuleRights);
   }
@@ -692,7 +670,6 @@ async function initModules() {
     });
   }
 
-  // Module edit popup
   if (addModuleBtn) {
     addModuleBtn.addEventListener('click', () => {
       currentModuleId = null;
@@ -714,7 +691,6 @@ async function initModules() {
     });
   }
 
-  // 🔥 Refresh modules knop
   if (refreshModulesBtn) {
     refreshModulesBtn.addEventListener('click', async () => {
       showToast('🔄 Bezig met verversen...', 'info');
@@ -723,12 +699,10 @@ async function initModules() {
     });
   }
 
-  // 🔥 Sync standaard waarden knop
   if (syncModuleDefaultsBtn) {
     syncModuleDefaultsBtn.addEventListener('click', syncModuleDefaults);
   }
 
-  // Popups sluiten bij klik buiten
   window.addEventListener('click', (e) => {
     if (e.target === modulePopup) {
       modulePopup.style.display = 'none';
