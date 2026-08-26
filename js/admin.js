@@ -60,6 +60,39 @@ function setValue(id, value) {
 }
 
 // ============================================================
+// TABS FUNCTIE
+// ============================================================
+function initTabs() {
+  console.log('🔍 Tabs initialiseren...');
+  const tabs = document.querySelectorAll('.tab-btn');
+  console.log(`📋 ${tabs.length} tabs gevonden`);
+  
+  tabs.forEach(tab => {
+    tab.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log(`🔄 Tab geklikt: ${this.dataset.tab}`);
+      
+      // Alle tabs en panes uitschakelen
+      document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.admin-tab').forEach(p => p.classList.remove('active'));
+      
+      // Huidige tab activeren
+      this.classList.add('active');
+      const tabName = this.dataset.tab;
+      const paneId = 'tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1);
+      const pane = document.getElementById(paneId);
+      if (pane) {
+        pane.classList.add('active');
+        console.log(`✅ Pane geactiveerd: ${paneId}`);
+      } else {
+        console.warn(`⚠️ Pane niet gevonden: ${paneId}`);
+      }
+    });
+  });
+}
+
+// ============================================================
 // GEBRUIKERS FUNCTIES
 // ============================================================
 
@@ -104,6 +137,9 @@ async function laadGebruikers() {
               <th style="padding: 12px; text-align: left;">Gebruikersnaam</th>
               <th style="padding: 12px; text-align: left;">E-mail</th>
               <th style="padding: 12px; text-align: left;">Rol</th>
+              <th style="padding: 12px; text-align: left;">Chauffeur</th>
+              <th style="padding: 12px; text-align: left;">Chauffeursnummer</th>
+              <th style="padding: 12px; text-align: left;">Telefoon</th>
               <th style="padding: 12px; text-align: left;">Status</th>
               <th style="padding: 12px; text-align: left;">Aangemaakt</th>
               <th style="padding: 12px; text-align: left;">Acties</th>
@@ -130,6 +166,9 @@ async function laadGebruikers() {
           <td style="padding: 12px;"><strong>${escapeHtml(rol.gebruikersnaam || '-')}</strong></td>
           <td style="padding: 12px;">${escapeHtml(emailDisplay)}</td>
           <td style="padding: 12px;">${rol.rol === 'admin' ? '👑 Admin' : '👤 Gebruiker'}</td>
+          <td style="padding: 12px;">${rol.is_chauffeur ? '✅ Ja' : '❌ Nee'}</td>
+          <td style="padding: 12px;">${escapeHtml(rol.chauffeur_nummer || '-')}</td>
+          <td style="padding: 12px;">${escapeHtml(rol.chauffeur_telefoon || '-')}</td>
           <td style="padding: 12px;">${statusDisplay}</td>
           <td style="padding: 12px;">${new Date(rol.created_at).toLocaleDateString('nl-NL')}</td>
           <td style="padding: 12px;" class="admin-buttons">
@@ -152,50 +191,64 @@ async function laadGebruikers() {
 
     gebruikersLijst.innerHTML = html;
 
+    // ===== GOEDKEUREN =====
     document.querySelectorAll('.approve-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const userId = btn.dataset.userid;
         if (!confirm('Weet je zeker dat je deze gebruiker wilt goedkeuren?')) return;
+        
         const row = btn.closest('tr');
         const gebruikersnaam = row?.querySelector('td:first-child')?.textContent || 'Onbekend';
+
         const { error } = await supabase
           .from('gebruikers_rollen')
           .update({ status: 'goedgekeurd' })
           .eq('user_id', userId);
+
         if (error) {
           showToast('Fout: ' + error.message, 'error');
         } else {
           await logActie('goedgekeurd', 'gebruikers', userId, gebruikersnaam);
           showToast('✅ Gebruiker goedgekeurd!', 'success');
           laadGebruikers();
+          laadChauffeurs();
+          laadStatistieken();
         }
       });
     });
 
+    // ===== WEIGEREN =====
     document.querySelectorAll('.reject-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const userId = btn.dataset.userid;
         if (!confirm('Weet je zeker dat je deze gebruiker wilt weigeren?')) return;
+        
         const row = btn.closest('tr');
         const gebruikersnaam = row?.querySelector('td:first-child')?.textContent || 'Onbekend';
+
         const { error } = await supabase
           .from('gebruikers_rollen')
           .update({ status: 'geweigerd' })
           .eq('user_id', userId);
+
         if (error) {
           showToast('Fout: ' + error.message, 'error');
         } else {
           await logActie('geweigerd', 'gebruikers', userId, gebruikersnaam);
           showToast('❌ Gebruiker geweigerd.', 'error');
           laadGebruikers();
+          laadChauffeurs();
+          laadStatistieken();
         }
       });
     });
 
+    // ===== BEWERKEN =====
     document.querySelectorAll('.edit-user-btn').forEach(btn => {
       btn.addEventListener('click', () => bewerkGebruiker(btn.dataset.userid));
     });
 
+    // ===== VERWIJDEREN =====
     document.querySelectorAll('.delete-user-btn').forEach(btn => {
       btn.addEventListener('click', () => verwijderGebruiker(btn.dataset.userid));
     });
@@ -221,6 +274,10 @@ async function bewerkGebruiker(userId) {
     setValue('userEmail', data.user_id || '');
     setValue('userPassword', '');
     setValue('userRol', data.rol || 'gebruiker');
+    setValue('userIsChauffeur', data.is_chauffeur ? 'true' : 'false');
+    setValue('chauffeurNummer', data.chauffeur_nummer || '');
+    setValue('chauffeurTelefoon', data.chauffeur_telefoon || '');
+    chauffeurVelden.style.display = data.is_chauffeur ? 'block' : 'none';
     userPopup.style.display = 'flex';
   } catch (err) {
     showToast('Fout: ' + err.message, 'error');
@@ -232,6 +289,9 @@ async function saveUser() {
   const email = getValue('userEmail');
   const password = getValue('userPassword');
   const rol = getValue('userRol');
+  const isChauffeur = getValue('userIsChauffeur') === 'true';
+  const chauffeurNummer = getValue('chauffeurNummer');
+  const chauffeurTelefoon = getValue('chauffeurTelefoon');
 
   if (!gebruikersnaam) {
     showToast('Vul een gebruikersnaam in', 'error');
@@ -242,7 +302,9 @@ async function saveUser() {
     const userData = {
       gebruikersnaam: gebruikersnaam,
       rol: rol,
-      is_chauffeur: false,
+      is_chauffeur: isChauffeur,
+      chauffeur_nummer: isChauffeur ? chauffeurNummer : null,
+      chauffeur_telefoon: isChauffeur ? chauffeurTelefoon : null,
       status: 'goedgekeurd'
     };
 
@@ -268,18 +330,18 @@ async function saveUser() {
       if (authError) throw authError;
       if (!authData.user) throw new Error('Account kon niet worden aangemaakt');
 
-      nieuweUserId = authData.user.id;
+      neueUserId = authData.user.id;
       result = await supabase
         .from('gebruikers_rollen')
         .insert([{
-          user_id: nieuweUserId,
+          user_id: neueUserId,
           ...userData
         }]);
     }
 
     if (result.error) throw result.error;
 
-    const userId = currentEditingUserId || nieuweUserId || result.data?.[0]?.user_id;
+    const userId = currentEditingUserId || neueUserId || result.data?.[0]?.user_id;
 
     if (isNieuweGebruiker) {
       await logActie('toegevoegd', 'gebruikers', userId, gebruikersnaam);
@@ -290,6 +352,7 @@ async function saveUser() {
     showToast('✅ Gebruiker opgeslagen!', 'success');
     userPopup.style.display = 'none';
     laadGebruikers();
+    laadChauffeurs();
     laadStatistieken();
   } catch (err) {
     console.error('Fout bij opslaan:', err);
@@ -335,6 +398,7 @@ async function verwijderGebruiker(userId) {
     await logActie('verwijderd', 'gebruikers', userId, gebruikersnaam);
     showToast('✅ Gebruiker verwijderd!', 'success');
     laadGebruikers();
+    laadChauffeurs();
     laadStatistieken();
   } catch (err) {
     console.error('❌ Fout bij verwijderen:', err);
@@ -573,10 +637,14 @@ async function initAdmin() {
   console.log('🔄 Admin initialisatie gestart...');
 
   const isAdmin = await requireAdmin('dashboard.html');
-  if (!isAdmin) return;
+  if (!isAdmin) {
+    console.warn('⚠️ Geen admin rechten, redirect...');
+    return;
+  }
 
   console.log('✅ Admin rechten bevestigd');
 
+  // Reset zoektermen
   huidigeUserZoekterm = '';
   huidigeChauffeurZoekterm = '';
   if (searchUserInput) {
@@ -588,12 +656,23 @@ async function initAdmin() {
     searchChauffeurInput.setAttribute('autocomplete', 'off');
   }
 
+  // Initialiseer tabs
+  initTabs();
+
+  // Laad data
   await laadGebruikers();
   await laadChauffeurs();
   await laadStatistieken();
 
+  // Zorg dat de eerste tab actief is
+  const firstTab = document.querySelector('.tab-btn');
+  if (firstTab) {
+    firstTab.click();
+  }
+
   // ===== EVENT LISTENERS =====
 
+  // Gebruiker toevoegen
   if (addUserBtn) {
     addUserBtn.addEventListener('click', () => {
       currentEditingUserId = null;
@@ -602,6 +681,10 @@ async function initAdmin() {
       setValue('userEmail', '');
       setValue('userPassword', '');
       setValue('userRol', 'gebruiker');
+      setValue('userIsChauffeur', 'false');
+      setValue('chauffeurNummer', '');
+      setValue('chauffeurTelefoon', '');
+      chauffeurVelden.style.display = 'none';
       userPopup.style.display = 'flex';
     });
   }
@@ -616,6 +699,7 @@ async function initAdmin() {
     });
   }
 
+  // Chauffeur toevoegen
   if (addChauffeurBtn) {
     addChauffeurBtn.addEventListener('click', () => {
       currentChauffeurId = null;
@@ -637,6 +721,7 @@ async function initAdmin() {
     });
   }
 
+  // Zoekfunctionaliteit gebruikers
   if (searchUserInput) {
     searchUserInput.addEventListener('input', (e) => {
       huidigeUserZoekterm = e.target.value;
@@ -653,6 +738,7 @@ async function initAdmin() {
     });
   }
 
+  // Zoekfunctionaliteit chauffeurs
   if (searchChauffeurInput) {
     searchChauffeurInput.addEventListener('input', (e) => {
       huidigeChauffeurZoekterm = e.target.value;
@@ -669,6 +755,7 @@ async function initAdmin() {
     });
   }
 
+  // Startpunt opslaan
   if (saveStartpuntBtn && startpuntInstelling) {
     saveStartpuntBtn.addEventListener('click', () => {
       const startpunt = startpuntInstelling.value;
@@ -683,7 +770,9 @@ async function initAdmin() {
 
   // Popups sluiten bij klik buiten
   window.addEventListener('click', (e) => {
-    if (e.target === userPopup) userPopup.style.display = 'none';
+    if (e.target === userPopup) {
+      userPopup.style.display = 'none';
+    }
     if (e.target === chauffeurPopup) {
       chauffeurPopup.style.display = 'none';
       currentChauffeurId = null;
