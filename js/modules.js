@@ -507,21 +507,81 @@ async function saveModule() {
     currentModuleId = null;
     resetModulePopup();
     
-    // 🔥 FORCEER EEN VOLLEDIGE HERLADING VAN DE TABEL
-    // Sluit de popup eerst
-    moduleEditPopup.style.display = 'none';
+    // 🔥 HERLAAD DE DATA DIRECT EN VERVANG DE TABEL
+    // Haal de nieuwste data op
+    const { data: freshData, error: freshError } = await supabase
+      .from('modules')
+      .select('*')
+      .order('module_naam');
     
-    // Wacht kort en herlaad dan de tabel
-    setTimeout(async () => {
-      await laadAlleModules();
-      console.log('✅ Tabel herladen na opslaan');
-    }, 100);
+    if (!freshError && freshData) {
+      alleModules = freshData;
+      console.log('📊 Verse data geladen:', alleModules.length);
+      
+      // Bouw de tabel opnieuw met de verse data
+      if (alleModules.length === 0) {
+        modulesLijst.innerHTML = '<p>Geen modules gevonden. Klik op "+ Nieuwe module" om er een toe te voegen.</p>';
+        return;
+      }
+
+      let html = `
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+              <tr style="background-color: #f8f9fa;">
+                <th style="padding: 12px; text-align: left;">Module naam</th>
+                <th style="padding: 12px; text-align: left;">Sleutel</th>
+                <th style="padding: 12px; text-align: left;">Beschrijving</th>
+                <th style="padding: 12px; text-align: left;">Standaard aan</th>
+                <th style="padding: 12px; text-align: left;">Acties</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      for (const module of alleModules) {
+        const standaardDisplay = module.standaard_aan ? '✅ Ja' : '❌ Nee';
+        
+        html += `
+          <tr style="border-bottom: 1px solid #e9ecef;" data-moduleid="${module.id}">
+            <td style="padding: 12px;"><strong>${escapeHtml(module.module_naam)}</strong></td>
+            <td style="padding: 12px;"><code>${escapeHtml(module.module_sleutel)}</code></td>
+            <td style="padding: 12px;">${escapeHtml(module.beschrijving || '-')}</td>
+            <td style="padding: 12px;"><strong style="color: ${module.standaard_aan ? '#28a745' : '#dc3545'};">${standaardDisplay}</strong></td>
+            <td style="padding: 12px;" class="admin-buttons">
+              <button class="btn btn-secondary edit-module-btn" data-id="${module.id}">✏️ Bewerken</button>
+              <button class="btn btn-danger delete-module-btn" data-id="${module.id}">🗑️ Verwijderen</button>
+            </td>
+          </tr>
+        `;
+      }
+
+      html += `
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      modulesLijst.innerHTML = html;
+
+      document.querySelectorAll('.edit-module-btn').forEach(btn => {
+        btn.addEventListener('click', () => bewerkModule(btn.dataset.id));
+      });
+
+      document.querySelectorAll('.delete-module-btn').forEach(btn => {
+        btn.addEventListener('click', () => verwijderModule(btn.dataset.id));
+      });
+
+      console.log('✅ Tabel bijgewerkt met verse data');
+    }
+
+    await refreshNavigatie();
 
   } catch (err) {
     console.error('Fout bij opslaan module:', err);
     showToast('❌ Fout: ' + err.message, 'error');
   }
-}
+ }
 
 async function verwijderModule(id) {
   if (!confirm('Weet je zeker dat je deze module wilt verwijderen?')) return;
