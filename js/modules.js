@@ -502,6 +502,7 @@ async function saveModule() {
     currentModuleId = null;
     resetModulePopup();
     
+    // 🔥 DIRECT DE TABEL VERNIEUWEN (zonder setTimeout)
     await laadAlleModules();
     await laadGebruikersVoorModules();
     await refreshNavigatie();
