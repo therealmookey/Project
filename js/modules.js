@@ -59,6 +59,91 @@ function initTabs() {
 }
 
 // ============================================================
+// HELPER: NAVIGATIE CACHE LEEGMAKEN (VERBETERD)
+// ============================================================
+async function refreshNavigatie() {
+  try {
+    // Methode 1: Importeer navigation en herlaad modules
+    const { default: navigation } = await import('./core/navigation.js');
+    
+    // 🔥 Forceer cache reset in navigation.js
+    if (navigation && navigation._resetCache) {
+      await navigation._resetCache();
+    }
+    
+    // 🔥 Herlaad de module links
+    if (navigation && navigation.filterNavigatieModules) {
+      await navigation.filterNavigatieModules();
+      console.log('✅ Navigatie cache geleegd en herladen (methode 1)');
+    }
+    
+    // Methode 2: Directe DOM manipulatie als fallback
+    const moduleLinks = document.querySelectorAll('.module-link');
+    console.log(`🔍 ${moduleLinks.length} module links gevonden voor directe refresh`);
+    
+    // Haal de huidige gebruiker op
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.warn('⚠️ Geen gebruiker ingelogd voor directe refresh');
+      return;
+    }
+    
+    // Haal alle rechten op voor de gebruiker
+    const { data: rechten, error } = await supabase
+      .from('gebruikers_module_rechten')
+      .select('module_sleutel, actief')
+      .eq('user_id', user.id);
+    
+    if (error) {
+      console.warn('⚠️ Kon rechten niet ophalen voor directe refresh:', error);
+      return;
+    }
+    
+    // Bouw een map van rechten
+    const rechtenMap = {};
+    rechten.forEach(r => {
+      rechtenMap[r.module_sleutel] = r.actief;
+    });
+    
+    // Update de zichtbaarheid van elke link
+    moduleLinks.forEach(link => {
+      const moduleSleutel = link.dataset.module;
+      if (!moduleSleutel) {
+        link.style.display = 'inline-block';
+        return;
+      }
+      
+      const heeftToegang = rechtenMap[moduleSleutel] === true;
+      if (heeftToegang) {
+        link.style.display = 'inline-block';
+        link.classList.add('visible');
+      } else {
+        link.style.display = 'none';
+        link.classList.remove('visible');
+      }
+    });
+    
+    console.log('✅ Navigatie direct bijgewerkt (methode 2)');
+    
+    // Methode 3: Herlaad de hele navigatie
+    if (navigation && navigation.laadNavigatie) {
+      setTimeout(async () => {
+        await navigation.laadNavigatie();
+        console.log('✅ Navigatie volledig herladen (methode 3)');
+      }, 500);
+    }
+    
+  } catch (err) {
+    console.warn('⚠️ Fout bij refreshen navigatie:', err);
+    
+    // Fallback: herlaad de pagina na 1 seconde
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  }
+}
+
+// ============================================================
 // TAB 1: PER GEBRUIKER
 // ============================================================
 
@@ -118,27 +203,7 @@ async function laadGebruikersVoorModules() {
       </div>
     `;
 
-    // Zoekfunctionaliteit
-    const searchTerm = searchModuleUserInput?.value?.toLowerCase() || '';
-    const rows = gebruikersModuleLijst.querySelectorAll('table tbody tr');
-    if (rows.length > 0) {
-      rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
-      });
-    }
-
     gebruikersModuleLijst.innerHTML = html;
-
-    // Re-apply zoekfilter na render
-    if (searchModuleUserInput && searchModuleUserInput.value) {
-      const newRows = gebruikersModuleLijst.querySelectorAll('table tbody tr');
-      const term = searchModuleUserInput.value.toLowerCase();
-      newRows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(term) ? '' : 'none';
-      });
-    }
 
     document.querySelectorAll('.module-rechten-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -242,7 +307,12 @@ async function saveModuleRights() {
 
     showToast('✅ Module rechten opgeslagen!', 'success');
     modulePopup.style.display = 'none';
-    laadGebruikersVoorModules();
+    
+    // Herlaad de gebruikerslijst
+    await laadGebruikersVoorModules();
+    
+    // 🔥 Herlaad de navigatie zodat de wijzigingen direct zichtbaar zijn
+    await refreshNavigatie();
 
   } catch (err) {
     console.error('Fout bij opslaan module rechten:', err);
@@ -310,27 +380,7 @@ async function laadAlleModules() {
       </div>
     `;
 
-    // Zoekfunctionaliteit
-    const searchTerm = searchModulesInput?.value?.toLowerCase() || '';
-    const rows = modulesLijst.querySelectorAll('table tbody tr');
-    if (rows.length > 0) {
-      rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
-      });
-    }
-
     modulesLijst.innerHTML = html;
-
-    // Re-apply zoekfilter na render
-    if (searchModulesInput && searchModulesInput.value) {
-      const newRows = modulesLijst.querySelectorAll('table tbody tr');
-      const term = searchModulesInput.value.toLowerCase();
-      newRows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(term) ? '' : 'none';
-      });
-    }
 
     document.querySelectorAll('.edit-module-btn').forEach(btn => {
       btn.addEventListener('click', () => bewerkModule(btn.dataset.id));
@@ -426,8 +476,12 @@ async function saveModule() {
     moduleEditPopup.style.display = 'none';
     currentModuleId = null;
     resetModulePopup();
-    laadAlleModules();
-    laadGebruikersVoorModules(); // Herlaad ook de gebruikers lijst zodat nieuwe module zichtbaar is
+    await laadAlleModules();
+    await laadGebruikersVoorModules();
+    
+    // 🔥 Herlaad de navigatie zodat de wijzigingen direct zichtbaar zijn
+    await refreshNavigatie();
+
   } catch (err) {
     console.error('Fout bij opslaan module:', err);
     showToast('❌ Fout: ' + err.message, 'error');
@@ -438,10 +492,11 @@ async function verwijderModule(id) {
   if (!confirm('Weet je zeker dat je deze module wilt verwijderen?')) return;
 
   // Controleer of de module in gebruik is
+  const moduleSleutel = alleModules.find(m => m.id === id)?.module_sleutel;
   const { count, error: countError } = await supabase
     .from('gebruikers_module_rechten')
     .select('*', { count: 'exact', head: true })
-    .eq('module_sleutel', alleModules.find(m => m.id === id)?.module_sleutel);
+    .eq('module_sleutel', moduleSleutel);
 
   if (countError) {
     console.error('Fout bij controleren module gebruik:', countError);
@@ -455,7 +510,6 @@ async function verwijderModule(id) {
 
   try {
     // Verwijder eerst de rechten voor deze module
-    const moduleSleutel = alleModules.find(m => m.id === id)?.module_sleutel;
     if (moduleSleutel) {
       await supabase
         .from('gebruikers_module_rechten')
@@ -473,8 +527,12 @@ async function verwijderModule(id) {
 
     await logActie('verwijderd', 'modules', id);
     showToast('✅ Module verwijderd!', 'success');
-    laadAlleModules();
-    laadGebruikersVoorModules();
+    await laadAlleModules();
+    await laadGebruikersVoorModules();
+    
+    // 🔥 Herlaad de navigatie zodat de wijzigingen direct zichtbaar zijn
+    await refreshNavigatie();
+
   } catch (err) {
     console.error('Fout bij verwijderen module:', err);
     showToast('❌ Fout: ' + err.message, 'error');
@@ -496,38 +554,10 @@ function setValue(id, value) {
 }
 
 // ============================================================
-// INITIALISATIE
+// ZOEKFUNCTIES
 // ============================================================
 
-async function initModules() {
-  if (isInitialized) return;
-  isInitialized = true;
-
-  console.log('🔄 Modules initialisatie gestart...');
-
-  const isAdmin = await requireAdmin('dashboard.html');
-  if (!isAdmin) {
-    console.warn('⚠️ Geen admin rechten, redirect...');
-    return;
-  }
-
-  console.log('✅ Admin rechten bevestigd');
-
-  // Initialiseer tabs
-  initTabs();
-
-  // Laad data voor beide tabs
-  await laadGebruikersVoorModules();
-  await laadAlleModules();
-
-  // Zorg dat de eerste tab actief is
-  const firstTab = document.querySelector('.module-tabs .tab-btn');
-  if (firstTab) {
-    firstTab.click();
-  }
-
-  // ===== EVENT LISTENERS =====
-
+function setupSearchListeners() {
   // Per gebruiker - zoekfunctionaliteit
   if (searchModuleUserInput) {
     searchModuleUserInput.addEventListener('input', function() {
@@ -573,6 +603,43 @@ async function initModules() {
       searchModulesInput.focus();
     });
   }
+}
+
+// ============================================================
+// INITIALISATIE
+// ============================================================
+
+async function initModules() {
+  if (isInitialized) return;
+  isInitialized = true;
+
+  console.log('🔄 Modules initialisatie gestart...');
+
+  const isAdmin = await requireAdmin('dashboard.html');
+  if (!isAdmin) {
+    console.warn('⚠️ Geen admin rechten, redirect...');
+    return;
+  }
+
+  console.log('✅ Admin rechten bevestigd');
+
+  // Initialiseer tabs
+  initTabs();
+
+  // Laad data voor beide tabs
+  await laadGebruikersVoorModules();
+  await laadAlleModules();
+
+  // Setup zoekfunctionaliteit
+  setupSearchListeners();
+
+  // Zorg dat de eerste tab actief is
+  const firstTab = document.querySelector('.module-tabs .tab-btn');
+  if (firstTab) {
+    firstTab.click();
+  }
+
+  // ===== EVENT LISTENERS =====
 
   // Module rechten popup
   if (saveModuleRightsBtn) {
