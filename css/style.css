@@ -4720,8 +4720,12 @@ hr {
   border-top-color: #2a2a4e;
   color: #d0d0d0;
 }
-/* ===== FILTERS ===== */
-.filter-row {
+/* ===== ANALYTICS FILTERS ===== */
+.analytics-filters {
+  padding-bottom: 16px;  /* Alleen padding voor de analytics filters */
+}
+
+.analytics-filters .filter-row {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
@@ -4729,7 +4733,7 @@ hr {
   width: 100%;
 }
 
-.filter-item {
+.analytics-filters .filter-item {
   display: flex;
   flex-direction: column;
   flex: 0 1 auto;
@@ -4737,7 +4741,7 @@ hr {
   max-width: 180px;
 }
 
-.filter-item label {
+.analytics-filters .filter-item label {
   font-size: 0.8rem;
   color: #495057;
   margin-bottom: 4px;
@@ -4745,7 +4749,7 @@ hr {
   white-space: nowrap;
 }
 
-.filter-item .form-input {
+.analytics-filters .filter-item .form-input {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid #ddd;
@@ -4757,29 +4761,27 @@ hr {
   box-sizing: border-box;
 }
 
-.filter-item .form-input:focus {
+.analytics-filters .filter-item .form-input:focus {
   outline: none;
   border-color: #2c7da0;
   box-shadow: 0 0 0 3px rgba(44, 125, 160, 0.1);
 }
 
-.filter-buttons-group {
+.analytics-filters .filter-buttons-group {
   display: flex;
   flex-direction: column;
   flex: 0 1 auto;
   justify-content: flex-end;
-  /* 🔥 Extra marge boven de knoppen */
-  padding-bottom: 16px;
 }
 
-.filter-buttons {
+.analytics-filters .filter-buttons {
   display: flex;
   gap: 8px;
   align-items: center;
   height: 38px;
 }
 
-.filter-buttons .btn {
+.analytics-filters .filter-buttons .btn {
   padding: 0 16px;
   font-size: 0.85rem;
   white-space: nowrap;
@@ -4795,20 +4797,20 @@ hr {
   line-height: 1;
 }
 
-/* 🔥 Datumvelden */
-#analyticsDatumVanafGroup,
-#analyticsDatumTotGroup {
+/* 🔥 Datumvelden - alleen in analytics */
+.analytics-filters #analyticsDatumVanafGroup,
+.analytics-filters #analyticsDatumTotGroup {
   flex: 0 1 auto;
   min-width: 130px;
   max-width: 160px;
 }
 
-#analyticsDatumVanafGroup,
-#analyticsDatumTotGroup {
+.analytics-filters #analyticsDatumVanafGroup,
+.analytics-filters #analyticsDatumTotGroup {
   display: none !important;
 }
 
-#analyticsDatumVanafGroup.show,
-#analyticsDatumTotGroup.show {
+.analytics-filters #analyticsDatumVanafGroup.show,
+.analytics-filters #analyticsDatumTotGroup.show {
   display: flex !important;
 }
