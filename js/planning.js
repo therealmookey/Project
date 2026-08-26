@@ -405,7 +405,7 @@ async function verwijderPlanning(id) {
 }
 
 // ============================================================
-// PDF GENERATIE (Werkende versie)
+// PDF GENERATIE (Verbeterd met alle details voor chauffeur)
 // ============================================================
 async function genereerPDFVoorDag(datum) {
   const planningen = allePlanningen.filter(p => p.datum === datum);
@@ -420,7 +420,7 @@ async function genereerPDFVoorDag(datum) {
 
     const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
 
-    // Bouw de print-HTML
+    // Bouw de print-HTML met alle details
     let printContent = `
       <!DOCTYPE html>
       <html>
@@ -431,7 +431,7 @@ async function genereerPDFVoorDag(datum) {
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { 
             font-family: 'Segoe UI', Arial, sans-serif; 
-            padding: 40px; 
+            padding: 30px; 
             background: white;
             color: #333;
           }
@@ -445,7 +445,7 @@ async function genereerPDFVoorDag(datum) {
           }
           .header h1 {
             color: #2c7da0;
-            font-size: 24px;
+            font-size: 22px;
             margin: 0;
           }
           .header p {
@@ -456,33 +456,89 @@ async function genereerPDFVoorDag(datum) {
           .total {
             font-size: 14px;
             margin-bottom: 15px;
-            padding: 10px;
+            padding: 10px 15px;
             background: #f8f9fa;
-            border-radius: 4px;
+            border-radius: 6px;
+            border-left: 4px solid #2c7da0;
           }
+          .total strong {
+            color: #2c7da0;
+          }
+          
+          /* Tabel styling */
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 13px;
+            font-size: 12px;
             margin-top: 10px;
           }
           th {
             background-color: #2c7da0;
             color: white;
-            padding: 10px 12px;
+            padding: 10px 10px;
             text-align: left;
             border: 1px solid #2c7da0;
+            font-weight: 600;
           }
           td {
-            padding: 8px 12px;
+            padding: 10px 10px;
             border: 1px solid #ddd;
+            vertical-align: top;
           }
           tr:nth-child(even) {
             background-color: #f8f9fa;
           }
-          .status-gepland { color: #856404; }
-          .status-uitgevoerd { color: #155724; }
-          .status-geannuleerd { color: #721c24; }
+          
+          /* Status kleuren */
+          .status-gepland { 
+            color: #856404; 
+            font-weight: 500;
+          }
+          .status-uitgevoerd { 
+            color: #155724; 
+            font-weight: 500;
+          }
+          .status-geannuleerd { 
+            color: #721c24; 
+            font-weight: 500;
+          }
+          
+          /* Details in de tabel */
+          .detail-label {
+            font-weight: 600;
+            color: #2c7da0;
+            font-size: 11px;
+            display: block;
+            margin-top: 3px;
+          }
+          .detail-value {
+            display: block;
+            font-size: 12px;
+            color: #333;
+          }
+          .opmerking-box {
+            background: #fff8e1;
+            padding: 6px 8px;
+            border-radius: 4px;
+            border-left: 3px solid #ffc107;
+            margin-top: 4px;
+            font-size: 11px;
+            color: #6d5d00;
+          }
+          .extra-info-box {
+            background: #e3f2fd;
+            padding: 6px 8px;
+            border-radius: 4px;
+            border-left: 3px solid #2196f3;
+            margin-top: 4px;
+            font-size: 11px;
+            color: #0d47a1;
+          }
+          .telefoon-link {
+            color: #2c7da0;
+            text-decoration: none;
+          }
+          
           .footer {
             margin-top: 30px;
             padding-top: 15px;
@@ -492,8 +548,10 @@ async function genereerPDFVoorDag(datum) {
             font-size: 11px;
           }
           @media print {
-            body { padding: 20px; }
+            body { padding: 15px; }
             .no-print { display: none; }
+            .opmerking-box { background: #fff8e1 !important; }
+            .extra-info-box { background: #e3f2fd !important; }
           }
         </style>
       </head>
@@ -503,17 +561,18 @@ async function genereerPDFVoorDag(datum) {
           <p>${formatDate(datum)}</p>
         </div>
         <div class="total">
-          <strong>Totaal ritten:</strong> ${sortedPlanningen.length}
+          <strong>Totaal ritten:</strong> ${sortedPlanningen.length} &nbsp;|&nbsp; 
+          <strong>Datum:</strong> ${formatDate(datum)}
         </div>
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Ziekenhuis</th>
-              <th>Adres</th>
-              <th>Type</th>
-              <th>Details</th>
-              <th>Status</th>
+              <th style="width:40px;">#</th>
+              <th style="width:180px;">Ziekenhuis</th>
+              <th style="width:140px;">Adres</th>
+              <th style="width:70px;">Type</th>
+              <th style="width:140px;">Details</th>
+              <th style="width:70px;">Status</th>
             </tr>
           </thead>
           <tbody>
@@ -521,28 +580,55 @@ async function genereerPDFVoorDag(datum) {
 
     sortedPlanningen.forEach((planning, index) => {
       const typeLabel = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
-      let details = '';
-      if (planning.type === 'ophaling' && planning.aantal_tonnen) {
-        details = `${planning.aantal_tonnen} ton(nen)`;
-      } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
-        details = `${planning.aantal_lege_tonnen} lege ton(nen)`;
-      }
       const statusClass = planning.status || 'gepland';
+      
+      // Details: aantal tonnen of lege tonnen
+      let detailsHtml = '';
+      if (planning.type === 'ophaling' && planning.aantal_tonnen) {
+        detailsHtml += `<span class="detail-label">Aantal tonnen</span><span class="detail-value">${planning.aantal_tonnen} ton(nen)</span>`;
+      } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
+        detailsHtml += `<span class="detail-label">Lege tonnen</span><span class="detail-value">${planning.aantal_lege_tonnen} lege ton(nen)</span>`;
+      }
 
-      // 🔥 Opmerkingen worden ook in PDF getoond
-      let opmerkingPdf = '';
+      // Telefoon
+      if (planning.adres?.telefoon) {
+        detailsHtml += `<span class="detail-label">📞 Telefoon</span><span class="detail-value">${escapeHtml(planning.adres.telefoon)}</span>`;
+      }
+
+      // 🔥 EXTRA INFO (parkeren, route, laadperron, etc.)
+      if (planning.adres?.extra_info) {
+        detailsHtml += `<span class="detail-label">📝 Extra info</span><div class="extra-info-box">${escapeHtml(planning.adres.extra_info)}</div>`;
+      }
+
+      // 🔥 OPMERKINGEN (cruciaal voor chauffeur)
       if (planning.opmerkingen) {
-        opmerkingPdf = `<br><span style="font-size:11px;color:#856404;">💬 ${escapeHtml(planning.opmerkingen)}</span>`;
+        detailsHtml += `<span class="detail-label">💬 Opmerking</span><div class="opmerking-box">${escapeHtml(planning.opmerkingen)}</div>`;
+      }
+
+      // Adres weergave
+      let adresWeergave = '';
+      if (planning.adres?.straat) {
+        adresWeergave = escapeHtml(planning.adres.straat);
+        if (planning.adres?.plaats) {
+          adresWeergave += `, ${escapeHtml(planning.adres.plaats)}`;
+        }
+      } else {
+        adresWeergave = '-';
+      }
+
+      // Als er geen details zijn, toon een streepje
+      if (!detailsHtml) {
+        detailsHtml = '<span style="color:#999;">-</span>';
       }
 
       printContent += `
         <tr>
-          <td>${index + 1}</td>
+          <td style="text-align:center; font-weight:bold; font-size:14px;">${index + 1}</td>
           <td><strong>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</strong></td>
-          <td>${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</td>
+          <td>${adresWeergave}</td>
           <td>${typeLabel}</td>
-          <td>${details || '-'}${opmerkingPdf}</td>
-          <td class="status-${statusClass}">${statusClass}</td>
+          <td>${detailsHtml}</td>
+          <td><span class="status-${statusClass}">${statusClass}</span></td>
         </tr>
       `;
     });
@@ -551,13 +637,13 @@ async function genereerPDFVoorDag(datum) {
           </tbody>
         </table>
         <div class="footer">
-          <p>Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
+          <p>Gegenereerd op ${new Date().toLocaleString('nl-NL')} | © Route-overzicht</p>
         </div>
-        <div class="no-print" style="text-align:center; margin-top:20px; padding:10px; background:#e9ecef; border-radius:4px;">
-          <button onclick="window.print()" style="padding:10px 30px; font-size:16px; cursor:pointer; background:#2c7da0; color:white; border:none; border-radius:6px;">
+        <div class="no-print" style="text-align:center; margin-top:20px; padding:15px; background:#e9ecef; border-radius:6px;">
+          <button onclick="window.print()" style="padding:12px 40px; font-size:16px; cursor:pointer; background:#2c7da0; color:white; border:none; border-radius:6px;">
             🖨️ Print / PDF opslaan
           </button>
-          <button onclick="window.close()" style="padding:10px 30px; font-size:16px; cursor:pointer; background:#6c757d; color:white; border:none; border-radius:6px; margin-left:10px;">
+          <button onclick="window.close()" style="padding:12px 40px; font-size:16px; cursor:pointer; background:#6c757d; color:white; border:none; border-radius:6px; margin-left:10px;">
             ❌ Sluiten
           </button>
         </div>
@@ -565,7 +651,7 @@ async function genereerPDFVoorDag(datum) {
       </html>
     `;
 
-    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) {
       showToast('❌ Popup geblokkeerd! Sta popups toe voor deze site.', 'error');
       return;
