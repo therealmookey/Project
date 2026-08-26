@@ -27,6 +27,7 @@ const CACHE_TTL = 60000; // 60 seconden
 // 🔥 Navigatie cache
 let navigatieGeladen = false;
 let navigatieHTML = null;
+let isLaden = false; // Voorkomt dubbele laadpogingen
 
 // ===== PAGINA BEVEILIGING =====
 
@@ -176,34 +177,25 @@ export async function laadNavigatie() {
     
     // 🔥 Als de navigatie al geladen is, gebruik de cache
     if (navigatieGeladen && navigatieHTML) {
-        placeholder.innerHTML = navigatieHTML;
-        console.log('✅ Navigatie uit cache geladen');
-        
-        // 🔥 Alleen de module zichtbaarheid aanpassen, niet de hele navigatie opnieuw laden
-        await filterNavigatieModules();
-        
-        // Uitlog knop opnieuw koppelen (voor het geval de DOM opnieuw is opgebouwd)
-        const logoutBtn = document.getElementById('logoutBtnNav');
-        if (logoutBtn) {
-            // Verwijder oude listeners om dubbele binding te voorkomen
-            const newLogoutBtn = logoutBtn.cloneNode(true);
-            logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
-            newLogoutBtn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                if (supabase) await supabase.auth.signOut();
-                window.location.href = 'index.html';
-            });
-        }
+        console.log('✅ Navigatie uit cache geladen (overslaan)');
         return;
     }
     
+    // 🔥 Voorkom dubbele laadpogingen
+    if (isLaden) {
+        console.log('⏳ Navigatie wordt al geladen, wachten...');
+        return;
+    }
+    
+    isLaden = true;
+    
     try {
-        console.log('🔄 Navigatie wordt geladen (eerste keer)...');
+        console.log('🔄 Navigatie wordt geladen (eerste en enige keer)...');
         const response = await fetch('includes/navigatie.html');
         if (!response.ok) throw new Error('Navigatie kon niet geladen worden');
         const html = await response.text();
         
-        // 🔥 Opslaan in cache
+        // Opslaan in cache
         navigatieHTML = html;
         navigatieGeladen = true;
         
@@ -228,6 +220,8 @@ export async function laadNavigatie() {
     } catch (error) {
         console.error('Fout bij laden navigatie:', error);
         placeholder.innerHTML = '<nav style="background:#2c7da0; padding:10px; color:white;">Menu laden mislukt</nav>';
+    } finally {
+        isLaden = false;
     }
 }
 

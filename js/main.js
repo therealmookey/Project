@@ -9,25 +9,30 @@ import { addVersionBadge } from './core/version.js';
 import { supabase } from './core/supabase.js';
 
 // ===== STATE =====
-let isNavigatieGeladen = false;
+let isInitialized = false;
 
 // ===== INITIALISATIE =====
 document.addEventListener('DOMContentLoaded', async function() {
+  // 🔥 Voorkom dubbele initialisatie
+  if (isInitialized) {
+    console.log('⚠️ main.js al geïnitialiseerd, overslaan...');
+    return;
+  }
+  isInitialized = true;
+
   console.log('🔄 Applicatie initialiseren...');
 
-  // 1. Laad navigatie (alleen de eerste keer)
-  if (!isNavigatieGeladen) {
-    await laadNavigatie();
-    isNavigatieGeladen = true;
-    console.log('✅ Navigatie geladen (eerste keer)');
-  } else {
-    console.log('✅ Navigatie reeds geladen, overslaan...');
-  }
+  // 1. Thema initialiseren
+  initTheme();
 
-  // 2. Versie badge toevoegen
+  // 2. Navigatie laden (alleen de eerste keer)
+  await laadNavigatie();
+  console.log('✅ Navigatie geladen');
+
+  // 3. Versie badge toevoegen
   addVersionBadge();
 
-  // 3. Auth check
+  // 4. Auth check
   const { data: { session } } = await supabase.auth.getSession();
   if (session) {
     console.log('✅ Gebruiker is ingelogd:', session.user.email);
@@ -36,8 +41,11 @@ document.addEventListener('DOMContentLoaded', async function() {
   console.log('✅ main.js geladen en klaar voor gebruik');
 });
 
-// Als DOM al geladen is
+// Als DOM al geladen is (voorkomt dubbele uitvoering)
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  console.log('🔄 DOM al geladen, start main direct...');
-  document.dispatchEvent(new Event('DOMContentLoaded'));
+  // 🔥 Alleen uitvoeren als het nog niet is uitgevoerd
+  if (!isInitialized) {
+    console.log('🔄 DOM al geladen, start main direct...');
+    document.dispatchEvent(new Event('DOMContentLoaded'));
+  }
 }
