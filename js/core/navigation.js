@@ -66,6 +66,13 @@ export async function checkPageAuth() {
 
 // ===== MODULE RECHTEN =====
 
+// 🔥 NIEUW: Functie om de cache te resetten
+export function resetModuleCache() {
+    moduleRightsCache = null;
+    moduleRightsCacheTime = 0;
+    console.log('🔄 Module cache gereset');
+}
+
 export async function heeftModuleToegang(moduleSleutel) {
     if (!supabase) return false;
     
@@ -75,13 +82,12 @@ export async function heeftModuleToegang(moduleSleutel) {
         
         const now = Date.now();
         if (moduleRightsCache && (now - moduleRightsCacheTime) < CACHE_TTL) {
-            // Als de cache bestaat en de module niet in de cache staat, check standaard
             if (moduleRightsCache[moduleSleutel] !== undefined) {
                 return moduleRightsCache[moduleSleutel];
             }
         }
         
-        // 🔥 VERANDERD: Haal ALLE rechten op voor de gebruiker (ook admins)
+        // Haal ALLE rechten op voor de gebruiker
         const { data: rechten, error } = await supabase
             .from('gebruikers_module_rechten')
             .select('module_sleutel, actief')
@@ -104,8 +110,7 @@ export async function heeftModuleToegang(moduleSleutel) {
             return moduleRightsCache[moduleSleutel];
         }
         
-        // 🔥 VERANDERD: Geen automatische admin rechten meer
-        // Haal de standaard waarde op uit de modules tabel
+        // 🔥 Haal de standaard waarde op uit de modules tabel
         const { data: module, error: modError } = await supabase
             .from('modules')
             .select('standaard_aan')
@@ -117,10 +122,7 @@ export async function heeftModuleToegang(moduleSleutel) {
             return false;
         }
         
-        // Als de module niet in de rechten staat, gebruik de standaard waarde
         const standaardWaarde = module ? module.standaard_aan : false;
-        
-        // Sla de standaard waarde op in de cache voor toekomstige checks
         moduleRightsCache[moduleSleutel] = standaardWaarde;
         
         return standaardWaarde;
@@ -138,13 +140,11 @@ export async function filterNavigatieModules() {
         
         console.log(`🔍 ${moduleLinks.length} module links gevonden`);
         
-        // Eerst alle links verbergen
         moduleLinks.forEach(link => {
             link.classList.remove('visible');
             link.style.display = 'none';
         });
         
-        // Dan per link checken of de gebruiker toegang heeft
         for (const link of moduleLinks) {
             const moduleSleutel = link.dataset.module;
             if (!moduleSleutel) continue;
@@ -175,10 +175,11 @@ export async function laadNavigatie() {
         const html = await response.text();
         placeholder.innerHTML = html;
         
-        // Filter modules op rechten
+        // Reset cache voordat we filteren
+        resetModuleCache();
+        
         await filterNavigatieModules();
         
-        // Uitlog knop
         const logoutBtn = document.getElementById('logoutBtnNav');
         if (logoutBtn) {
             logoutBtn.addEventListener('click', async (e) => {
@@ -221,5 +222,6 @@ export default {
     heeftModuleToegang,
     filterNavigatieModules,
     laadNavigatie,
-    checkAuth
+    checkAuth,
+    resetModuleCache  // 🔥 NIEUW: exporteer de reset functie
 };

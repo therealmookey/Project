@@ -65,14 +65,14 @@ async function refreshNavigatie() {
   try {
     console.log('🔄 Start navigatie refresh...');
     
-    // Methode 1: Herlaad via navigation module
+    // Methode 1: Reset de cache in navigation.js
     try {
       const { default: navigation } = await import('./core/navigation.js');
       
-      // 🔥 Reset de cache in navigation.js
-      if (navigation && navigation._resetCache) {
-        await navigation._resetCache();
-        console.log('✅ Navigation cache gereset');
+      // 🔥 Reset de cache
+      if (navigation && navigation.resetModuleCache) {
+        navigation.resetModuleCache();
+        console.log('✅ Navigation cache gereset via resetModuleCache');
       }
       
       // 🔥 Herlaad de module links
@@ -96,14 +96,13 @@ async function refreshNavigatie() {
     const moduleLinks = document.querySelectorAll('.module-link');
     console.log(`🔍 ${moduleLinks.length} module links gevonden voor directe refresh`);
     
-    // Haal de huidige gebruiker op
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       console.warn('⚠️ Geen gebruiker ingelogd voor directe refresh');
       return;
     }
     
-    // 🔥 Haal alle modules met standaard waarden op
+    // Haal alle modules met standaard waarden op
     const { data: modules, error: modError } = await supabase
       .from('modules')
       .select('module_sleutel, standaard_aan');
@@ -129,13 +128,11 @@ async function refreshNavigatie() {
       return;
     }
     
-    // Bouw een map van rechten
     const rechtenMap = {};
     rechten.forEach(r => {
       rechtenMap[r.module_sleutel] = r.actief;
     });
     
-    // 🔥 Update de zichtbaarheid van elke link (combineer rechten met standaard)
     moduleLinks.forEach(link => {
       const moduleSleutel = link.dataset.module;
       if (!moduleSleutel) {
@@ -143,12 +140,10 @@ async function refreshNavigatie() {
         return;
       }
       
-      // Check of de gebruiker expliciete rechten heeft
       let heeftToegang = false;
       if (rechtenMap[moduleSleutel] !== undefined) {
         heeftToegang = rechtenMap[moduleSleutel] === true;
       } else {
-        // Gebruik standaard waarde als er geen expliciete rechten zijn
         const standaard = standaardMap[moduleSleutel];
         heeftToegang = standaard === true;
       }
@@ -166,8 +161,6 @@ async function refreshNavigatie() {
     
   } catch (err) {
     console.warn('⚠️ Fout bij refreshen navigatie:', err);
-    
-    // Fallback: herlaad de pagina na 1 seconde
     setTimeout(() => {
       window.location.reload();
     }, 1000);
