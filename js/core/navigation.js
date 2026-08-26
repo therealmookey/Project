@@ -24,9 +24,9 @@ let moduleRightsCache = null;
 let moduleRightsCacheTime = 0;
 const CACHE_TTL = 60000; // 60 seconden
 
-// 🔥 NIEUW: Navigatie cache
-let navigatieHTML = null;
+// 🔥 Navigatie cache
 let navigatieGeladen = false;
+let navigatieHTML = null;
 
 // ===== PAGINA BEVEILIGING =====
 
@@ -178,8 +178,22 @@ export async function laadNavigatie() {
     if (navigatieGeladen && navigatieHTML) {
         placeholder.innerHTML = navigatieHTML;
         console.log('✅ Navigatie uit cache geladen');
-        // Filter modules op rechten
+        
+        // 🔥 Alleen de module zichtbaarheid aanpassen, niet de hele navigatie opnieuw laden
         await filterNavigatieModules();
+        
+        // Uitlog knop opnieuw koppelen (voor het geval de DOM opnieuw is opgebouwd)
+        const logoutBtn = document.getElementById('logoutBtnNav');
+        if (logoutBtn) {
+            // Verwijder oude listeners om dubbele binding te voorkomen
+            const newLogoutBtn = logoutBtn.cloneNode(true);
+            logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
+            newLogoutBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                if (supabase) await supabase.auth.signOut();
+                window.location.href = 'index.html';
+            });
+        }
         return;
     }
     
