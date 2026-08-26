@@ -507,10 +507,15 @@ async function saveModule() {
     currentModuleId = null;
     resetModulePopup();
     
-    // 🔥 DIRECT DE TABEL VERNIEUWEN (zonder setTimeout)
-    await laadAlleModules();
-    await laadGebruikersVoorModules();
-    await refreshNavigatie();
+    // 🔥 FORCEER EEN VOLLEDIGE HERLADING VAN DE TABEL
+    // Sluit de popup eerst
+    moduleEditPopup.style.display = 'none';
+    
+    // Wacht kort en herlaad dan de tabel
+    setTimeout(async () => {
+      await laadAlleModules();
+      console.log('✅ Tabel herladen na opslaan');
+    }, 100);
 
   } catch (err) {
     console.error('Fout bij opslaan module:', err);
