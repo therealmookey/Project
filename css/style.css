@@ -4813,7 +4813,8 @@ hr {
   display: flex !important;
 }
 /* ===== REGISTRATIES FILTERS ===== */
-.registraties-filters .filter-row {
+/* 🔥 Selecteer de filter sectie op de registraties pagina */
+.filter-section .filter-row {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
@@ -4821,7 +4822,7 @@ hr {
   width: 100%;
 }
 
-.registraties-filters .filter-item {
+.filter-section .filter-item {
   display: flex;
   flex-direction: column;
   flex: 0 1 auto;
@@ -4829,7 +4830,7 @@ hr {
   max-width: 180px;
 }
 
-.registraties-filters .filter-item label {
+.filter-section .filter-item label {
   font-size: 0.8rem;
   color: #495057;
   margin-bottom: 4px;
@@ -4837,7 +4838,8 @@ hr {
   white-space: nowrap;
 }
 
-.registraties-filters .filter-item .form-input {
+.filter-section .filter-item .form-input,
+.filter-section .filter-item .search-input {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid #ddd;
@@ -4849,29 +4851,26 @@ hr {
   box-sizing: border-box;
 }
 
-.registraties-filters .filter-item .form-input:focus {
+.filter-section .filter-item .form-input:focus,
+.filter-section .filter-item .search-input:focus {
   outline: none;
   border-color: #2c7da0;
   box-shadow: 0 0 0 3px rgba(44, 125, 160, 0.1);
 }
 
-.registraties-filters .filter-buttons-group {
+/* 🔥 De knoppen moeten dezelfde afstand hebben als de filtervelden */
+.filter-section .filter-item.filter-buttons {
   display: flex;
-  flex-direction: column;
-  flex: 0 1 auto;
-  justify-content: flex-end;
-  /* 🔥 Zelfde ruimte als de filtervelden */
-  margin-bottom: 20px;  /* Pas dit aan naar de gewenste waarde */
-}
-
-.registraties-filters .filter-buttons {
-  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
   gap: 8px;
-  align-items: center;
-  height: 38px;
+  flex: 0 1 auto;
+  /* 🔥 Voeg dezelfde marge toe als de andere filter-items */
+  margin-bottom: 0;
+  padding-bottom: 0;
 }
 
-.registraties-filters .filter-buttons .btn {
+.filter-section .filter-item.filter-buttons .btn {
   padding: 0 16px;
   font-size: 0.85rem;
   white-space: nowrap;
@@ -4887,7 +4886,12 @@ hr {
   line-height: 1;
 }
 
-/* 🔥 Zorg dat de filtervelden dezelfde afstand hebben als de knoppen */
-.registraties-filters .filter-item {
+/* 🔥 Zorg dat alle filter-items dezelfde afstand hebben */
+.filter-section .filter-item {
   margin-bottom: 0;
+}
+
+/* 🔥 Extra ruimte onder de hele filter sectie */
+.filter-section {
+  padding-bottom: 20px;
 }
