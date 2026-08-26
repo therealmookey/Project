@@ -4721,16 +4721,14 @@ hr {
   color: #d0d0d0;
 }
 /* ===== ANALYTICS FILTERS ===== */
-.analytics-filters {
-  padding-bottom: 0;
-}
-
 .analytics-filters .filter-row {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
   align-items: flex-end;
   width: 100%;
+  /* 🔥 Eenvoudig: zelfde ruimte voor alles */
+  padding-bottom: 16px;
 }
 
 .analytics-filters .filter-item {
@@ -4772,19 +4770,6 @@ hr {
   flex-direction: column;
   flex: 0 1 auto;
   justify-content: flex-end;
-  /* 🔥 Zelfde padding als filter-item (label + margin) */
-  padding-bottom: 0;
-}
-
-.analytics-filters .filter-buttons-group label {
-  display: block;
-  height: 16px;
-  margin-bottom: 4px;
-  visibility: hidden;
-  font-size: 0.8rem;
-  font-weight: 500;
-  white-space: nowrap;
-  color: #495057;
 }
 
 .analytics-filters .filter-buttons {
