@@ -14,9 +14,9 @@ const searchModuleUserInput = document.getElementById('searchModuleUserInput');
 const clearModuleUserSearchBtn = document.getElementById('clearModuleUserSearchBtn');
 const searchModulesInput = document.getElementById('searchModulesInput');
 const clearModulesSearchBtn = document.getElementById('clearModulesSearchBtn');
+const refreshModulesBtn = document.getElementById('refreshModulesBtn');
 const addModuleBtn = document.getElementById('addModuleBtn');
 const syncModuleDefaultsBtn = document.getElementById('syncModuleDefaultsBtn');
-const refreshModulesBtn = document.getElementById('refreshModulesBtn');
 const modulePopup = document.getElementById('modulePopup');
 const modulePopupTitle = document.getElementById('modulePopupTitle');
 const modulePopupUser = document.getElementById('modulePopupUser');
@@ -232,6 +232,16 @@ async function laadGebruikersVoorModules() {
 
     gebruikersModuleLijst.innerHTML = html;
 
+    // Search functionaliteit
+    if (searchModuleUserInput) {
+      const term = searchModuleUserInput.value.toLowerCase();
+      const rows = gebruikersModuleLijst.querySelectorAll('table tbody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    }
+
     document.querySelectorAll('.module-rechten-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const userId = btn.dataset.userid;
@@ -368,7 +378,6 @@ async function laadAlleModules() {
       return;
     }
 
-    // 🔥 VERVANG DE HELE INHOUD VAN DE CONTAINER
     let html = `
       <div style="overflow-x: auto;">
         <table style="width: 100%; border-collapse: collapse;">
@@ -407,10 +416,9 @@ async function laadAlleModules() {
       </div>
     `;
 
-    // 🔥 VERVANG DE INHOUD DIRECT
     modulesLijst.innerHTML = html;
 
-    // Event listeners opnieuw toevoegen
+    // Event listeners
     document.querySelectorAll('.edit-module-btn').forEach(btn => {
       btn.addEventListener('click', () => bewerkModule(btn.dataset.id));
     });
@@ -418,6 +426,16 @@ async function laadAlleModules() {
     document.querySelectorAll('.delete-module-btn').forEach(btn => {
       btn.addEventListener('click', () => verwijderModule(btn.dataset.id));
     });
+
+    // Search functionaliteit
+    if (searchModulesInput) {
+      const term = searchModulesInput.value.toLowerCase();
+      const rows = modulesLijst.querySelectorAll('table tbody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    }
 
     console.log('✅ Modules tabel bijgewerkt met', alleModules.length, 'modules');
 
@@ -507,81 +525,14 @@ async function saveModule() {
     currentModuleId = null;
     resetModulePopup();
     
-    // 🔥 HERLAAD DE DATA DIRECT EN VERVANG DE TABEL
-    // Haal de nieuwste data op
-    const { data: freshData, error: freshError } = await supabase
-      .from('modules')
-      .select('*')
-      .order('module_naam');
-    
-    if (!freshError && freshData) {
-      alleModules = freshData;
-      console.log('📊 Verse data geladen:', alleModules.length);
-      
-      // Bouw de tabel opnieuw met de verse data
-      if (alleModules.length === 0) {
-        modulesLijst.innerHTML = '<p>Geen modules gevonden. Klik op "+ Nieuwe module" om er een toe te voegen.</p>';
-        return;
-      }
-
-      let html = `
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: #f8f9fa;">
-                <th style="padding: 12px; text-align: left;">Module naam</th>
-                <th style="padding: 12px; text-align: left;">Sleutel</th>
-                <th style="padding: 12px; text-align: left;">Beschrijving</th>
-                <th style="padding: 12px; text-align: left;">Standaard aan</th>
-                <th style="padding: 12px; text-align: left;">Acties</th>
-              </tr>
-            </thead>
-            <tbody>
-      `;
-
-      for (const module of alleModules) {
-        const standaardDisplay = module.standaard_aan ? '✅ Ja' : '❌ Nee';
-        
-        html += `
-          <tr style="border-bottom: 1px solid #e9ecef;" data-moduleid="${module.id}">
-            <td style="padding: 12px;"><strong>${escapeHtml(module.module_naam)}</strong></td>
-            <td style="padding: 12px;"><code>${escapeHtml(module.module_sleutel)}</code></td>
-            <td style="padding: 12px;">${escapeHtml(module.beschrijving || '-')}</td>
-            <td style="padding: 12px;"><strong style="color: ${module.standaard_aan ? '#28a745' : '#dc3545'};">${standaardDisplay}</strong></td>
-            <td style="padding: 12px;" class="admin-buttons">
-              <button class="btn btn-secondary edit-module-btn" data-id="${module.id}">✏️ Bewerken</button>
-              <button class="btn btn-danger delete-module-btn" data-id="${module.id}">🗑️ Verwijderen</button>
-            </td>
-          </tr>
-        `;
-      }
-
-      html += `
-            </tbody>
-          </table>
-        </div>
-      `;
-
-      modulesLijst.innerHTML = html;
-
-      document.querySelectorAll('.edit-module-btn').forEach(btn => {
-        btn.addEventListener('click', () => bewerkModule(btn.dataset.id));
-      });
-
-      document.querySelectorAll('.delete-module-btn').forEach(btn => {
-        btn.addEventListener('click', () => verwijderModule(btn.dataset.id));
-      });
-
-      console.log('✅ Tabel bijgewerkt met verse data');
-    }
-
-    await refreshNavigatie();
+    // 🔥 ALLEEN DE TABEL VERNIEUWEN
+    await laadAlleModules();
 
   } catch (err) {
     console.error('Fout bij opslaan module:', err);
     showToast('❌ Fout: ' + err.message, 'error');
   }
- }
+}
 
 async function verwijderModule(id) {
   if (!confirm('Weet je zeker dat je deze module wilt verwijderen?')) return;
@@ -649,6 +600,7 @@ function setValue(id, value) {
 // ============================================================
 
 function setupSearchListeners() {
+  // Per gebruiker - zoekfunctionaliteit
   if (searchModuleUserInput) {
     searchModuleUserInput.addEventListener('input', function() {
       const term = this.value.toLowerCase();
@@ -671,6 +623,7 @@ function setupSearchListeners() {
     });
   }
 
+  // Alle modules - zoekfunctionaliteit
   if (searchModulesInput) {
     searchModulesInput.addEventListener('input', function() {
       const term = this.value.toLowerCase();
@@ -725,6 +678,7 @@ async function initModules() {
 
   // ===== EVENT LISTENERS =====
 
+  // Module rechten popup
   if (saveModuleRightsBtn) {
     saveModuleRightsBtn.addEventListener('click', saveModuleRights);
   }
@@ -735,6 +689,7 @@ async function initModules() {
     });
   }
 
+  // Module edit popup
   if (addModuleBtn) {
     addModuleBtn.addEventListener('click', () => {
       currentModuleId = null;
@@ -756,11 +711,6 @@ async function initModules() {
     });
   }
 
-  // 🔥 Sync standaard waarden knop
-  if (syncModuleDefaultsBtn) {
-    syncModuleDefaultsBtn.addEventListener('click', syncModuleDefaults);
-  }
-
   // 🔥 Refresh modules knop
   if (refreshModulesBtn) {
     refreshModulesBtn.addEventListener('click', async () => {
@@ -770,6 +720,12 @@ async function initModules() {
     });
   }
 
+  // 🔥 Sync standaard waarden knop
+  if (syncModuleDefaultsBtn) {
+    syncModuleDefaultsBtn.addEventListener('click', syncModuleDefaults);
+  }
+
+  // Popups sluiten bij klik buiten
   window.addEventListener('click', (e) => {
     if (e.target === modulePopup) {
       modulePopup.style.display = 'none';
