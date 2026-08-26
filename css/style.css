@@ -4732,17 +4732,9 @@ hr {
 .filter-item {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 140px;
-  max-width: 200px;
-}
-
-/* Zorg dat de datumvelden meer ruimte kunnen nemen als de periode 'aangepast' is */
-.filter-item#analyticsDatumVanafGroup,
-.filter-item#analyticsDatumTotGroup {
-  flex: 1;
-  min-width: 120px;
-  max-width: 160px;
+  max-width: 180px;
 }
 
 .filter-item label {
@@ -4794,4 +4786,24 @@ hr {
   border: none;
   font-weight: 500;
   line-height: 1;
+}
+
+/* 🔥 NIEUW: Zorg dat de datumvelden netjes meeschalen */
+#analyticsDatumVanafGroup,
+#analyticsDatumTotGroup {
+  flex: 0 1 auto;
+  min-width: 130px;
+  max-width: 160px;
+}
+
+/* 🔥 Verberg de datumvelden standaard */
+#analyticsDatumVanafGroup,
+#analyticsDatumTotGroup {
+  display: none !important;
+}
+
+/* 🔥 Toon de datumvelden alleen als de periode 'aangepast' is */
+#analyticsDatumVanafGroup.show,
+#analyticsDatumTotGroup.show {
+  display: flex !important;
 }
