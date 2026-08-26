@@ -4812,3 +4812,77 @@ hr {
 .analytics-filters #analyticsDatumTotGroup.show {
   display: flex !important;
 }
+/* ===== REGISTRATIES FILTERS ===== */
+.registraties-filters .filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.registraties-filters .filter-item {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  min-width: 140px;
+  max-width: 180px;
+}
+
+.registraties-filters .filter-item label {
+  font-size: 0.8rem;
+  color: #495057;
+  margin-bottom: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.registraties-filters .filter-item .form-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background: white;
+  transition: border-color 0.2s;
+  height: 38px;
+  box-sizing: border-box;
+}
+
+.registraties-filters .filter-item .form-input:focus {
+  outline: none;
+  border-color: #2c7da0;
+  box-shadow: 0 0 0 3px rgba(44, 125, 160, 0.1);
+}
+
+.registraties-filters .filter-buttons-group {
+  display: flex;
+  flex-direction: column;
+  flex: 0 1 auto;
+  justify-content: flex-end;
+  /* 🔥 Zelfde ruimte als de filtervelden: 36px */
+  margin-bottom: 36px;
+}
+
+.registraties-filters .filter-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  height: 38px;
+}
+
+.registraties-filters .filter-buttons .btn {
+  padding: 0 16px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-weight: 500;
+  line-height: 1;
+}
