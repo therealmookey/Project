@@ -29,39 +29,13 @@
       <h1>📅 Planning</h1>
       <div class="header-buttons">
         <button id="newPlanningBtn" class="btn btn-primary">+ Nieuwe planning</button>
-        <button id="aiOptimizeBtn" class="btn btn-info ai-optimize-btn">🤖 AI Optimalisatie</button>
         <button id="refreshPlanningBtn" class="btn btn-secondary">🔄 Ververs</button>
-      </div>
-    </div>
-
-    <!-- ===== DATUM SELECTOR ===== -->
-    <div class="date-selector-section">
-      <div class="date-controls">
-        <button id="prevDayBtn" class="btn btn-secondary btn-small">◀ Vorige dag</button>
-        <button id="todayBtn" class="btn btn-primary btn-small">📅 Vandaag</button>
-        <button id="nextDayBtn" class="btn btn-secondary btn-small">Volgende dag ▶</button>
-        <input type="date" id="datePicker" class="date-input">
-        <button id="goToDateBtn" class="btn btn-secondary btn-small">Ga naar</button>
-      </div>
-      <div class="date-info">
-        <span id="dateDisplay">Geen datum geselecteerd</span>
-        <span id="routeCount" class="route-count-badge">0 ritten</span>
       </div>
     </div>
 
     <!-- ===== PLANNING LIJST ===== -->
     <div id="planningLijst" class="planning-lijst">
       <p>Laden...</p>
-    </div>
-
-    <!-- ===== DAG ACTIES ===== -->
-    <div class="day-actions" id="dayActions" style="display: none;">
-      <hr>
-      <div class="day-actions-buttons">
-        <button id="pdfDagBtn" class="btn btn-danger pdf-dag-btn">📄 Exporteer dag naar PDF</button>
-        <button id="whatsappDagBtn" class="btn btn-success">📱 Stuur route naar chauffeur (WhatsApp)</button>
-        <button id="aiOptimizeDayBtn" class="btn btn-info ai-optimize-btn">🤖 Optimaliseer route</button>
-      </div>
     </div>
 
   </main>
@@ -102,22 +76,6 @@
       <div style="display: flex; gap: 10px; margin-top: 1rem;">
         <button id="savePlanningBtn" class="btn btn-primary">Opslaan</button>
         <button id="closePlanningPopup" class="btn btn-secondary">Annuleren</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ===== WHATSAPP POPUP ===== -->
-  <div id="whatsappPopup" class="popup">
-    <div class="popup-content whatsapp-popup">
-      <h3>📱 Stuur route naar chauffeur</h3>
-      <div class="route-bericht">
-        <h4>📋 Routebericht</h4>
-        <textarea id="whatsappBericht" rows="10" readonly></textarea>
-        <div class="route-actions">
-          <button id="whatsappVerstuurBtn" class="btn btn-success">📱 Verstuur via WhatsApp</button>
-          <button id="whatsappKopieerBtn" class="btn btn-secondary">📋 Kopieer bericht</button>
-          <button id="whatsappSluitBtn" class="btn btn-secondary">Sluiten</button>
-        </div>
       </div>
     </div>
   </div>
