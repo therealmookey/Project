@@ -4765,14 +4765,31 @@ hr {
 
 .filter-buttons-group {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
+  flex-direction: column;
   flex: 0 1 auto;
-  padding-bottom: 0px;
+}
+
+/* 🔥 Verborgen label voor uitlijning */
+.filter-buttons-group label {
+  visibility: hidden;
+  height: 0;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8rem;
+  color: #495057;
+  margin-bottom: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
   height: 38px;
 }
 
-.filter-buttons-group .btn {
+.filter-buttons .btn {
   padding: 0 16px;
   font-size: 0.85rem;
   white-space: nowrap;
@@ -4788,7 +4805,7 @@ hr {
   line-height: 1;
 }
 
-/* 🔥 NIEUW: Zorg dat de datumvelden netjes meeschalen */
+/* 🔥 Datumvelden */
 #analyticsDatumVanafGroup,
 #analyticsDatumTotGroup {
   flex: 0 1 auto;
@@ -4796,13 +4813,11 @@ hr {
   max-width: 160px;
 }
 
-/* 🔥 Verberg de datumvelden standaard */
 #analyticsDatumVanafGroup,
 #analyticsDatumTotGroup {
   display: none !important;
 }
 
-/* 🔥 Toon de datumvelden alleen als de periode 'aangepast' is */
 #analyticsDatumVanafGroup.show,
 #analyticsDatumTotGroup.show {
   display: flex !important;
