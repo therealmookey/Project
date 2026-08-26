@@ -4732,9 +4732,17 @@ hr {
 .filter-item {
   display: flex;
   flex-direction: column;
-  flex: 0 1 auto;
+  flex: 1;
   min-width: 140px;
   max-width: 200px;
+}
+
+/* Zorg dat de datumvelden meer ruimte kunnen nemen als de periode 'aangepast' is */
+.filter-item#analyticsDatumVanafGroup,
+.filter-item#analyticsDatumTotGroup {
+  flex: 1;
+  min-width: 120px;
+  max-width: 160px;
 }
 
 .filter-item label {
@@ -4742,6 +4750,7 @@ hr {
   color: #495057;
   margin-bottom: 4px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 .filter-item .form-input {
@@ -4752,6 +4761,8 @@ hr {
   font-size: 0.9rem;
   background: white;
   transition: border-color 0.2s;
+  height: 38px;
+  box-sizing: border-box;
 }
 
 .filter-item .form-input:focus {
@@ -4766,14 +4777,21 @@ hr {
   gap: 8px;
   flex: 0 1 auto;
   padding-bottom: 0px;
+  height: 38px;
 }
 
 .filter-buttons-group .btn {
-  padding: 8px 16px;
+  padding: 0 16px;
   font-size: 0.85rem;
   white-space: nowrap;
   height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  font-weight: 500;
+  line-height: 1;
 }
