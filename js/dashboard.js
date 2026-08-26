@@ -11,7 +11,7 @@ import { supabase } from './core/supabase.js';
 import { laadAgenda, vorigeMaand, volgendeMaand, gaNaarVandaag } from './modules/dashboard/agenda.js';
 import { laadOphalingAnalyse } from './modules/dashboard/voorspelling.js';
 import { laadActieLijst } from './modules/dashboard/actie.js';
-import { laadZiekenhuisOverzicht } from './modules/dashboard/ziekenhuis-overzicht.js'; // <-- NIEUW
+// ❌ VERWIJDERD: import { laadZiekenhuisOverzicht } from './modules/dashboard/ziekenhuis-overzicht.js';
 
 console.log('✅ Alle modules geïmporteerd!');
 
@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   }
 
-  // 3. Laad alle dashboard onderdelen
+  // 3. Laat alle dashboard onderdelen
   console.log('📊 Dashboard onderdelen laden...');
 
   // Agenda
@@ -49,8 +49,8 @@ document.addEventListener('DOMContentLoaded', async function() {
   // Actie lijst (proactief bellen)
   await laadActieLijst();
 
-  // ZIEKENHUIS OVERZICHT (nieuw)
-  await laadZiekenhuisOverzicht();
+  // ❌ VERWIJDERD: Ziekenhuis overzicht (verplaatst naar analytics)
+  // await laadZiekenhuisOverzicht();
 
   console.log('✅ Dashboard geladen!');
 
