@@ -4725,16 +4725,16 @@ hr {
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
-  align-items: flex-end;  /* Zorgt dat alles onderaan uitlijnt */
+  align-items: flex-end;
   width: 100%;
 }
 
 .filter-item {
   display: flex;
   flex-direction: column;
-  flex: 1;
-  min-width: 150px;
-  max-width: 250px;
+  flex: 0 1 auto;
+  min-width: 140px;
+  max-width: 200px;
 }
 
 .filter-item label {
@@ -4744,7 +4744,6 @@ hr {
   font-weight: 500;
 }
 
-.filter-item .search-input,
 .filter-item .form-input {
   width: 100%;
   padding: 8px 12px;
@@ -4755,21 +4754,26 @@ hr {
   transition: border-color 0.2s;
 }
 
-.filter-item .form-input {
-  min-width: 140px;
+.filter-item .form-input:focus {
+  outline: none;
+  border-color: #2c7da0;
+  box-shadow: 0 0 0 3px rgba(44, 125, 160, 0.1);
 }
 
-.filter-buttons {
-  flex-direction: row;
+.filter-buttons-group {
+  display: flex;
   align-items: flex-end;
   gap: 8px;
-  min-width: auto;
-  max-width: none;
   flex: 0 1 auto;
+  padding-bottom: 0px;
 }
 
-.filter-buttons .btn {
+.filter-buttons-group .btn {
   padding: 8px 16px;
   font-size: 0.85rem;
   white-space: nowrap;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
