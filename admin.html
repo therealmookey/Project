@@ -45,12 +45,13 @@
       </div>
     </div>
 
-    <!-- Tab 2: Alleen chauffeurs -->
+    <!-- Tab 2: Chauffeurs -->
     <div id="tabChauffeurs" class="admin-tab">
       <div class="search-section">
         <div class="search-bar">
           <input type="text" id="searchChauffeurInput" placeholder="🔍 Zoeken op chauffeur..." class="search-input">
           <button id="clearChauffeurSearchBtn" class="btn btn-secondary">✖ Wissen</button>
+          <button id="addChauffeurBtn" class="btn btn-primary">+ Nieuwe chauffeur</button>
         </div>
       </div>
       <div id="chauffeursLijst" class="admin-tabel">
@@ -115,6 +116,39 @@
       <div style="display: flex; gap: 10px; margin-top: 1rem;">
         <button id="saveUserBtn" class="btn btn-primary">Opslaan</button>
         <button id="closeUserPopup" class="btn btn-secondary">Annuleren</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popup voor chauffeur toevoegen/bewerken -->
+  <div id="chauffeurPopup" class="popup">
+    <div class="popup-content">
+      <h3 id="chauffeurPopupTitle">Nieuwe chauffeur</h3>
+      
+      <label>Chauffeursnummer *</label>
+      <input type="text" id="chauffeurNummerInput" placeholder="Bijv. CH-001" required>
+
+      <label>Naam *</label>
+      <input type="text" id="chauffeurNaam" placeholder="Naam van de chauffeur" required>
+
+      <label>Telefoonnummer</label>
+      <input type="tel" id="chauffeurTelefoonInput" placeholder="0485 12 34 56">
+
+      <label>E-mailadres</label>
+      <input type="email" id="chauffeurEmail" placeholder="chauffeur@voorbeeld.be">
+
+      <label>WhatsApp nummer</label>
+      <input type="tel" id="chauffeurWhatsapp" placeholder="0485 12 34 56">
+
+      <label>Actief</label>
+      <select id="chauffeurActief">
+        <option value="true">✅ Actief</option>
+        <option value="false">❌ Inactief</option>
+      </select>
+
+      <div style="display: flex; gap: 10px; margin-top: 1rem;">
+        <button id="saveChauffeurBtn" class="btn btn-primary">Opslaan</button>
+        <button id="closeChauffeurPopup" class="btn btn-secondary">Annuleren</button>
       </div>
     </div>
   </div>
