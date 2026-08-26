@@ -685,4 +685,86 @@ async function initAdmin() {
     });
   }
 
- 
+  if (saveChauffeurBtn) {
+    saveChauffeurBtn.addEventListener('click', saveChauffeur);
+  }
+
+  if (closeChauffeurPopup) {
+    closeChauffeurPopup.addEventListener('click', () => {
+      chauffeurPopup.style.display = 'none';
+      currentChauffeurId = null;
+      resetChauffeurPopup();
+    });
+  }
+
+  // Zoekfunctionaliteit gebruikers
+  if (searchUserInput) {
+    searchUserInput.addEventListener('input', (e) => {
+      huidigeUserZoekterm = e.target.value;
+      laadGebruikers();
+    });
+  }
+
+  if (clearUserSearchBtn) {
+    clearUserSearchBtn.addEventListener('click', () => {
+      searchUserInput.value = '';
+      huidigeUserZoekterm = '';
+      laadGebruikers();
+      searchUserInput.focus();
+    });
+  }
+
+  // Zoekfunctionaliteit chauffeurs
+  if (searchChauffeurInput) {
+    searchChauffeurInput.addEventListener('input', (e) => {
+      huidigeChauffeurZoekterm = e.target.value;
+      laadChauffeurs();
+    });
+  }
+
+  if (clearChauffeurSearchBtn) {
+    clearChauffeurSearchBtn.addEventListener('click', () => {
+      searchChauffeurInput.value = '';
+      huidigeChauffeurZoekterm = '';
+      laadChauffeurs();
+      searchChauffeurInput.focus();
+    });
+  }
+
+  // Startpunt opslaan
+  if (saveStartpuntBtn && startpuntInstelling) {
+    saveStartpuntBtn.addEventListener('click', () => {
+      const startpunt = startpuntInstelling.value;
+      localStorage.setItem('startpunt', startpunt);
+      showToast('✅ Startpunt opgeslagen!', 'success');
+    });
+    const savedStartpunt = localStorage.getItem('startpunt');
+    if (savedStartpunt) {
+      startpuntInstelling.value = savedStartpunt;
+    }
+  }
+
+  // Popups sluiten bij klik buiten
+  window.addEventListener('click', (e) => {
+    if (e.target === userPopup) {
+      userPopup.style.display = 'none';
+    }
+    if (e.target === chauffeurPopup) {
+      chauffeurPopup.style.display = 'none';
+      currentChauffeurId = null;
+      resetChauffeurPopup();
+    }
+  });
+
+  console.log('✅ Admin geïnitialiseerd!');
+}
+
+// ===== START =====
+document.addEventListener('DOMContentLoaded', initAdmin);
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  console.log('🔄 DOM al geladen, start admin direct...');
+  initAdmin();
+}
+
+console.log('✅ admin.js geladen!');
