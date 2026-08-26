@@ -368,6 +368,7 @@ async function laadAlleModules() {
       return;
     }
 
+    // 🔥 VERVANG DE HELE INHOUD VAN DE CONTAINER
     let html = `
       <div style="overflow-x: auto;">
         <table style="width: 100%; border-collapse: collapse;">
@@ -391,7 +392,7 @@ async function laadAlleModules() {
           <td style="padding: 12px;"><strong>${escapeHtml(module.module_naam)}</strong></td>
           <td style="padding: 12px;"><code>${escapeHtml(module.module_sleutel)}</code></td>
           <td style="padding: 12px;">${escapeHtml(module.beschrijving || '-')}</td>
-          <td style="padding: 12px;"><span class="standaard-status ${module.standaard_aan ? 'status-actief' : 'status-inactief'}">${standaardDisplay}</span></td>
+          <td style="padding: 12px;"><strong style="color: ${module.standaard_aan ? '#28a745' : '#dc3545'};">${standaardDisplay}</strong></td>
           <td style="padding: 12px;" class="admin-buttons">
             <button class="btn btn-secondary edit-module-btn" data-id="${module.id}">✏️ Bewerken</button>
             <button class="btn btn-danger delete-module-btn" data-id="${module.id}">🗑️ Verwijderen</button>
@@ -406,8 +407,10 @@ async function laadAlleModules() {
       </div>
     `;
 
+    // 🔥 VERVANG DE INHOUD DIRECT
     modulesLijst.innerHTML = html;
 
+    // Event listeners opnieuw toevoegen
     document.querySelectorAll('.edit-module-btn').forEach(btn => {
       btn.addEventListener('click', () => bewerkModule(btn.dataset.id));
     });
@@ -415,6 +418,8 @@ async function laadAlleModules() {
     document.querySelectorAll('.delete-module-btn').forEach(btn => {
       btn.addEventListener('click', () => verwijderModule(btn.dataset.id));
     });
+
+    console.log('✅ Modules tabel bijgewerkt met', alleModules.length, 'modules');
 
   } catch (err) {
     console.error('Fout bij laden modules:', err);
