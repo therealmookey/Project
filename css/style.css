@@ -4860,8 +4860,8 @@ hr {
   flex-direction: column;
   flex: 0 1 auto;
   justify-content: flex-end;
-  /* 🔥 Zelfde ruimte als de filtervelden: 36px */
-  margin-bottom: 36px;
+  /* 🔥 Zelfde ruimte als de filtervelden */
+  margin-bottom: 20px;  /* Pas dit aan naar de gewenste waarde */
 }
 
 .registraties-filters .filter-buttons {
@@ -4885,4 +4885,9 @@ hr {
   border: none;
   font-weight: 500;
   line-height: 1;
+}
+
+/* 🔥 Zorg dat de filtervelden dezelfde afstand hebben als de knoppen */
+.registraties-filters .filter-item {
+  margin-bottom: 0;
 }
