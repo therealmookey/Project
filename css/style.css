@@ -4727,8 +4727,6 @@ hr {
   gap: 15px;
   align-items: flex-end;
   width: 100%;
-  /* 🔥 Eenvoudig: zelfde ruimte voor alles */
-  padding-bottom: 16px;
 }
 
 .analytics-filters .filter-item {
@@ -4770,6 +4768,8 @@ hr {
   flex-direction: column;
   flex: 0 1 auto;
   justify-content: flex-end;
+  /* 🔥 Alleen dit toevoegen: 20px ruimte onder de knoppen */
+  margin-bottom: 20px;
 }
 
 .analytics-filters .filter-buttons {
