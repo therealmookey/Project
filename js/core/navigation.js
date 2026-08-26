@@ -24,10 +24,13 @@ let moduleRightsCache = null;
 let moduleRightsCacheTime = 0;
 const CACHE_TTL = 60000; // 60 seconden
 
-// 🔥 Navigatie cache
-let navigatieGeladen = false;
-let navigatieHTML = null;
-let isLaden = false; // Voorkomt dubbele laadpogingen
+// 🔥 Navigatie cache - globaal
+if (typeof window.__navigatieGeladen === 'undefined') {
+    window.__navigatieGeladen = false;
+}
+if (typeof window.__navigatieHTML === 'undefined') {
+    window.__navigatieHTML = null;
+}
 
 // ===== PAGINA BEVEILIGING =====
 
@@ -175,19 +178,13 @@ export async function laadNavigatie() {
     const placeholder = document.getElementById('navigatie-placeholder');
     if (!placeholder) return;
     
-    // 🔥 Als de navigatie al geladen is, gebruik de cache
-    if (navigatieGeladen && navigatieHTML) {
+    // 🔥 Gebruik globale cache
+    if (window.__navigatieGeladen && window.__navigatieHTML) {
         console.log('✅ Navigatie uit cache geladen (overslaan)');
+        placeholder.innerHTML = window.__navigatieHTML;
+        await filterNavigatieModules();
         return;
     }
-    
-    // 🔥 Voorkom dubbele laadpogingen
-    if (isLaden) {
-        console.log('⏳ Navigatie wordt al geladen, wachten...');
-        return;
-    }
-    
-    isLaden = true;
     
     try {
         console.log('🔄 Navigatie wordt geladen (eerste en enige keer)...');
@@ -195,9 +192,9 @@ export async function laadNavigatie() {
         if (!response.ok) throw new Error('Navigatie kon niet geladen worden');
         const html = await response.text();
         
-        // Opslaan in cache
-        navigatieHTML = html;
-        navigatieGeladen = true;
+        // Opslaan in globale cache
+        window.__navigatieHTML = html;
+        window.__navigatieGeladen = true;
         
         placeholder.innerHTML = html;
         
@@ -220,8 +217,6 @@ export async function laadNavigatie() {
     } catch (error) {
         console.error('Fout bij laden navigatie:', error);
         placeholder.innerHTML = '<nav style="background:#2c7da0; padding:10px; color:white;">Menu laden mislukt</nav>';
-    } finally {
-        isLaden = false;
     }
 }
 

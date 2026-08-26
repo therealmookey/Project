@@ -8,17 +8,19 @@ import { laadNavigatie } from './core/navigation.js';
 import { addVersionBadge } from './core/version.js';
 import { supabase } from './core/supabase.js';
 
-// ===== STATE =====
-let isInitialized = false;
+// ===== GLOBALE STATE (blijft bestaan over pagina's heen) =====
+if (typeof window.__appInitialized === 'undefined') {
+    window.__appInitialized = false;
+}
 
 // ===== INITIALISATIE =====
 document.addEventListener('DOMContentLoaded', async function() {
-  // 🔥 Voorkom dubbele initialisatie
-  if (isInitialized) {
-    console.log('⚠️ main.js al geïnitialiseerd, overslaan...');
+  // 🔥 Voorkom dubbele initialisatie met globale variabele
+  if (window.__appInitialized) {
+    console.log('⚠️ App al geïnitialiseerd, overslaan...');
     return;
   }
-  isInitialized = true;
+  window.__appInitialized = true;
 
   console.log('🔄 Applicatie initialiseren...');
 
@@ -41,10 +43,9 @@ document.addEventListener('DOMContentLoaded', async function() {
   console.log('✅ main.js geladen en klaar voor gebruik');
 });
 
-// Als DOM al geladen is (voorkomt dubbele uitvoering)
+// Als DOM al geladen is
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  // 🔥 Alleen uitvoeren als het nog niet is uitgevoerd
-  if (!isInitialized) {
+  if (!window.__appInitialized) {
     console.log('🔄 DOM al geladen, start main direct...');
     document.dispatchEvent(new Event('DOMContentLoaded'));
   }
