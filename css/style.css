@@ -4767,19 +4767,20 @@ hr {
   display: flex;
   flex-direction: column;
   flex: 0 1 auto;
+  justify-content: flex-end;
 }
 
-/* 🔥 Verborgen label voor uitlijning */
+/* 🔥 Onzichtbaar label voor uitlijning */
 .filter-buttons-group label {
   visibility: hidden;
-  height: 0;
-  margin: 0;
-  padding: 0;
+  margin-bottom: 4px;
+  display: block;
   font-size: 0.8rem;
   color: #495057;
-  margin-bottom: 4px;
   font-weight: 500;
   white-space: nowrap;
+  height: 16px;
+  pointer-events: none;
 }
 
 .filter-buttons {
