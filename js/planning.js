@@ -405,352 +405,152 @@ async function verwijderPlanning(id) {
 }
 
 // ============================================================
-// PDF GENERATIE (Kaart-stijl met alle details voor chauffeur)
+// PLANNINGEN LADEN (Met contactpersoon)
 // ============================================================
-async function genereerPDFVoorDag(datum) {
-  const planningen = allePlanningen.filter(p => p.datum === datum);
-
-  if (planningen.length === 0) {
-    showToast('⚠️ Geen ritten om te exporteren', 'warning');
-    return;
-  }
+async function laadPlanningen() {
+  console.log('📋 laadPlanningen aangeroepen...');
+  if (!planningLijst) return;
+  planningLijst.innerHTML = '<p>Bezig met laden...</p>';
 
   try {
-    showToast('📄 PDF wordt gegenereerd...', 'info');
+    // 🔥 contactpersoon_naam toegevoegd
+    const { data, error } = await supabase
+      .from('planningen')
+      .select('*, adres:adres_id (id, instelling_naam, straat, plaats, telefoon, extra_info, contactpersoon_naam)')
+      .order('datum', { ascending: false })
+      .order('dag_volgorde', { ascending: true });
 
-    const sortedPlanningen = [...planningen].sort((a, b) => (a.dag_volgorde || 0) - (b.dag_volgorde || 0));
+    if (error) throw error;
+    allePlanningen = data || [];
 
-    let printContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>Route-overzicht</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            padding: 30px; 
-            background: #f5f7fa;
-            color: #333;
-          }
-          
-          /* Header */
-          .header {
-            background: white;
-            padding: 20px 25px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
-          }
-          .header h1 {
-            color: #2c7da0;
-            font-size: 24px;
-            margin: 0;
-          }
-          .header p {
-            color: #666;
-            font-size: 14px;
-            margin: 0;
-          }
-          .header .totaal {
-            background: #e8f4f8;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 14px;
-            color: #2c7da0;
-            font-weight: 600;
-          }
-          
-          /* Rit kaart */
-          .rit-card {
-            background: white;
-            border-radius: 10px;
-            padding: 18px 22px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            border-left: 5px solid #2c7da0;
-            page-break-inside: avoid;
-          }
-          .rit-card.status-gepland { border-left-color: #ffc107; }
-          .rit-card.status-uitgevoerd { border-left-color: #28a745; }
-          .rit-card.status-geannuleerd { border-left-color: #dc3545; }
-          
-          .rit-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-bottom: 10px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #f0f0f0;
-          }
-          .rit-nummer {
-            background: #2c7da0;
-            color: white;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 14px;
-            font-weight: 700;
-          }
-          .rit-naam {
-            font-size: 20px;
-            font-weight: 700;
-            color: #2c7da0;
-            flex: 1;
-          }
-          .rit-status {
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 13px;
-            font-weight: 600;
-          }
-          .rit-status.gepland { background: #fff3cd; color: #856404; }
-          .rit-status.uitgevoerd { background: #d4edda; color: #155724; }
-          .rit-status.geannuleerd { background: #f8d7da; color: #721c24; }
-          
-          .rit-body {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-          }
-          .rit-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 10px;
-            padding: 4px 0;
-          }
-          .rit-label {
-            font-weight: 600;
-            color: #666;
-            min-width: 130px;
-            font-size: 13px;
-          }
-          .rit-value {
-            font-size: 14px;
-            color: #333;
-            flex: 1;
-            word-break: break-word;
-          }
-          
-          .opmerking-box {
-            background: #fff8e1;
-            padding: 10px 14px;
-            border-radius: 6px;
-            border-left: 4px solid #ffc107;
-            margin-top: 6px;
-            width: 100%;
-          }
-          .opmerking-box .rit-label {
-            min-width: auto;
-            color: #856404;
-            font-weight: 600;
-            display: block;
-            margin-bottom: 3px;
-          }
-          .opmerking-box .rit-value {
-            color: #6d5d00;
-          }
-          
-          .extra-info-box {
-            background: #e3f2fd;
-            padding: 10px 14px;
-            border-radius: 6px;
-            border-left: 4px solid #2196f3;
-            margin-top: 6px;
-            width: 100%;
-          }
-          .extra-info-box .rit-label {
-            min-width: auto;
-            color: #0d47a1;
-            font-weight: 600;
-            display: block;
-            margin-bottom: 3px;
-          }
-          .extra-info-box .rit-value {
-            color: #0d47a1;
-          }
-          
-          .footer {
-            margin-top: 25px;
-            padding: 15px;
-            background: white;
-            border-radius: 10px;
-            text-align: center;
-            color: #999;
-            font-size: 11px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-          }
-          
-          .no-print {
-            text-align: center;
-            margin-top: 20px;
-            padding: 15px;
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-          }
-          .no-print button {
-            padding: 12px 40px;
-            font-size: 16px;
-            cursor: pointer;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-          }
-          .btn-print {
-            background: #2c7da0;
-            color: white;
-          }
-          .btn-print:hover { background: #1f5e7e; }
-          .btn-close {
-            background: #6c757d;
-            color: white;
-          }
-          .btn-close:hover { background: #5a6268; }
-          
-          @media print {
-            body { background: white; padding: 15px; }
-            .header { box-shadow: none; border: 1px solid #eee; }
-            .rit-card { box-shadow: none; border: 1px solid #eee; page-break-inside: avoid; }
-            .footer { box-shadow: none; border: 1px solid #eee; }
-            .no-print { display: none; }
-            .rit-row { padding: 3px 0; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div>
-            <h1>📅 Route-overzicht</h1>
-            <p style="margin-top:4px;">${formatDate(datum)}</p>
-          </div>
-          <div class="totaal">🚗 ${sortedPlanningen.length} ritten</div>
-        </div>
-    `;
-
-    sortedPlanningen.forEach((planning, index) => {
-      const statusClass = planning.status || 'gepland';
-      const typeLabel = planning.type === 'ophaling' ? '📦 Ophaling' : '🚚 Plaatsing';
-      
-      // Details
-      let detailsHtml = '';
-      if (planning.type === 'ophaling' && planning.aantal_tonnen) {
-        detailsHtml += `
-          <div class="rit-row">
-            <span class="rit-label">Aantal tonnen</span>
-            <span class="rit-value">${planning.aantal_tonnen} ton(nen)</span>
-          </div>
-        `;
-      } else if (planning.type === 'plaatsing' && planning.aantal_lege_tonnen) {
-        detailsHtml += `
-          <div class="rit-row">
-            <span class="rit-label">Lege tonnen</span>
-            <span class="rit-value">${planning.aantal_lege_tonnen} lege ton(nen)</span>
-          </div>
-        `;
-      }
-
-      // Telefoon
-      if (planning.adres?.telefoon) {
-        detailsHtml += `
-          <div class="rit-row">
-            <span class="rit-label">📞 Telefoon</span>
-            <span class="rit-value">${escapeHtml(planning.adres.telefoon)}</span>
-          </div>
-        `;
-      }
-
-      // 🔥 Contactpersoon (toegevoegd)
-      if (planning.adres?.contactpersoon_naam) {
-        detailsHtml += `
-          <div class="rit-row">
-            <span class="rit-label">👤 Contactpersoon</span>
-            <span class="rit-value">${escapeHtml(planning.adres.contactpersoon_naam)}</span>
-          </div>
-        `;
-      }
-
-      // Extra info (parkeren, route, laadperron, etc.)
-      if (planning.adres?.extra_info) {
-        detailsHtml += `
-          <div class="extra-info-box">
-            <span class="rit-label">📝 Extra info</span>
-            <span class="rit-value">${escapeHtml(planning.adres.extra_info)}</span>
-          </div>
-        `;
-      }
-
-      // Opmerkingen (cruciaal voor chauffeur)
-      if (planning.opmerkingen) {
-        detailsHtml += `
-          <div class="opmerking-box">
-            <span class="rit-label">💬 Opmerking</span>
-            <span class="rit-value">${escapeHtml(planning.opmerkingen)}</span>
-          </div>
-        `;
-      }
-
-      printContent += `
-        <div class="rit-card status-${statusClass}">
-          <div class="rit-header">
-            <span class="rit-nummer">#${index + 1}</span>
-            <span class="rit-naam">${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</span>
-            <span class="rit-status ${statusClass}">${statusClass}</span>
-          </div>
-          <div class="rit-body">
-            <div class="rit-row">
-              <span class="rit-label">📍 Adres</span>
-              <span class="rit-value">${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</span>
-            </div>
-            <div class="rit-row">
-              <span class="rit-label">📋 Type</span>
-              <span class="rit-value">${typeLabel}</span>
-            </div>
-            ${detailsHtml}
-          </div>
-        </div>
-      `;
-    });
-
-    printContent += `
-        <div class="footer">
-          <p>Gegenereerd op ${new Date().toLocaleString('nl-NL')}</p>
-        </div>
-        <div class="no-print">
-          <button class="btn-print" onclick="window.print()">🖨️ Print / PDF opslaan</button>
-          <button class="btn-close" onclick="window.close()" style="margin-left:10px;">❌ Sluiten</button>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank', 'width=800,height=700');
-    if (!printWindow) {
-      showToast('❌ Popup geblokkeerd! Sta popups toe voor deze site.', 'error');
+    if (allePlanningen.length === 0) {
+      planningLijst.innerHTML = '<p>Geen planningen gevonden. Klik op "+ Nieuwe planning" om er een toe te voegen.</p>';
       return;
     }
-    printWindow.document.write(printContent);
-    printWindow.document.close();
-    printWindow.focus();
 
-    printWindow.onload = function() {
-      setTimeout(function() {
-        printWindow.print();
-      }, 500);
-    };
+    // Groepeer op datum
+    const grouped = {};
+    allePlanningen.forEach(p => {
+      if (!grouped[p.datum]) {
+        grouped[p.datum] = [];
+      }
+      grouped[p.datum].push(p);
+    });
 
-    await logActie('pdf geëxporteerd', 'planning', null, null, { datum: datum });
+    let html = '';
+    const sortedDates = Object.keys(grouped).sort((a, b) => new Date(b) - new Date(a));
+
+    for (const datum of sortedDates) {
+      const items = grouped[datum];
+      const dagVanWeek = new Date(datum + 'T00:00:00').toLocaleDateString('nl-NL', { weekday: 'long' });
+      
+      html += `
+        <div class="datum-header">
+          <div class="datum-header-content">
+            <span class="datum-dag">${dagVanWeek}</span>
+            <span class="datum-datum">${formatDate(datum)}</span>
+            <span class="datum-count">${items.length} ritten</span>
+          </div>
+          <div class="datum-actions">
+            <button class="btn btn-primary btn-small pdf-dag-btn" data-datum="${datum}">📄 PDF</button>
+            <button class="btn btn-info btn-small ai-optimize-day-btn" data-datum="${datum}">🤖 Optimaliseer</button>
+          </div>
+        </div>
+        <div class="planning-sortable-container" data-datum="${datum}">
+      `;
+
+      items.forEach((planning, index) => {
+        const statusClass = planning.status === 'gepland' ? 'status-gepland' : 
+                            (planning.status === 'uitgevoerd' ? 'status-uitgevoerd' : 'status-geannuleerd');
+        const typeIcon = planning.type === 'ophaling' ? '📦' : '🚚';
+        const typeLabel = planning.type === 'ophaling' ? 'Ophaling' : 'Plaatsing';
+        const volgorde = planning.dag_volgorde || index + 1;
+
+        // 🔥 Contactpersoon weergeven in de planning lijst
+        let contactHtml = '';
+        if (planning.adres?.contactpersoon_naam) {
+          contactHtml = `<p>👤 ${escapeHtml(planning.adres.contactpersoon_naam)}</p>`;
+        }
+
+        let opmerkingHtml = '';
+        if (planning.opmerkingen) {
+          opmerkingHtml = `<p class="planning-opmerking">💬 ${escapeHtml(planning.opmerkingen)}</p>`;
+        }
+
+        html += `
+          <div class="planning-item sortable-item" data-id="${planning.id}" data-volgorde="${volgorde}" data-datum="${datum}">
+            <div class="drag-handle" title="Sleep om te herordenen">⠿</div>
+            <div class="planning-info">
+              <div class="planning-header">
+                <span class="stop-number-badge">#${volgorde}</span>
+                <h4>${escapeHtml(planning.adres?.instelling_naam || 'Onbekend')}</h4>
+                <span class="planning-status ${statusClass}">${planning.status || 'gepland'}</span>
+              </div>
+              <p>📍 ${escapeHtml(planning.adres?.straat || '')}, ${escapeHtml(planning.adres?.plaats || '')}</p>
+              <p>📋 ${typeIcon} ${typeLabel}</p>
+              ${planning.type === 'ophaling' && planning.aantal_tonnen ? `<p>📦 ${planning.aantal_tonnen} ton(nen)</p>` : ''}
+              ${planning.type === 'plaatsing' && planning.aantal_lege_tonnen ? `<p>📦 ${planning.aantal_lege_tonnen} lege ton(nen)</p>` : ''}
+              ${planning.adres?.telefoon ? `<p>📞 ${escapeHtml(planning.adres.telefoon)}</p>` : ''}
+              ${contactHtml}
+              ${planning.adres?.extra_info ? `<p class="planning-extra-info">📝 ${escapeHtml(planning.adres.extra_info)}</p>` : ''}
+              ${opmerkingHtml}
+            </div>
+            <div class="planning-buttons">
+              <select class="status-select" data-id="${planning.id}">
+                <option value="gepland" ${planning.status === 'gepland' ? 'selected' : ''}>📋 Gepland</option>
+                <option value="uitgevoerd" ${planning.status === 'uitgevoerd' ? 'selected' : ''}>✅ Uitgevoerd</option>
+                <option value="geannuleerd" ${planning.status === 'geannuleerd' ? 'selected' : ''}>❌ Geannuleerd</option>
+              </select>
+              <button class="btn btn-secondary edit-planning-btn" data-id="${planning.id}">✏️ Bewerken</button>
+              <button class="btn btn-danger delete-planning-btn" data-id="${planning.id}">🗑️ Verwijderen</button>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+        </div>
+      `;
+    }
+
+    planningLijst.innerHTML = html;
+
+    // Event listeners
+    document.querySelectorAll('.status-select').forEach(select => {
+      select.addEventListener('change', async function() {
+        const id = this.dataset.id;
+        const nieuweStatus = this.value;
+        await updatePlanningStatus(id, nieuweStatus);
+      });
+    });
+
+    document.querySelectorAll('.edit-planning-btn').forEach(btn => {
+      btn.addEventListener('click', () => bewerkPlanning(btn.dataset.id));
+    });
+
+    document.querySelectorAll('.delete-planning-btn').forEach(btn => {
+      btn.addEventListener('click', () => verwijderPlanning(btn.dataset.id));
+    });
+
+    document.querySelectorAll('.pdf-dag-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const datum = this.dataset.datum;
+        genereerPDFVoorDag(datum);
+      });
+    });
+
+    document.querySelectorAll('.ai-optimize-day-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        const datum = this.dataset.datum;
+        optimizeRouteVoorDag(datum);
+      });
+    });
+
+    initSortable();
 
   } catch (err) {
-    console.error('Fout bij PDF generatie:', err);
-    showToast('❌ Fout bij PDF generatie: ' + err.message, 'error');
+    console.error('Fout bij laden planningen:', err);
+    planningLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
   }
 }
 // ============================================================
