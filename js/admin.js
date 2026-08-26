@@ -3,7 +3,7 @@
 // ============================================================
 import { requireAdmin, getGebruikersnaam, logoutUser } from './core/auth.js';
 import { showToast, escapeHtml } from './core/utils.js';
-import { supabase, logActie } from './core/supabase.js';  // 🔥 logActie toegevoegd
+import { supabase, logActie } from './core/supabase.js';
 
 console.log('🚀 admin.js geladen');
 
@@ -47,31 +47,6 @@ function setValue(id, value) {
   if (el) el.value = value || '';
 }
 
-// ===== EDGE FUNCTION AANROEP =====
-async function callAdminAction(action, data) {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
-  if (!token) {
-    throw new Error('Je bent niet ingelogd. Log opnieuw in.');
-  }
-  const response = await fetch(
-    'https://jcdqcgviossmrvlgsiqd.supabase.co/functions/v1/admin-operations',
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ action, data })
-    }
-  );
-  const result = await response.json();
-  if (!response.ok) {
-    throw new Error(result.error || 'Er ging iets mis');
-  }
-  return result;
-}
-
 // ===== GEBRUIKERS LIJST LADEN =====
 async function laadGebruikers() {
   console.log('🔄 laadGebruikers aangeroepen');
@@ -102,6 +77,7 @@ async function laadGebruikers() {
     alleGebruikers = rollen;
     if (aantalGebruikersSpan) aantalGebruikersSpan.textContent = rollen.length;
 
+    // Filter op zoekterm
     let gefilterdeRollen = rollen;
     if (huidigeUserZoekterm) {
       const term = huidigeUserZoekterm.toLowerCase();
@@ -177,15 +153,12 @@ async function laadGebruikers() {
     gebruikersLijst.innerHTML = html;
     console.log('✅ Gebruikerslijst weergegeven, aantal rijen:', gefilterdeRollen.length);
 
-    // ===== EVENT LISTENERS VOOR KNOBBEN =====
-
-    // Goedkeuren
+    // Event listeners voor knoppen
     document.querySelectorAll('.approve-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const userId = btn.dataset.userid;
         if (!confirm('Weet je zeker dat je deze gebruiker wilt goedkeuren?')) return;
 
-        // 🔥 Haal gebruikersnaam op voor logging
         const row = btn.closest('tr');
         const gebruikersnaam = row?.querySelector('td:first-child')?.textContent || 'Onbekend';
 
@@ -197,7 +170,6 @@ async function laadGebruikers() {
         if (error) {
           showToast('Fout: ' + error.message, 'error');
         } else {
-          // 🔥 LOG: Gebruiker goedgekeurd
           await logActie('goedgekeurd', 'gebruikers', userId, gebruikersnaam);
           showToast('✅ Gebruiker goedgekeurd!', 'success');
           laadGebruikers();
@@ -206,13 +178,11 @@ async function laadGebruikers() {
       });
     });
 
-    // Weigeren
     document.querySelectorAll('.reject-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         const userId = btn.dataset.userid;
         if (!confirm('Weet je zeker dat je deze gebruiker wilt weigeren?')) return;
 
-        // 🔥 Haal gebruikersnaam op voor logging
         const row = btn.closest('tr');
         const gebruikersnaam = row?.querySelector('td:first-child')?.textContent || 'Onbekend';
 
@@ -224,7 +194,6 @@ async function laadGebruikers() {
         if (error) {
           showToast('Fout: ' + error.message, 'error');
         } else {
-          // 🔥 LOG: Gebruiker geweigerd
           await logActie('geweigerd', 'gebruikers', userId, gebruikersnaam);
           showToast('❌ Gebruiker geweigerd.', 'error');
           laadGebruikers();
@@ -233,12 +202,10 @@ async function laadGebruikers() {
       });
     });
 
-    // Bewerken
     document.querySelectorAll('.edit-user-btn').forEach(btn => {
       btn.addEventListener('click', () => bewerkGebruiker(btn.dataset.userid));
     });
 
-    // Verwijderen
     document.querySelectorAll('.delete-user-btn').forEach(btn => {
       btn.addEventListener('click', () => verwijderGebruiker(btn.dataset.userid));
     });
@@ -366,7 +333,6 @@ async function bewerkGebruiker(userId) {
     setValue('chauffeurNummer', data.chauffeur_nummer || '');
     setValue('chauffeurTelefoon', data.chauffeur_telefoon || '');
     chauffeurVelden.style.display = data.is_chauffeur ? 'block' : 'none';
-    laadModuleRechten(userId);
     userPopup.style.display = 'flex';
   } catch (err) {
     showToast('Fout: ' + err.message, 'error');
@@ -382,7 +348,6 @@ async function verwijderGebruiker(userId) {
   }
   if (!confirm('⚠️ Weet je zeker dat je deze gebruiker volledig wilt verwijderen?\n\nDit verwijdert:\n- De gebruiker uit auth.users\n- Alle rollen en rechten\n- Dit kan niet ongedaan worden gemaakt!')) return;
 
-  // 🔥 Haal gebruikersnaam op voor logging
   const row = document.querySelector(`tr[data-userid="${userId}"]`);
   const gebruikersnaam = row?.querySelector('td:first-child')?.textContent || 'Onbekend';
 
@@ -429,7 +394,6 @@ async function verwijderGebruiker(userId) {
     }
     console.log('✅ Gebruiker verwijderd uit auth.users:', result);
 
-    // 🔥 LOG: Gebruiker verwijderd
     await logActie('verwijderd', 'gebruikers', userId, gebruikersnaam);
 
     showToast('✅ Gebruiker volledig verwijderd!', 'success');
@@ -439,53 +403,6 @@ async function verwijderGebruiker(userId) {
   } catch (err) {
     console.error('❌ Fout bij verwijderen:', err);
     showToast('❌ Fout bij verwijderen: ' + err.message, 'error');
-  }
-}
-
-// ===== MODULE RECHTEN LADEN =====
-async function laadModuleRechten(userId) {
-  const moduleContainer = document.getElementById('moduleRechtenContainer');
-  if (!moduleContainer) return;
-
-  try {
-    const { data: modules, error: modError } = await supabase
-      .from('modules')
-      .select('*')
-      .order('module_naam');
-    if (modError) throw modError;
-
-    const { data: rechten, error: rechtError } = await supabase
-      .from('gebruikers_module_rechten')
-      .select('*')
-      .eq('user_id', userId);
-    if (rechtError) throw rechtError;
-
-    const rechtenMap = {};
-    rechten.forEach(r => {
-      rechtenMap[r.module_sleutel] = r.actief;
-    });
-
-    let html = '<div class="module-checkboxes">';
-    modules.forEach(module => {
-      const isActive = rechtenMap[module.module_sleutel] !== undefined ? 
-        rechtenMap[module.module_sleutel] : module.standaard_aan;
-      const checked = isActive ? 'checked' : '';
-      html += `
-        <div class="module-checkbox-item">
-          <label>
-            <input type="checkbox" class="module-recht-checkbox" 
-              data-module="${module.module_sleutel}" ${checked}>
-            <strong>${escapeHtml(module.module_naam)}</strong>
-            ${module.beschrijving ? `<span style="color:#6c757d;font-size:0.85rem;"> - ${escapeHtml(module.beschrijving)}</span>` : ''}
-          </label>
-        </div>
-      `;
-    });
-    html += '</div>';
-    moduleContainer.innerHTML = html;
-  } catch (err) {
-    console.error('Fout bij laden module rechten:', err);
-    moduleContainer.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
   }
 }
 
@@ -547,25 +464,8 @@ async function saveUser() {
 
     if (result.error) throw result.error;
 
-    const checkboxes = document.querySelectorAll('.module-recht-checkbox');
     const userId = currentEditingUserId || nieuweUserId || result.data?.[0]?.user_id;
-    for (const checkbox of checkboxes) {
-      const moduleSleutel = checkbox.dataset.module;
-      const actief = checkbox.checked;
-      if (userId) {
-        await supabase
-          .from('gebruikers_module_rechten')
-          .upsert({
-            user_id: userId,
-            module_sleutel: moduleSleutel,
-            actief: actief
-          }, {
-            onConflict: 'user_id, module_sleutel'
-          });
-      }
-    }
 
-    // 🔥 LOG: Gebruiker toegevoegd of bijgewerkt
     if (isNieuweGebruiker) {
       await logActie('toegevoegd', 'gebruikers', userId, gebruikersnaam);
     } else {
@@ -651,8 +551,6 @@ async function initAdmin() {
       setValue('chauffeurNummer', '');
       setValue('chauffeurTelefoon', '');
       chauffeurVelden.style.display = 'none';
-      const moduleContainer = document.getElementById('moduleRechtenContainer');
-      if (moduleContainer) moduleContainer.innerHTML = '<p>Laden...</p>';
       userPopup.style.display = 'flex';
     });
   }

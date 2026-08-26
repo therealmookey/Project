@@ -1,20 +1,11 @@
 // ============================================================
 // MODULES - Module rechten beheer (modules.html)
 // ============================================================
-
-console.log('🚀 modules.js wordt geladen...');
+console.log('🚀 modules.js geladen');
 
 import { requireAdmin } from './core/auth.js';
 import { showToast, escapeHtml } from './core/utils.js';
-import { supabase } from './core/supabase.js';
-
-console.log('✅ Imports geladen!');
-
-// ===== STATE =====
-let alleGebruikers = [];
-let alleModules = [];
-let alleRechten = [];
-let currentUserId = null;
+import { supabase, logActie } from './core/supabase.js';
 
 // ===== DOM ELEMENTEN =====
 const gebruikersModuleLijst = document.getElementById('gebruikersModuleLijst');
@@ -28,429 +19,256 @@ const moduleCheckboxes = document.getElementById('moduleCheckboxes');
 const saveModuleRightsBtn = document.getElementById('saveModuleRightsBtn');
 const closeModulePopup = document.getElementById('closeModulePopup');
 
-console.log('✅ DOM elementen gevonden');
-
-// ===== MODULES LADEN =====
-async function laadModules() {
-    try {
-        const { data, error } = await supabase
-            .from('modules')
-            .select('*')
-            .order('module_naam');
-        
-        if (error) throw error;
-        
-        alleModules = data || [];
-        console.log('📋 Alle modules geladen:', alleModules.length);
-        
-        toonModules(alleModules);
-    } catch (err) {
-        console.error('Fout bij laden modules:', err);
-        showToast('Fout bij laden modules: ' + err.message, 'error');
-    }
-}
-
-// ===== MODULES TONEN =====
-function toonModules(modules) {
-    if (!modulesLijst) return;
-    
-    if (!modules || modules.length === 0) {
-        modulesLijst.innerHTML = '<p>Geen modules gevonden.</p>';
-        return;
-    }
-    
-    // Tel hoeveel gebruikers per module rechten hebben
-    const moduleCounts = {};
-    modules.forEach(module => {
-        moduleCounts[module.module_sleutel] = 0;
-    });
-    
-    // Loop door alle gebruikers (alleen goedgekeurde)
-    const goedgekeurdeGebruikers = alleGebruikers.filter(u => u.status === 'goedgekeurd');
-    
-    goedgekeurdeGebruikers.forEach(user => {
-        // Admin heeft altijd alle rechten
-        if (user.rol === 'admin') {
-            modules.forEach(module => {
-                moduleCounts[module.module_sleutel]++;
-            });
-            return;
-        }
-        
-        const userRechten = alleRechten.filter(r => r.user_id === user.user_id);
-        
-        modules.forEach(module => {
-            const recht = userRechten.find(r => r.module_sleutel === module.module_sleutel);
-            const heeftToegang = recht ? recht.actief : module.standaard_aan;
-            if (heeftToegang) {
-                moduleCounts[module.module_sleutel]++;
-            }
-        });
-    });
-    
-    let html = `
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Module</th>
-                        <th>Sleutel</th>
-                        <th>Beschrijving</th>
-                        <th>Standaard aan</th>
-                        <th>Gebruikers met recht</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    modules.forEach(module => {
-        const standaardStatus = module.standaard_aan ? '✅ Ja' : '❌ Nee';
-        const count = moduleCounts[module.module_sleutel] || 0;
-        html += `
-            <tr>
-                <td><strong>${escapeHtml(module.module_naam)}</strong></td>
-                <td><code>${escapeHtml(module.module_sleutel)}</code></td>
-                <td>${escapeHtml(module.beschrijving || '-')}</td>
-                <td>${standaardStatus}</td>
-                <td style="text-align: center;">${count}</td>
-            </tr>
-        `;
-    });
-    
-    html += `
-                </tbody>
-            </table>
-            <div style="margin-top: 10px; font-size: 0.85rem; color: #6c757d;">
-                Totaal: ${modules.length} modules | ${goedgekeurdeGebruikers.length} actieve gebruikers
-            </div>
-        </div>
-    `;
-    
-    modulesLijst.innerHTML = html;
-    console.log('✅ Modules weergegeven in tabModules:', modules.length);
-}
+// ===== STATE =====
+let alleGebruikers = [];
+let alleModules = [];
+let huidigeGebruikerId = null;
+let isInitialized = false;
 
 // ===== GEBRUIKERS LADEN =====
-async function laadGebruikersMetRechten() {
-    if (!gebruikersModuleLijst) return;
-    
-    gebruikersModuleLijst.innerHTML = '<p>Bezig met laden...</p>';
-    
-    try {
-        const { data: gebruikers, error: userError } = await supabase
-            .from('gebruikers_rollen')
-            .select('*')
-            .order('gebruikersnaam');
-        
-        if (userError) throw userError;
-        
-        const { data: rechten, error: rechtError } = await supabase
-            .from('gebruikers_module_rechten')
-            .select('*');
-        
-        if (rechtError) throw rechtError;
-        
-        alleGebruikers = gebruikers || [];
-        alleRechten = rechten || [];
-        
-        console.log('📋 Gebruikers geladen:', alleGebruikers.length);
-        console.log('📋 Rechten geladen:', alleRechten.length);
-        
-        toonGebruikersMetRechten(alleGebruikers);
-    } catch (err) {
-        console.error('Fout bij laden gebruikers:', err);
-        gebruikersModuleLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
-    }
-}
+async function laadGebruikersVoorModules() {
+  if (!gebruikersModuleLijst) return;
+  gebruikersModuleLijst.innerHTML = '<p>Bezig met laden...</p>';
 
-// ===== GEBRUIKERS TONEN =====
-function toonGebruikersMetRechten(gebruikers) {
-    if (!gebruikersModuleLijst) return;
-    
-    let filteredData = gebruikers;
-    
-    if (searchModuleUserInput && searchModuleUserInput.value) {
-        const term = searchModuleUserInput.value.toLowerCase();
-        filteredData = gebruikers.filter(user => 
-            (user.gebruikersnaam && user.gebruikersnaam.toLowerCase().includes(term)) ||
-            (user.user_id && user.user_id.toLowerCase().includes(term))
-        );
+  try {
+    const { data, error } = await supabase
+      .from('gebruikers_rollen')
+      .select('*')
+      .order('gebruikersnaam');
+
+    if (error) throw error;
+    alleGebruikers = data || [];
+
+    if (alleGebruikers.length === 0) {
+      gebruikersModuleLijst.innerHTML = '<p>Geen gebruikers gevonden.</p>';
+      return;
     }
-    
-    if (!filteredData || filteredData.length === 0) {
-        gebruikersModuleLijst.innerHTML = '<p>Geen gebruikers gevonden.</p>';
-        return;
-    }
-    
+
     let html = `
-        <div style="overflow-x: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Gebruikersnaam</th>
-                        <th>Rol</th>
-                        <th>Status</th>
-                        <th>Module rechten</th>
-                        <th>Acties</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    filteredData.forEach(user => {
-        const userRechten = alleRechten.filter(r => r.user_id === user.user_id);
-        
-        let rechtenLabels = [];
-        if (user.rol === 'admin') {
-            rechtenLabels = ['👑 Alle modules (admin)'];
-        } else {
-            alleModules.forEach(module => {
-                const recht = userRechten.find(r => r.module_sleutel === module.module_sleutel);
-                const isActive = recht ? recht.actief : module.standaard_aan;
-                if (isActive) {
-                    rechtenLabels.push(module.module_naam);
-                }
-            });
-            if (rechtenLabels.length === 0) {
-                rechtenLabels = ['❌ Geen rechten'];
-            }
-        }
-        
-        const statusLabel = user.status === 'goedgekeurd' ? '✅ Actief' : 
-                           (user.status === 'wachtend' ? '⏳ Wachtend' : '❌ Geweigerd');
-        
-        html += `
-            <tr>
-                <td><strong>${escapeHtml(user.gebruikersnaam || 'Onbekend')}</strong></td>
-                <td>${user.rol === 'admin' ? '👑 Admin' : '👤 Gebruiker'}</td>
-                <td>${statusLabel}</td>
-                <td style="font-size:0.85rem; max-width: 300px;">
-                    ${rechtenLabels.length > 3 ? rechtenLabels.slice(0, 3).join(', ') + ` +${rechtenLabels.length - 3} meer` : rechtenLabels.join(', ')}
-                </td>
-                <td>
-                    ${user.rol !== 'admin' ? `<button class="btn btn-primary edit-rights-btn" data-userid="${user.user_id}">🔑 Rechten</button>` : '<span style="color:#6c757d;">Admin</span>'}
-                </td>
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <thead>
+            <tr style="background-color: #f8f9fa;">
+              <th style="padding: 12px; text-align: left;">Gebruikersnaam</th>
+              <th style="padding: 12px; text-align: left;">Rol</th>
+              <th style="padding: 12px; text-align: left;">Status</th>
+              <th style="padding: 12px; text-align: left;">Acties</th>
             </tr>
-        `;
-    });
-    
-    html += `
-                </tbody>
-            </table>
-        </div>
+          </thead>
+          <tbody>
     `;
-    
+
+    for (const gebruiker of alleGebruikers) {
+      const statusDisplay = gebruiker.status === 'goedgekeurd' ? '✅ Goedgekeurd' : 
+                           (gebruiker.status === 'wachtend' ? '⏳ Wachtend' : '❌ Geweigerd');
+      
+      html += `
+        <tr style="border-bottom: 1px solid #e9ecef;">
+          <td style="padding: 12px;"><strong>${escapeHtml(gebruiker.gebruikersnaam || '-')}</strong></td>
+          <td style="padding: 12px;">${gebruiker.rol === 'admin' ? '👑 Admin' : '👤 Gebruiker'}</td>
+          <td style="padding: 12px;">${statusDisplay}</td>
+          <td style="padding: 12px;">
+            <button class="btn btn-secondary module-rechten-btn" data-userid="${gebruiker.user_id}" data-gebruikersnaam="${escapeHtml(gebruiker.gebruikersnaam || 'Onbekend')}">
+              ⚙️ Module rechten
+            </button>
+          </td>
+        </tr>
+      `;
+    }
+
+    html += `
+          </tbody>
+        </table>
+      </div>
+    `;
+
     gebruikersModuleLijst.innerHTML = html;
-    
-    document.querySelectorAll('.edit-rights-btn').forEach(btn => {
-        btn.addEventListener('click', () => openModulePopup(btn.dataset.userid));
+
+    document.querySelectorAll('.module-rechten-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const userId = btn.dataset.userid;
+        const gebruikersnaam = btn.dataset.gebruikersnaam;
+        openModulePopup(userId, gebruikersnaam);
+      });
     });
+
+  } catch (err) {
+    console.error('Fout bij laden gebruikers:', err);
+    gebruikersModuleLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
+  }
 }
 
-// ===== MODULE POPUP =====
-async function openModulePopup(userId) {
-    try {
-        const { data: user, error: userError } = await supabase
-            .from('gebruikers_rollen')
-            .select('*')
-            .eq('user_id', userId)
-            .single();
-        
-        if (userError) throw userError;
-        
-        currentUserId = userId;
-        modulePopupTitle.textContent = 'Module rechten bewerken';
-        modulePopupUser.textContent = user.gebruikersnaam || 'Onbekend';
-        
-        const { data: modules, error: modError } = await supabase
-            .from('modules')
-            .select('*')
-            .order('module_naam');
-        
-        if (modError) throw modError;
-        
-        const { data: rechten, error: rechtError } = await supabase
-            .from('gebruikers_module_rechten')
-            .select('*')
-            .eq('user_id', userId);
-        
-        if (rechtError) throw rechtError;
-        
-        const rechtenMap = {};
-        rechten.forEach(r => {
-            rechtenMap[r.module_sleutel] = r.actief;
-        });
-        
-        let html = '';
-        modules.forEach(module => {
-            const isActive = rechtenMap[module.module_sleutel] !== undefined ? 
-                rechtenMap[module.module_sleutel] : module.standaard_aan;
-            const checked = isActive ? 'checked' : '';
-            html += `
-                <div class="module-checkbox-item">
-                    <label>
-                        <input type="checkbox" class="module-recht-checkbox" 
-                               data-module="${module.module_sleutel}" ${checked}>
-                        <strong>${escapeHtml(module.module_naam)}</strong>
-                        ${module.beschrijving ? `<span style="color:#6c757d;font-size:0.85rem;display:block;margin-left:28px;">${escapeHtml(module.beschrijving)}</span>` : ''}
-                    </label>
-                </div>
-            `;
-        });
-        
-        moduleCheckboxes.innerHTML = html;
-        modulePopup.style.display = 'flex';
-        
-    } catch (err) {
-        console.error('Fout bij openen popup:', err);
-        showToast('Fout: ' + err.message, 'error');
-    }
+// ===== MODULE POPUP OPENEN =====
+async function openModulePopup(userId, gebruikersnaam) {
+  try {
+    huidigeGebruikerId = userId;
+    modulePopupTitle.textContent = 'Module rechten bewerken';
+    modulePopupUser.textContent = gebruikersnaam;
+    moduleCheckboxes.innerHTML = '<p>Laden...</p>';
+    modulePopup.style.display = 'flex';
+
+    // Haal alle modules op
+    const { data: modules, error: modError } = await supabase
+      .from('modules')
+      .select('*')
+      .order('module_naam');
+
+    if (modError) throw modError;
+    alleModules = modules || [];
+
+    // Haal bestaande rechten op voor deze gebruiker
+    const { data: rechten, error: rechtError } = await supabase
+      .from('gebruikers_module_rechten')
+      .select('*')
+      .eq('user_id', userId);
+
+    if (rechtError) throw rechtError;
+
+    const rechtenMap = {};
+    rechten.forEach(r => {
+      rechtenMap[r.module_sleutel] = r.actief;
+    });
+
+    let html = '<div class="module-checkboxes">';
+    modules.forEach(module => {
+      const isActive = rechtenMap[module.module_sleutel] !== undefined ? 
+        rechtenMap[module.module_sleutel] : module.standaard_aan;
+      const checked = isActive ? 'checked' : '';
+      html += `
+        <div class="module-checkbox-item">
+          <label>
+            <input type="checkbox" class="module-recht-checkbox" 
+              data-module="${module.module_sleutel}" ${checked}>
+            <strong>${escapeHtml(module.module_naam)}</strong>
+            ${module.beschrijving ? `<span style="color:#6c757d;font-size:0.85rem;"> - ${escapeHtml(module.beschrijving)}</span>` : ''}
+          </label>
+        </div>
+      `;
+    });
+    html += '</div>';
+    moduleCheckboxes.innerHTML = html;
+
+  } catch (err) {
+    console.error('Fout bij openen module popup:', err);
+    showToast('❌ Fout: ' + err.message, 'error');
+  }
 }
 
 // ===== MODULE RECHTEN OPSLAAN =====
 async function saveModuleRights() {
-    if (!currentUserId) {
-        showToast('❌ Geen gebruiker geselecteerd', 'error');
-        return;
-    }
-    
-    try {
-        const checkboxes = document.querySelectorAll('.module-recht-checkbox');
-        const updates = [];
-        
-        checkboxes.forEach(checkbox => {
-            const moduleSleutel = checkbox.dataset.module;
-            const actief = checkbox.checked;
-            updates.push({
-                user_id: currentUserId,
-                module_sleutel: moduleSleutel,
-                actief: actief
-            });
-        });
-        
-        await supabase
-            .from('gebruikers_module_rechten')
-            .delete()
-            .eq('user_id', currentUserId);
-        
-        for (const update of updates) {
-            await supabase
-                .from('gebruikers_module_rechten')
-                .insert([update]);
-        }
-        
-        const existingRechten = alleRechten.filter(r => r.user_id !== currentUserId);
-        const newRechtenData = updates.map(u => ({
-            user_id: currentUserId,
-            module_sleutel: u.module_sleutel,
-            actief: u.actief
-        }));
-        alleRechten = [...existingRechten, ...newRechtenData];
-        
-        toonModules(alleModules);
-        
-        showToast('✅ Module rechten opgeslagen!', 'success');
-        modulePopup.style.display = 'none';
-        laadGebruikersMetRechten();
-        
-    } catch (err) {
-        console.error('Fout bij opslaan rechten:', err);
-        showToast('❌ Fout bij opslaan rechten: ' + err.message, 'error');
-    }
-}
+  if (!huidigeGebruikerId) {
+    showToast('❌ Geen gebruiker geselecteerd', 'error');
+    return;
+  }
 
-// ===== TAB FUNCTIES =====
-function initTabs() {
-    console.log('🔄 Tabs initialiseren...');
-    
-    const tabs = document.querySelectorAll('.module-tabs .tab-btn');
-    console.log('📋 Aantal tabs gevonden:', tabs.length);
-    
-    tabs.forEach(btn => {
-        btn.addEventListener('click', function() {
-            console.log('🔘 Tab geklikt:', this.dataset.tab);
-            
-            document.querySelectorAll('.module-tabs .tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.module-tab').forEach(t => t.classList.remove('active'));
-            
-            this.classList.add('active');
-            const tabId = this.dataset.tab;
-            const tabContent = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
-            if (tabContent) {
-                tabContent.classList.add('active');
-                console.log('✅ Tab content geactiveerd:', tabId);
-            } else {
-                console.error('❌ Tab content niet gevonden:', 'tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
-            }
-        });
-    });
-    
-    const firstTab = document.querySelector('.module-tabs .tab-btn.active');
-    if (firstTab) {
-        const tabId = firstTab.dataset.tab;
-        const tabContent = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
-        if (tabContent) {
-            tabContent.classList.add('active');
-        }
-    } else {
-        const firstBtn = document.querySelector('.module-tabs .tab-btn');
-        if (firstBtn) {
-            firstBtn.classList.add('active');
-            const tabId = firstBtn.dataset.tab;
-            const tabContent = document.getElementById('tab' + tabId.charAt(0).toUpperCase() + tabId.slice(1));
-            if (tabContent) {
-                tabContent.classList.add('active');
-            }
-        }
+  try {
+    const checkboxes = document.querySelectorAll('.module-recht-checkbox');
+    const updates = [];
+
+    for (const checkbox of checkboxes) {
+      const moduleSleutel = checkbox.dataset.module;
+      const actief = checkbox.checked;
+      updates.push({ moduleSleutel, actief });
     }
+
+    // Sla alle rechten op
+    for (const update of updates) {
+      const { error } = await supabase
+        .from('gebruikers_module_rechten')
+        .upsert({
+          user_id: huidigeGebruikerId,
+          module_sleutel: update.moduleSleutel,
+          actief: update.actief
+        }, {
+          onConflict: 'user_id, module_sleutel'
+        });
+
+      if (error) throw error;
+    }
+
+    // Log de actie
+    const gebruikersnaam = modulePopupUser.textContent || 'Onbekend';
+    await logActie('module rechten bijgewerkt', 'modules', huidigeGebruikerId, gebruikersnaam, { updates });
+
+    showToast('✅ Module rechten opgeslagen!', 'success');
+    modulePopup.style.display = 'none';
+    laadGebruikersVoorModules();
+
+  } catch (err) {
+    console.error('Fout bij opslaan module rechten:', err);
+    showToast('❌ Fout: ' + err.message, 'error');
+  }
 }
 
 // ===== INITIALISATIE =====
-document.addEventListener('DOMContentLoaded', async function() {
-    console.log('🔄 Modules pagina initialiseren...');
-    
-    const isAdmin = await requireAdmin('dashboard.html');
-    if (!isAdmin) {
-        console.warn('⚠️ Geen admin toegang, redirect...');
-        return;
-    }
-    console.log('✅ Admin toegang verleend');
-    
-    initTabs();
-    
-    await laadModules();
-    await laadGebruikersMetRechten();
-    
-    if (searchModuleUserInput) {
-        searchModuleUserInput.addEventListener('input', () => {
-            laadGebruikersMetRechten();
-        });
-    }
-    
-    if (clearModuleUserSearchBtn) {
-        clearModuleUserSearchBtn.addEventListener('click', () => {
-            searchModuleUserInput.value = '';
-            laadGebruikersMetRechten();
-        });
-    }
-    
-    if (saveModuleRightsBtn) {
-        saveModuleRightsBtn.addEventListener('click', saveModuleRights);
-    }
-    
-    if (closeModulePopup) {
-        closeModulePopup.addEventListener('click', () => {
-            modulePopup.style.display = 'none';
-        });
-    }
-    
-    window.addEventListener('click', (e) => {
-        if (e.target === modulePopup) {
-            modulePopup.style.display = 'none';
-        }
+async function initModules() {
+  if (isInitialized) {
+    console.log('⚠️ Modules al geïnitialiseerd, overslaan');
+    return;
+  }
+  isInitialized = true;
+
+  console.log('🔄 Modules initialisatie gestart...');
+
+  const isAdmin = await requireAdmin('dashboard.html');
+  if (!isAdmin) {
+    console.warn('⚠️ Geen admin rechten, redirect...');
+    return;
+  }
+
+  console.log('✅ Admin rechten bevestigd');
+
+  await laadGebruikersVoorModules();
+
+  // ===== EVENT LISTENERS =====
+
+  if (saveModuleRightsBtn) {
+    saveModuleRightsBtn.addEventListener('click', saveModuleRights);
+  }
+
+  if (closeModulePopup) {
+    closeModulePopup.addEventListener('click', () => {
+      modulePopup.style.display = 'none';
     });
-    
-    console.log('✅ Modules pagina geïnitialiseerd!');
-});
+  }
+
+  if (searchModuleUserInput) {
+    searchModuleUserInput.addEventListener('input', function() {
+      const term = this.value.toLowerCase();
+      const rows = document.querySelectorAll('#gebruikersModuleLijst table tbody tr');
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(term) ? '' : 'none';
+      });
+    });
+  }
+
+  if (clearModuleUserSearchBtn) {
+    clearModuleUserSearchBtn.addEventListener('click', () => {
+      searchModuleUserInput.value = '';
+      const rows = document.querySelectorAll('#gebruikersModuleLijst table tbody tr');
+      rows.forEach(row => {
+        row.style.display = '';
+      });
+      searchModuleUserInput.focus();
+    });
+  }
+
+  window.addEventListener('click', (e) => {
+    if (e.target === modulePopup) {
+      modulePopup.style.display = 'none';
+    }
+  });
+
+  console.log('✅ Modules geïnitialiseerd!');
+}
+
+// ===== START =====
+document.addEventListener('DOMContentLoaded', initModules);
+
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  console.log('🔄 DOM al geladen, start modules direct...');
+  initModules();
+}
 
 console.log('✅ modules.js geladen!');
