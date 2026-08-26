@@ -1,87 +1,111 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Project - Modules beheer</title>
-    
-    <!-- ===== VOORKOM FLITS VAN LIGHT MODE ===== -->
-    <script>
-        // Dit script wordt direct uitgevoerd voordat de CSS wordt geladen
-        (function() {
-            const theme = localStorage.getItem('theme');
-            if (theme === 'dark') {
-                document.documentElement.setAttribute('data-theme', 'dark');
-                // Voorkom nog meer flits
-                document.documentElement.style.backgroundColor = '#0f0f1a';
-                document.documentElement.style.color = '#f0f0f0';
-            }
-        })();
-    </script>
-    
-    <link rel="stylesheet" href="css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project - Modules beheer</title>
+  <!-- ===== VOORKOM FLITS VAN LIGHT MODE ===== -->
+  <script>
+    (function() {
+      const theme = localStorage.getItem('theme');
+      if (theme === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.style.backgroundColor = '#0f0f1a';
+        document.documentElement.style.color = '#f0f0f0';
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div id="navigatie-placeholder"></div>
-    
-    <main class="container">
-        <div class="page-header">
-            <h1>⚙️ Modulebeheer</h1>
-            <p>Beheer welke modules gebruikers kunnen zien en gebruiken</p>
-        </div>
-        
-        <div class="module-tabs">
-            <button class="tab-btn active" data-tab="gebruikers">👥 Per gebruiker</button>
-            <button class="tab-btn" data-tab="modules">📦 Alle modules</button>
-        </div>
-        
-        <!-- Tab 1: Per gebruiker -->
-        <div id="tabGebruikers" class="module-tab active">
-            <div class="filter-section">
-                <div class="search-bar">
-                    <input type="text" id="searchModuleUserInput" placeholder="🔍 Zoek gebruiker..." class="search-input">
-                    <button id="clearModuleUserSearchBtn" class="btn btn-secondary">✖ Wissen</button>
-                </div>
-            </div>
-            <div id="gebruikersModuleLijst" class="module-tabel">
-                <p>Laden...</p>
-            </div>
-        </div>
-        
-        <!-- Tab 2: Alle modules -->
-        <div id="tabModules" class="module-tab">
-            <div id="modulesLijst" class="module-tabel">
-                <p>Laden...</p>
-            </div>
-        </div>
-    </main>
-    
-    <!-- Popup voor module rechten bewerken -->
-    <div id="modulePopup" class="popup">
-        <div class="popup-content">
-            <h3 id="modulePopupTitle">Module rechten bewerken</h3>
-            <p><strong>Gebruiker:</strong> <span id="modulePopupUser"></span></p>
-            <div id="moduleCheckboxes" class="module-checkboxes">
-                <!-- Wordt dynamisch gevuld -->
-            </div>
-            <div style="display: flex; gap: 10px; margin-top: 1rem;">
-                <button id="saveModuleRightsBtn" class="btn btn-primary">Opslaan</button>
-                <button id="closeModulePopup" class="btn btn-secondary">Annuleren</button>
-            </div>
-        </div>
+  <div id="navigatie-placeholder"></div>
+  <main class="container">
+    <div class="page-header">
+      <h1>⚙️ Modulebeheer</h1>
+      <p>Beheer welke modules gebruikers kunnen zien en gebruiken</p>
     </div>
     
-        <!-- ===== SCRIPTS ===== -->
-<!-- 1. Supabase CDN -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Tabbladen -->
+    <div class="module-tabs">
+      <button class="tab-btn active" data-tab="gebruikers">👥 Per gebruiker</button>
+      <button class="tab-btn" data-tab="modules">📦 Alle modules</button>
+    </div>
 
-<!-- 2. Configuratie -->
-<script src="js/config.js"></script>
+    <!-- Tab 1: Per gebruiker -->
+    <div id="tabGebruikers" class="module-tab active">
+      <div class="filter-section">
+        <div class="search-bar">
+          <input type="text" id="searchModuleUserInput" placeholder="🔍 Zoek gebruiker..." class="search-input">
+          <button id="clearModuleUserSearchBtn" class="btn btn-secondary">✖ Wissen</button>
+        </div>
+      </div>
+      <div id="gebruikersModuleLijst" class="module-tabel">
+        <p>Laden...</p>
+      </div>
+    </div>
 
-<!-- 3. MAIN (als module) - laadt navigatie, thema, versie -->
-<script type="module" src="js/main.js"></script>
+    <!-- Tab 2: Alle modules -->
+    <div id="tabModules" class="module-tab">
+      <div class="filter-section">
+        <div class="search-bar">
+          <input type="text" id="searchModulesInput" placeholder="🔍 Zoek module..." class="search-input">
+          <button id="clearModulesSearchBtn" class="btn btn-secondary">✖ Wissen</button>
+          <button id="addModuleBtn" class="btn btn-primary">+ Nieuwe module</button>
+        </div>
+      </div>
+      <div id="modulesLijst" class="module-tabel">
+        <p>Laden...</p>
+      </div>
+    </div>
+  </main>
 
-<!-- 4. Admin specifiek (als module) -->
-<script type="module" src="js/modules.js"></script>
+  <!-- Popup voor module rechten bewerken (per gebruiker) -->
+  <div id="modulePopup" class="popup">
+    <div class="popup-content">
+      <h3 id="modulePopupTitle">Module rechten bewerken</h3>
+      <p><strong>Gebruiker:</strong> <span id="modulePopupUser"></span></p>
+      <div id="moduleCheckboxes" class="module-checkboxes">
+        <!-- Wordt dynamisch gevuld -->
+      </div>
+      <div style="display: flex; gap: 10px; margin-top: 1rem;">
+        <button id="saveModuleRightsBtn" class="btn btn-primary">Opslaan</button>
+        <button id="closeModulePopup" class="btn btn-secondary">Annuleren</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Popup voor module toevoegen/bewerken -->
+  <div id="moduleEditPopup" class="popup">
+    <div class="popup-content">
+      <h3 id="moduleEditPopupTitle">Nieuwe module</h3>
+      
+      <label>Module naam *</label>
+      <input type="text" id="moduleNaamInput" placeholder="Bijv. Rapportages" required>
+
+      <label>Module sleutel *</label>
+      <input type="text" id="moduleSleutelInput" placeholder="Bijv. rapportages" required>
+      <small>Unieke identificatie, gebruikt in de code (geen spaties)</small>
+
+      <label>Beschrijving</label>
+      <textarea id="moduleBeschrijvingInput" rows="3" placeholder="Wat doet deze module?"></textarea>
+
+      <label>Standaard aan</label>
+      <select id="moduleStandaardAan">
+        <option value="true">✅ Ja</option>
+        <option value="false">❌ Nee</option>
+      </select>
+
+      <div style="display: flex; gap: 10px; margin-top: 1rem;">
+        <button id="saveModuleBtn" class="btn btn-primary">Opslaan</button>
+        <button id="closeModuleEditPopup" class="btn btn-secondary">Annuleren</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== SCRIPTS ===== -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/modules.js"></script>
 </body>
 </html>
