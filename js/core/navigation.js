@@ -15,17 +15,13 @@ const BESCHERMDE_PAGINAS = [
     'registraties.html',
     'stock.html',
     'analytics.html',
-    'tracker-dashboard.html',
-    'logs.html'
+    'tracker-dashboard.html'
 ];
 
 // ===== MODULE RECHTEN (CACHE) =====
 let moduleRightsCache = null;
 let moduleRightsCacheTime = 0;
 const CACHE_TTL = 60000; // 60 seconden
-
-// ===== NAVIGATIE CACHE =====
-let navigatieGeladen = false;
 
 // ===== PAGINA BEVEILIGING =====
 
@@ -69,12 +65,6 @@ export async function checkPageAuth() {
 
 // ===== MODULE RECHTEN =====
 
-export function resetModuleCache() {
-    moduleRightsCache = null;
-    moduleRightsCacheTime = 0;
-    console.log('🔄 Module cache gereset');
-}
-
 export async function heeftModuleToegang(moduleSleutel) {
     if (!supabase) return false;
     
@@ -84,9 +74,22 @@ export async function heeftModuleToegang(moduleSleutel) {
         
         const now = Date.now();
         if (moduleRightsCache && (now - moduleRightsCacheTime) < CACHE_TTL) {
-            if (moduleRightsCache[moduleSleutel] !== undefined) {
-                return moduleRightsCache[moduleSleutel];
-            }
+            return moduleRightsCache[moduleSleutel] || false;
+        }
+        
+        const { data: rollen } = await supabase
+            .from('gebruikers_rollen')
+            .select('rol')
+            .eq('user_id', user.id)
+            .maybeSingle();
+        
+        if (rollen && rollen.rol === 'admin') {
+            moduleRightsCache = {};
+            ['adressen', 'planning', 'registraties', 'stock', 'admin', 'analytics', 'modules', 'tracker'].forEach(key => {
+                moduleRightsCache[key] = true;
+            });
+            moduleRightsCacheTime = now;
+            return true;
         }
         
         const { data: rechten, error } = await supabase
@@ -120,10 +123,7 @@ export async function heeftModuleToegang(moduleSleutel) {
             return false;
         }
         
-        const standaardWaarde = module ? module.standaard_aan : false;
-        moduleRightsCache[moduleSleutel] = standaardWaarde;
-        
-        return standaardWaarde;
+        return module ? module.standaard_aan : false;
         
     } catch (err) {
         console.error('Exception bij module check:', err);
@@ -131,30 +131,20 @@ export async function heeftModuleToegang(moduleSleutel) {
     }
 }
 
-// ===== FILTER NAVIGATIE MODULES (ALLEEN BIJ ECHTE WIJZIGINGEN) =====
+// ===== FILTER NAVIGATIE MODULES =====
 export async function filterNavigatieModules() {
-    // 🔥 Alleen filteren als de navigatie al geladen is
-    if (!navigatieGeladen) {
-        console.log('⏳ Navigatie nog niet geladen, filteren wordt uitgesteld...');
-        return;
-    }
-    
     try {
         const moduleLinks = document.querySelectorAll('.module-link');
-        const alwaysVisibleLinks = document.querySelectorAll('.always-visible');
         
-        console.log(`🔍 ${moduleLinks.length} module links worden gefilterd`);
+        console.log(`🔍 ${moduleLinks.length} module links gevonden`);
         
-        alwaysVisibleLinks.forEach(link => {
-            link.style.display = 'inline-block';
-            link.classList.add('visible');
-        });
-        
+        // Eerst alle links verbergen (zowel klasse als style)
         moduleLinks.forEach(link => {
             link.classList.remove('visible');
             link.style.display = 'none';
         });
         
+        // Dan per link checken of de gebruiker toegang heeft
         for (const link of moduleLinks) {
             const moduleSleutel = link.dataset.module;
             if (!moduleSleutel) continue;
@@ -179,22 +169,13 @@ export async function laadNavigatie() {
     const placeholder = document.getElementById('navigatie-placeholder');
     if (!placeholder) return;
     
-    // 🔥 Als navigatie al geladen is, stop hier
-    if (navigatieGeladen) {
-        console.log('✅ Navigatie al geladen, overslaan...');
-        return;
-    }
-    
     try {
-        console.log('🔄 Navigatie wordt geladen...');
         const response = await fetch('includes/navigatie.html');
         if (!response.ok) throw new Error('Navigatie kon niet geladen worden');
         const html = await response.text();
-        
         placeholder.innerHTML = html;
-        navigatieGeladen = true;
         
-        // 🔥 Alleen de eerste keer filteren
+        // Filter modules op rechten
         await filterNavigatieModules();
         
         // Uitlog knop
@@ -207,7 +188,7 @@ export async function laadNavigatie() {
             });
         }
         
-        console.log('✅ Navigatie geladen!');
+        console.log('✅ Navigatie geladen en gefilterd!');
         
     } catch (error) {
         console.error('Fout bij laden navigatie:', error);
@@ -240,6 +221,5 @@ export default {
     heeftModuleToegang,
     filterNavigatieModules,
     laadNavigatie,
-    checkAuth,
-    resetModuleCache
+    checkAuth
 };

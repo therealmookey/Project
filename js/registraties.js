@@ -1,341 +1,205 @@
-// ============================================================
-// REGISTRATIES - Registraties pagina (met logging)
-// ============================================================
-console.log('🚀 registraties.js wordt geladen...');
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Project - Registraties</title>
+    
+    <!-- ===== VOORKOM FLITS VAN LIGHT MODE ===== -->
+    <script>
+        // Dit script wordt direct uitgevoerd voordat de CSS wordt geladen
+        (function() {
+            const theme = localStorage.getItem('theme');
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                // Voorkom nog meer flits
+                document.documentElement.style.backgroundColor = '#0f0f1a';
+                document.documentElement.style.color = '#f0f0f0';
+            }
+        })();
+    </script>
+    
+    <link rel="stylesheet" href="css/style.css">
+    <!-- SheetJS voor Excel export/import -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- html2pdf voor PDF export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <div id="navigatie-placeholder"></div>
+    
+    <main class="container">
+        <div class="page-header">
+            <div class="page-header-left">
+                <h1>📋 Ophaalregistraties</h1>
+                <button id="addRegistratieBtn" class="btn btn-primary">+ Nieuwe registratie</button>
+                <button id="importExcelBtn" class="btn btn-success">📥 Import Excel</button>
+            </div>
+            <div class="page-header-right">
+                <button id="exportExcelBtn" class="btn btn-success">📊 Export Excel</button>
+                <button id="exportPdfBtn" class="btn btn-danger">📄 Export PDF</button>
+            </div>
+        </div>
+        
+        <!-- Filters -->
+        <div class="filter-section">
+            <div class="filter-row">
+                <div class="filter-item">
+                    <label>🔍 Ziekenhuis</label>
+                    <input type="text" id="searchZiekenhuis" placeholder="Zoeken op naam..." class="search-input">
+                </div>
+                <div class="filter-item">
+                    <label>📅 Vanaf</label>
+                    <input type="date" id="filterDatumVanaf" class="form-input">
+                </div>
+                <div class="filter-item">
+                    <label>📅 Tot</label>
+                    <input type="date" id="filterDatumTot" class="form-input">
+                </div>
+                <div class="filter-item">
+                    <label>📊 Type</label>
+                    <select id="typeFilter" class="form-input">
+                        <option value="alles">Alle types</option>
+                        <option value="ophaling">Ophaling</option>
+                        <option value="opstart">Opstart</option>
+                    </select>
+                </div>
+                <div class="filter-item filter-buttons">
+                    <button id="filterBtn" class="btn btn-primary">Filter</button>
+                    <button id="resetFilterBtn" class="btn btn-secondary">Reset</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Registraties lijst -->
+        <div id="registratiesLijst" class="admin-tabel">
+            <p>Laden...</p>
+        </div>
+    </main>
+    
+    <!-- Scroll knop -->
+    <button id="scrollBtn" class="scroll-btn" title="Scroll naar beneden">
+        <span class="scroll-icon">▼</span>
+    </button>
+    
+    <!-- Popup voor registratie toevoegen/bewerken -->
+    <div id="registratiePopup" class="popup">
+        <div class="popup-content">
+            <h3 id="popupTitle">Nieuwe registratie</h3>
+            
+            <label>Type *</label>
+            <select id="registratieType" required>
+                <option value="ophaling">📦 Ophaling (gewicht)</option>
+                <option value="opstart">🔄 Opstart (combinatie)</option>
+            </select>
+            
+            <label>Ziekenhuis *</label>
+            <select id="ziekenhuisSelect" required>
+                <option value="">Kies een ziekenhuis...</option>
+            </select>
+            
+            <label>Datum *</label>
+            <input type="date" id="registratieDatum" required>
+            
+            <div id="ophalingVeldenReg">
+                <label>Gewicht (kg) *</label>
+                <input type="number" id="gewicht" placeholder="Bijv. 15.5" step="0.1">
+            </div>
+            
+            <div id="opstartVelden" style="display: none;">
+                <label>Combinatie *</label>
+                <select id="combinatieSelect">
+                    <option value="">Kies een combinatie...</option>
+                </select>
+                
+                <label>Aantal *</label>
+                <input type="number" id="opstartAantal" min="1" value="1" step="1">
+                <small>Dit aantal wordt uit de voorraad gehaald</small>
+            </div>
+            
+            <label>Opmerkingen</label>
+            <textarea id="opmerkingen" rows="3" placeholder="Extra informatie..."></textarea>
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="saveRegistratieBtn" class="btn btn-primary">Opslaan</button>
+                <button id="closeRegistratiePopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Popup voor Excel import -->
+    <div id="importPopup" class="popup">
+        <div class="popup-content import-popup">
+            <h3>📥 Excel import</h3>
+            <p>Upload een Excel bestand (.xlsx, .xls, .csv) met ophaalregistraties.</p>
+            
+            <div class="import-template">
+                <h4>📋 Benodigde kolommen:</h4>
+                <table class="import-template-table">
+                    <thead>
+                        <tr>
+                            <th>Kolom</th>
+                            <th>Omschrijving</th>
+                            <th>Verplicht</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Ziekenhuis</strong></td>
+                            <td>Naam van het ziekenhuis (moet bestaan in adressen)</td>
+                            <td>✅ Ja</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Datum</strong></td>
+                            <td>Datum van ophaling (JJJJ-MM-DD of DD-MM-JJJJ)</td>
+                            <td>✅ Ja</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gewicht</strong></td>
+                            <td>Gewicht in kg (alleen voor ophalingen)</td>
+                            <td>❌ Nee</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Type</strong></td>
+                            <td>"ophaling" of "opstart"</td>
+                            <td>❌ Nee (standaard: ophaling)</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Opmerkingen</strong></td>
+                            <td>Extra informatie</td>
+                            <td>❌ Nee</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button id="downloadTemplateBtn" class="btn btn-secondary">📥 Download template</button>
+            </div>
+            
+            <hr>
+            
+            <div class="import-upload">
+                <label>📁 Selecteer bestand</label>
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+                <div id="importPreview" class="import-preview"></div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 1rem;">
+                <button id="confirmImportBtn" class="btn btn-primary">✅ Importeer</button>
+                <button id="closeImportPopup" class="btn btn-secondary">Annuleren</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ===== SCRIPTS ===== -->
+<!-- 1. Supabase CDN -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-import { requireAuth } from './core/auth.js';
-import { showToast, escapeHtml } from './core/utils.js';
-import { supabase, logActie } from './core/supabase.js';  // 🔥 logActie toegevoegd
+<!-- 2. Configuratie -->
+<script src="js/config.js"></script>
 
-console.log('✅ Imports geladen!');
+<!-- 3. MAIN (als module) - laadt navigatie, thema, versie -->
+<script type="module" src="js/main.js"></script>
 
-// ===== STATE =====
-let alleRegistraties = [];
-let alleZiekenhuizen = [];
-let currentRegistratieId = null;
-let huidigeFilters = {
-  ziekenhuis: '',
-  datumVanaf: '',
-  datumTot: '',
-  type: 'alles'
-};
-
-// ===== DOM ELEMENTEN =====
-const registratiesLijst = document.getElementById('registratiesLijst');
-const addRegistratieBtn = document.getElementById('addRegistratieBtn');
-const registratiePopup = document.getElementById('registratiePopup');
-const popupTitle = document.getElementById('popupTitle');
-const registratieType = document.getElementById('registratieType');
-const ziekenhuisSelect = document.getElementById('ziekenhuisSelect');
-const registratieDatum = document.getElementById('registratieDatum');
-const gewicht = document.getElementById('gewicht');
-const opmerkingenReg = document.getElementById('opmerkingen');
-const saveRegistratieBtn = document.getElementById('saveRegistratieBtn');
-const closeRegistratiePopup = document.getElementById('closeRegistratiePopup');
-const ophalingVeldenReg = document.getElementById('ophalingVeldenReg');
-
-// ===== HULPFUNCTIES =====
-function getValue(id) {
-  const el = document.getElementById(id);
-  return el ? el.value : '';
-}
-
-function setValue(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.value = value || '';
-}
-
-function formatDate(date) {
-  if (!date) return '-';
-  return new Date(date).toLocaleDateString('nl-NL');
-}
-
-// ===== ZIEKENHUIZEN LADEN =====
-async function laadZiekenhuizenVoorSelect() {
-  try {
-    const { data, error } = await supabase
-      .from('adressen')
-      .select('id, instelling_naam')
-      .order('instelling_naam');
-    if (error) throw error;
-    alleZiekenhuizen = data || [];
-    ziekenhuisSelect.innerHTML = '<option value="">Kies een ziekenhuis...</option>';
-    alleZiekenhuizen.forEach(z => {
-      const option = document.createElement('option');
-      option.value = z.id;
-      option.textContent = z.instelling_naam;
-      ziekenhuisSelect.appendChild(option);
-    });
-  } catch (err) {
-    console.error('Fout bij laden ziekenhuizen:', err);
-  }
-}
-
-// ===== REGISTRATIES LADEN =====
-async function laadRegistraties() {
-  console.log('📋 laadRegistraties aangeroepen...');
-  if (!registratiesLijst) return;
-  registratiesLijst.innerHTML = '<p>Bezig met laden...</p>';
-
-  try {
-    let query = supabase
-      .from('ophaalregistraties')
-      .select('*, ziekenhuis:ziekenhuis_id (instelling_naam)')
-      .order('registratiedatum', { ascending: false });
-
-    if (huidigeFilters.ziekenhuis) {
-      query = query.eq('ziekenhuis_id', parseInt(huidigeFilters.ziekenhuis));
-    }
-    if (huidigeFilters.datumVanaf) {
-      query = query.gte('registratiedatum', huidigeFilters.datumVanaf);
-    }
-    if (huidigeFilters.datumTot) {
-      query = query.lte('registratiedatum', huidigeFilters.datumTot);
-    }
-    if (huidigeFilters.type && huidigeFilters.type !== 'alles') {
-      query = query.eq('type', huidigeFilters.type);
-    }
-
-    const { data, error } = await query;
-    if (error) throw error;
-    alleRegistraties = data || [];
-
-    if (alleRegistraties.length === 0) {
-      registratiesLijst.innerHTML = '<p>Geen registraties gevonden.</p>';
-      return;
-    }
-
-    let html = `
-      <div style="overflow-x: auto;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <thead>
-            <tr style="background-color: #f8f9fa;">
-              <th style="padding: 12px; text-align: left;">Datum</th>
-              <th style="padding: 12px; text-align: left;">Ziekenhuis</th>
-              <th style="padding: 12px; text-align: left;">Type</th>
-              <th style="padding: 12px; text-align: left;">Gewicht (kg)</th>
-              <th style="padding: 12px; text-align: left;">Opmerkingen</th>
-              <th style="padding: 12px; text-align: left;">Acties</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    for (const reg of alleRegistraties) {
-      const typeIcon = reg.type === 'ophaling' ? '📦' : '🔄';
-      const typeLabel = reg.type === 'ophaling' ? 'Ophaling' : 'Opstart';
-
-      html += `
-        <tr style="border-bottom: 1px solid #e9ecef;">
-          <td style="padding: 12px;">${formatDate(reg.registratiedatum)}</td>
-          <td style="padding: 12px;"><strong>${escapeHtml(reg.ziekenhuis?.instelling_naam || 'Onbekend')}</strong></td>
-          <td style="padding: 12px;">${typeIcon} ${typeLabel}</td>
-          <td style="padding: 12px;">${reg.gewicht || '-'}</td>
-          <td style="padding: 12px;">${escapeHtml(reg.opmerkingen || '-')}</td>
-          <td style="padding: 12px;">
-            <button class="btn btn-secondary edit-reg-btn" data-id="${reg.id}">✏️ Bewerken</button>
-            <button class="btn btn-danger delete-reg-btn" data-id="${reg.id}">🗑️ Verwijderen</button>
-          </td>
-        </tr>
-      `;
-    }
-
-    html += `
-          </tbody>
-        </table>
-      </div>
-    `;
-
-    registratiesLijst.innerHTML = html;
-
-    document.querySelectorAll('.edit-reg-btn').forEach(btn => {
-      btn.addEventListener('click', () => bewerkRegistratie(btn.dataset.id));
-    });
-
-    document.querySelectorAll('.delete-reg-btn').forEach(btn => {
-      btn.addEventListener('click', () => verwijderRegistratie(btn.dataset.id));
-    });
-
-  } catch (err) {
-    console.error('Fout bij laden registraties:', err);
-    registratiesLijst.innerHTML = `<p class="error">Fout: ${err.message}</p>`;
-  }
-}
-
-// ===== REGISTRATIE OPSLAAN =====
-async function saveRegistratie() {
-  const type = getValue('registratieType');
-  const ziekenhuisId = getValue('ziekenhuisSelect');
-  const datum = getValue('registratieDatum');
-  const gewichtVal = getValue('gewicht');
-  const opmerking = getValue('opmerkingen');
-
-  if (!type || !ziekenhuisId || !datum) {
-    showToast('Vul alle verplichte velden in', 'error');
-    return;
-  }
-
-  const registratieData = {
-    type: type,
-    ziekenhuis_id: parseInt(ziekenhuisId),
-    registratiedatum: datum,
-    opmerkingen: opmerking || null
-  };
-
-  if (type === 'ophaling') {
-    if (!gewichtVal) {
-      showToast('Vul het gewicht in', 'error');
-      return;
-    }
-    registratieData.gewicht = parseFloat(gewichtVal);
-  }
-
-  try {
-    let result;
-    const isBewerken = !!currentRegistratieId;
-
-    if (isBewerken) {
-      result = await supabase
-        .from('ophaalregistraties')
-        .update(registratieData)
-        .eq('id', currentRegistratieId);
-    } else {
-      result = await supabase
-        .from('ophaalregistraties')
-        .insert([registratieData]);
-    }
-
-    if (result.error) throw result.error;
-
-    // 🔥 LOG: Registratie toegevoegd of bijgewerkt
-    const actie = isBewerken ? 'bijgewerkt' : 'toegevoegd';
-    const entityId = isBewerken ? currentRegistratieId : result.data?.[0]?.id;
-    const ziekenhuisNaam = alleZiekenhuizen.find(z => z.id === parseInt(ziekenhuisId))?.instelling_naam || 'Onbekend';
-    await logActie(actie, 'registraties', entityId, `Registratie voor ${ziekenhuisNaam} op ${datum}`);
-
-    showToast('✅ Registratie opgeslagen!', 'success');
-    registratiePopup.style.display = 'none';
-    laadRegistraties();
-  } catch (err) {
-    console.error('Fout bij opslaan:', err);
-    showToast('❌ Fout: ' + err.message, 'error');
-  }
-}
-
-// ===== REGISTRATIE BEWERKEN =====
-async function bewerkRegistratie(id) {
-  try {
-    const { data, error } = await supabase
-      .from('ophaalregistraties')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
-
-    currentRegistratieId = id;
-    popupTitle.textContent = 'Registratie bewerken';
-    setValue('registratieType', data.type);
-    setValue('ziekenhuisSelect', data.ziekenhuis_id);
-    setValue('registratieDatum', data.registratiedatum);
-    setValue('gewicht', data.gewicht || '');
-    setValue('opmerkingen', data.opmerkingen || '');
-
-    if (data.type === 'ophaling') {
-      ophalingVeldenReg.style.display = 'block';
-    } else {
-      ophalingVeldenReg.style.display = 'none';
-    }
-
-    registratiePopup.style.display = 'flex';
-  } catch (err) {
-    console.error('Fout bij bewerken:', err);
-    showToast('❌ Fout: ' + err.message, 'error');
-  }
-}
-
-// ===== REGISTRATIE VERWIJDEREN =====
-async function verwijderRegistratie(id) {
-  if (!confirm('Weet je zeker dat je deze registratie wilt verwijderen?')) return;
-
-  try {
-    const { error } = await supabase
-      .from('ophaalregistraties')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-
-    // 🔥 LOG: Registratie verwijderd
-    await logActie('verwijderd', 'registraties', id);
-
-    showToast('✅ Registratie verwijderd!', 'success');
-    laadRegistraties();
-  } catch (err) {
-    console.error('Fout bij verwijderen:', err);
-    showToast('❌ Fout: ' + err.message, 'error');
-  }
-}
-
-// ===== INITIALISATIE =====
-document.addEventListener('DOMContentLoaded', async function() {
-  console.log('🔄 DOMContentLoaded event triggered');
-
-  const auth = await requireAuth('index.html');
-  if (!auth.isAuthenticated) {
-    console.warn('⚠️ Niet ingelogd, redirect...');
-    return;
-  }
-
-  await laadZiekenhuizenVoorSelect();
-  await laadRegistraties();
-
-  // Type change
-  if (registratieType) {
-    registratieType.addEventListener('change', function() {
-      if (this.value === 'ophaling') {
-        ophalingVeldenReg.style.display = 'block';
-      } else {
-        ophalingVeldenReg.style.display = 'none';
-      }
-    });
-  }
-
-  if (addRegistratieBtn) {
-    addRegistratieBtn.addEventListener('click', () => {
-      currentRegistratieId = null;
-      popupTitle.textContent = 'Nieuwe registratie';
-      setValue('registratieType', 'ophaling');
-      setValue('ziekenhuisSelect', '');
-      setValue('registratieDatum', '');
-      setValue('gewicht', '');
-      setValue('opmerkingen', '');
-      ophalingVeldenReg.style.display = 'block';
-      registratiePopup.style.display = 'flex';
-    });
-  }
-
-  if (saveRegistratieBtn) {
-    saveRegistratieBtn.addEventListener('click', saveRegistratie);
-  }
-
-  if (closeRegistratiePopup) {
-    closeRegistratiePopup.addEventListener('click', () => {
-      registratiePopup.style.display = 'none';
-    });
-  }
-
-  window.addEventListener('click', (e) => {
-    if (e.target === registratiePopup) {
-      registratiePopup.style.display = 'none';
-    }
-  });
-
-  console.log('✅ Registraties pagina geïnitialiseerd!');
-});
-
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  document.dispatchEvent(new Event('DOMContentLoaded'));
-}
-
-console.log('✅ registraties.js geladen!');
+<!-- 4. Admin specifiek (als module) -->
+<script type="module" src="js/registraties.js"></script>
+</body>
+</html>

@@ -1,52 +1,55 @@
 // ============================================================
-// MAIN - Hoofdscript voor alle pagina's
+// MAIN - Hoofdbestand (wordt op alle pagina's geladen)
 // ============================================================
+
+import { laadNavigatie, checkPageAuth } from './core/navigation.js';
+import { initTheme } from './core/theme.js';
+import { addVersionBadge } from './core/version.js';
+
 console.log('📦 main.js geladen');
 
-import { initTheme } from './core/theme.js';
-import { laadNavigatie } from './core/navigation.js';
-import { addVersionBadge } from './core/version.js';
-import { supabase } from './core/supabase.js';
-
-// ===== GLOBALE STATE (blijft bestaan over pagina's heen) =====
-if (typeof window.__appInitialized === 'undefined') {
-    window.__appInitialized = false;
+// ===== FUNCTIE: Alles initialiseren =====
+function initializeApp() {
+    console.log('🔄 Applicatie initialiseren...');
+    
+    // 1. Navigatie laden (eerst, zodat de checkbox bestaat)
+    if (document.getElementById('navigatie-placeholder')) {
+        laadNavigatie();
+        console.log('✅ Navigatie geladen');
+    }
+    
+    // 2. Thema initialiseren (na navigatie, zodat checkbox bestaat)
+    setTimeout(() => {
+        initTheme();
+        console.log('✅ Thema geïnitialiseerd');
+    }, 100);
+    
+    // 3. Versie badge toevoegen
+    addVersionBadge();
+    console.log('✅ Versie badge toegevoegd');
+    
+    // 4. Auth check (alleen voor beschermde pagina's)
+    checkPageAuth();
+    console.log('✅ Auth check uitgevoerd');
 }
 
-// ===== INITIALISATIE =====
-document.addEventListener('DOMContentLoaded', async function() {
-  // Voorkom dubbele initialisatie met globale variabele
-  if (window.__appInitialized) {
-    console.log('⚠️ App al geïnitialiseerd, overslaan...');
-    return;
-  }
-  window.__appInitialized = true;
+// ===== INITIALISATIE BIJ PAGINA LADEN =====
 
-  console.log('🔄 Applicatie initialiseren...');
+// Wacht tot de DOM klaar is
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeApp);
+} else {
+    // DOM is al geladen
+    initializeApp();
+}
 
-  // 1. Thema initialiseren
-  initTheme();
-
-  // 2. Navigatie laden (alleen de eerste keer)
-  await laadNavigatie();
-  console.log('✅ Navigatie geladen');
-
-  // 3. Versie badge toevoegen
-  addVersionBadge();
-
-  // 4. Auth check
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    console.log('✅ Gebruiker is ingelogd:', session.user.email);
-  }
-
-  console.log('✅ main.js geladen en klaar voor gebruik');
+// Ook bij volledige pagina load (voor de zekerheid)
+window.addEventListener('load', function() {
+    // Controleer of alles is geïnitialiseerd
+    if (!document.documentElement.hasAttribute('data-theme')) {
+        console.warn('⚠️ Thema niet geïnitialiseerd bij load, opnieuw proberen...');
+        initTheme();
+    }
 });
 
-// Als DOM al geladen is
-if (document.readyState === 'complete' || document.readyState === 'interactive') {
-  if (!window.__appInitialized) {
-    console.log('🔄 DOM al geladen, start main direct...');
-    document.dispatchEvent(new Event('DOMContentLoaded'));
-  }
-}
+console.log('✅ main.js geladen en klaar voor gebruik');
